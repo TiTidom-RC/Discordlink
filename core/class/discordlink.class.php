@@ -800,16 +800,16 @@ class discordlinkCmd extends cmd {
 
 		$request = $this->getConfiguration('request');
 
-		// Initialisation de toutes les variables
-		$title = "null";
-		$url = "null";
-		$description = "null";
-		$footer = "null";
-		$colors = "null";
-		$field = "null";
-		$timeout = "null";
-		$countanswer = "null";
-		$quickreply = "null";
+		// Initialisation de toutes les variables à chaîne vide
+		$title = "";
+		$url = "";
+		$description = "";
+		$footer = "";
+		$colors = "";
+		$field = "";
+		$timeout = "";
+		$countanswer = "";
+		$quickreply = "";
 		
 		/** @var discordlink $eqLogic */
 		$eqLogic = $this->getEqLogic();
