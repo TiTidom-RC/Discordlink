@@ -800,53 +800,60 @@ class discordlinkCmd extends cmd {
 
 		$request = $this->getConfiguration('request');
 
+		// Initialisation de toutes les variables
 		$title = "null";
-			$timeout = "null";
-			$countanswer = "null";
-			$quickreply = "null";
-			/** @var discordlink $eqLogic */
-			$eqLogic = $this->getEqLogic();
-			$defaultColor = $eqLogic->getDefaultColor();
+		$url = "null";
+		$description = "null";
+		$footer = "null";
+		$colors = "null";
+		$field = "null";
+		$timeout = "null";
+		$countanswer = "null";
+		$quickreply = "null";
+		
+		/** @var discordlink $eqLogic */
+		$eqLogic = $this->getEqLogic();
+		$defaultColor = $eqLogic->getDefaultColor();
 
-			if (isset($_options['answer'])) {
-				if (("" != ($_options['title']))) $title = $_options['title'];
-				$colors = "#1100FF";
+		if (isset($_options['answer'])) {
+			if (("" != ($_options['title']))) $title = $_options['title'];
+			$colors = "#1100FF";
 
-				if ($_options['answer'][0] != "") {
-					$answer = $_options['answer'];
-					$timeout = $_options['timeout'];
-					$description = "";
+			if ($_options['answer'][0] != "") {
+				$answer = $_options['answer'];
+				$timeout = $_options['timeout'];
+				$description = "";
 
-					$a = 0;
-					$url = "[";
-					$choix = [":regional_indicator_a:", ":regional_indicator_b:", ":regional_indicator_c:", ":regional_indicator_d:", ":regional_indicator_e:", ":regional_indicator_f:", ":regional_indicator_g:", ":regional_indicator_h:", ":regional_indicator_i:", ":regional_indicator_j:", ":regional_indicator_k:", ":regional_indicator_l:", ":regional_indicator_m:", ":regional_indicator_n:", ":regional_indicator_o:", ":regional_indicator_p:", ":regional_indicator_q:", ":regional_indicator_r:", ":regional_indicator_s:", ":regional_indicator_t:", ":regional_indicator_u:", ":regional_indicator_v:", ":regional_indicator_w:", ":regional_indicator_x:", ":regional_indicator_y:", ":regional_indicator_z:"];
-					while ($a < count($answer)) {
-						$description .= $choix[$a] . " : " . $answer[$a];
-						$description .= "
+				$a = 0;
+				$url = "[";
+				$choix = [":regional_indicator_a:", ":regional_indicator_b:", ":regional_indicator_c:", ":regional_indicator_d:", ":regional_indicator_e:", ":regional_indicator_f:", ":regional_indicator_g:", ":regional_indicator_h:", ":regional_indicator_i:", ":regional_indicator_j:", ":regional_indicator_k:", ":regional_indicator_l:", ":regional_indicator_m:", ":regional_indicator_n:", ":regional_indicator_o:", ":regional_indicator_p:", ":regional_indicator_q:", ":regional_indicator_r:", ":regional_indicator_s:", ":regional_indicator_t:", ":regional_indicator_u:", ":regional_indicator_v:", ":regional_indicator_w:", ":regional_indicator_x:", ":regional_indicator_y:", ":regional_indicator_z:"];
+				while ($a < count($answer)) {
+					$description .= $choix[$a] . " : " . $answer[$a];
+					$description .= "
 ";
-						$url .= '"' . $answer[$a] . '",';
-						$a++;
-					}
-					$url = rtrim($url, ',');
-					$url .= ']';
-					$countanswer = count($answer);
-				} else {
-					$timeout = $_options['timeout'];
-					$countanswer = 0;
-					$description = "Votre prochain message sera la réponse.";
-					$url = "text";
+					$url .= '"' . $answer[$a] . '",';
+					$a++;
 				}
+				$url = rtrim($url, ',');
+				$url .= ']';
+				$countanswer = count($answer);
 			} else {
-				if (!empty($_options['title'])) $title = $_options['title'];
-				if (!empty($_options['url'])) $url = $_options['url'];
-				if (!empty($_options['description'])) $description = $_options['description'];
-				if (!empty($_options['footer'])) $footer = $_options['footer'];
-				if (!empty($_options['colors'])) $colors = $_options['colors'];
-				if (!empty($_options['field'])) $field = json_encode($_options['field']);
-				if (!empty($_options['quickreply'])) $quickreply = $_options['quickreply'];
+				$timeout = $_options['timeout'];
+				$countanswer = 0;
+				$description = "Votre prochain message sera la réponse.";
+				$url = "text";
 			}
+		} else {
+			if (!empty($_options['title'])) $title = $_options['title'];
+			if (!empty($_options['url'])) $url = $_options['url'];
+			if (!empty($_options['description'])) $description = $_options['description'];
+			if (!empty($_options['footer'])) $footer = $_options['footer'];
+			if (!empty($_options['colors'])) $colors = $_options['colors'];
+			if (!empty($_options['field'])) $field = json_encode($_options['field']);
+			if (!empty($_options['quickreply'])) $quickreply = $_options['quickreply'];
+		}
 
-			$description = discordlink::emojiConvert($description);
+		$description = discordlink::emojiConvert($description);
 		log::add('discordlink', 'debug', 'description : ' . $description);
 		$description = str_replace('|', "\n", $description);
 
