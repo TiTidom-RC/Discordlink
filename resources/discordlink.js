@@ -272,6 +272,17 @@ app.get('/sendEmbed', async (req, res) => {
         // Normaliser les valeurs vides ou "null"
         const isEmpty = (val) => !val || val === "null" || val === "undefined" || val.trim() === "";
         
+        // Valider qu'une URL est bien formée
+        const isValidUrl = (val) => {
+            if (isEmpty(val)) return false;
+            try {
+                new URL(val);
+                return true;
+            } catch {
+                return false;
+            }
+        };
+        
         if (isEmpty(color)) color = defaultColor;
 
         // Discord.js v14: MessageEmbed → EmbedBuilder
@@ -280,7 +291,7 @@ app.get('/sendEmbed', async (req, res) => {
             .setTimestamp();
 
         if (!isEmpty(title)) Embed.setTitle(title);
-        if (!isEmpty(url) && isEmpty(answerCount)) Embed.setURL(url);
+        if (isValidUrl(url) && isEmpty(answerCount)) Embed.setURL(url);
         if (!isEmpty(description)) Embed.setDescription(description);
         
         // Discord.js v14: setFooter prend un objet
