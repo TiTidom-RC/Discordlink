@@ -152,12 +152,12 @@ class discordlink extends eqLogic {
 		foreach ($eqLogics as $eqLogic) {
 			// Vérification démon
 			if ($eqLogic->getConfiguration('daemonCheck', 0) === 1) {
-				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autorefreshDaemon'), 'daemonInfo', 'DaemonCheck', $dateRun, $options);
+				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autoRefreshDaemon'), 'daemonInfo', 'DaemonCheck', $dateRun, $options);
 			}
 			
 			// Vérification dépendances
 			if ($eqLogic->getConfiguration('dependencyCheck', 0) === 1) {
-				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autorefreshDependency'), 'dependencyInfo', 'DependencyCheck', $dateRun, $options);
+				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autoRefreshDependency'), 'dependencyInfo', 'DependencyCheck', $dateRun, $options);
 			}
 			
 			// Vérification connexions utilisateurs
@@ -170,7 +170,7 @@ class discordlink extends eqLogic {
 			}
 		}
 	}
-	/*     * ***********************Methode static*************************** */
+	/*     * ***********************Static Methods*************************** */
 
     /*
      * Fonction exécutée automatiquement toutes les minutes par Jeedom

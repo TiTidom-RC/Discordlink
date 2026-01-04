@@ -80,9 +80,11 @@ function discordlink_update() {
         
         // Migration des noms de configuration (anciennes versions)
         $configMigrations = [
-            'autorefreshDependances' => 'autorefreshDependency',
-            'autorefreshDependancy' => 'autorefreshDependency',
-            'autorefreshDeamon' => 'autorefreshDaemon',
+            'autorefreshDependances' => 'autoRefreshDependency',
+            'autorefreshDependancy' => 'autoRefreshDependency',
+            'autorefreshDeamon' => 'autoRefreshDaemon',
+            'autorefreshDaemon' => 'autoRefreshDaemon',
+            'autorefreshDependency' => 'autoRefreshDependency',
             'deamoncheck' => 'daemonCheck',
             'depcheck' => 'dependencyCheck'
         ];

@@ -154,7 +154,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                 </label>
                                 <div class="col-sm-7">
                                     <div class="input-group">
-                                        <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autorefreshDaemon" placeholder="{{Auto-actualisation Daemon (cron)}}" />
+                                        <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autoRefreshDaemon" placeholder="{{Auto-actualisation Daemon (cron)}}" />
                                         <span class="input-group-btn">
                                             <a class="btn btn-default cursor jeeHelper roundedRight" id="bt_cronGeneratordeamon" data-helper="cron" title="Assistant cron">
                                                 <i class="fas fa-question-circle"></i>
@@ -169,7 +169,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                 </label>
                                 <div class="col-sm-7">
                                     <div class="input-group">
-                                        <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autorefreshDependency" placeholder="{{Auto-actualisation Dépendances (cron)}}" />
+                                        <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autoRefreshDependency" placeholder="{{Auto-actualisation Dépendances (cron)}}" />
                                         <span class="input-group-btn">
                                             <a class="btn btn-default cursor jeeHelper roundedRight" id="bt_cronGeneratorDependance" data-helper="cron" title="Assistant cron">
                                                 <i class="fas fa-question-circle"></i>

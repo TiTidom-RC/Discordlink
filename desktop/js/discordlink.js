@@ -162,13 +162,13 @@ function addCmdToTable(_cmd) {
 
 $('#bt_cronGeneratordeamon').on('click', function () {
   jeedom.getCronSelectModal({}, function (result) {
-    $('.eqLogicAttr[data-l1key=configuration][data-l2key=autorefreshDaemon]').value(result.value);
+    $('.eqLogicAttr[data-l1key=configuration][data-l2key=autoRefreshDaemon]').value(result.value);
   });
 });
 
 $('#bt_cronGeneratorDependance').on('click', function () {
   jeedom.getCronSelectModal({}, function (result) {
-    $('.eqLogicAttr[data-l1key=configuration][data-l2key=autorefreshDependency]').value(result.value);
+    $('.eqLogicAttr[data-l1key=configuration][data-l2key=autoRefreshDependency]').value(result.value);
   });
 });
 
