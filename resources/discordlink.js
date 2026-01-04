@@ -269,23 +269,26 @@ app.get('/sendEmbed', async (req, res) => {
             quickTimeout = quickreplyConf[quickreply].timeout || 120;
         }
 
-        if (color === '' || color === "null") color = defaultColor;
+        // Normaliser les valeurs vides ou "null"
+        const isEmpty = (val) => !val || val === "null" || val === "undefined" || val.trim() === "";
+        
+        if (isEmpty(color)) color = defaultColor;
 
         // Discord.js v14: MessageEmbed → EmbedBuilder
         const Embed = new EmbedBuilder()
             .setColor(color)
             .setTimestamp();
 
-        if (title !== "null") Embed.setTitle(title);
-        if (url !== "null" && answerCount === "null") Embed.setURL(url);
-        if (description !== "null") Embed.setDescription(description);
+        if (!isEmpty(title)) Embed.setTitle(title);
+        if (!isEmpty(url) && isEmpty(answerCount)) Embed.setURL(url);
+        if (!isEmpty(description)) Embed.setDescription(description);
         
         // Discord.js v14: setFooter prend un objet
-        if (footer !== "null") {
+        if (!isEmpty(footer)) {
             Embed.setFooter({ text: footer });
         }
         
-        if (fields !== "null") {
+        if (!isEmpty(fields)) {
             fields = JSON.parse(fields);
             for (let field in fields) {
                 let name = fields[field]['name'];
@@ -345,7 +348,7 @@ app.get('/sendEmbed', async (req, res) => {
         }
 
         // Gestion des réponses ASK
-        if (answerCount !== "null") {
+        if (!isEmpty(answerCount)) {
             let timeoutMs = (req.query.timeout * 1000);
             toReturn.push({
                 'query': req.query,
