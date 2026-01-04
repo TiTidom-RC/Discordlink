@@ -285,16 +285,6 @@ app.get('/sendEmbed', async (req, res) => {
         };
         
         if (isEmpty(color)) color = defaultColor;
-        
-        // Log pour debug
-        config.logger(`sendEmbed - Valeurs reçues:`, 'INFO');
-        config.logger(`  - title: "${title}"`, 'INFO');
-        config.logger(`  - url: "${url}"`, 'INFO');
-        config.logger(`  - description: "${description}"`, 'INFO');
-        config.logger(`  - answerCount: "${answerCount}"`, 'INFO');
-        config.logger(`  - isEmpty(url): ${isEmpty(url)}`, 'INFO');
-        config.logger(`  - isValidUrl(url): ${isValidUrl(url)}`, 'INFO');
-        config.logger(`  - isEmpty(answerCount): ${isEmpty(answerCount)}`, 'INFO');
 
         // Discord.js v14: MessageEmbed → EmbedBuilder
         const Embed = new EmbedBuilder()
@@ -303,10 +293,7 @@ app.get('/sendEmbed', async (req, res) => {
 
         if (!isEmpty(title)) Embed.setTitle(title);
         if (isValidUrl(url) && isEmpty(answerCount)) {
-            config.logger(`sendEmbed - URL ajoutée à l'embed: ${url}`, 'INFO');
             Embed.setURL(url);
-        } else {
-            config.logger(`sendEmbed - URL NON ajoutée. isValidUrl: ${isValidUrl(url)}, isEmpty(answerCount): ${isEmpty(answerCount)}`, 'INFO');
         }
         if (!isEmpty(description)) Embed.setDescription(description);
         
