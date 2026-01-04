@@ -30,19 +30,6 @@ const client = new Client({
     ]
 });
 
-// Utiliser fetch natif si Node.js >= 18, sinon fallback
-let fetch;
-if (typeof globalThis.fetch === 'function') {
-    fetch = globalThis.fetch;
-} else {
-    try {
-        fetch = require('node-fetch');
-    } catch (e) {
-        console.error('[ERROR] Fetch non disponible. Installez node-fetch ou utilisez Node.js 18+');
-        process.exit(1);
-    }
-}
-
 const token = process.argv[3];
 const jeedomIP = process.argv[2];
 const pluginKey = process.argv[6];
