@@ -120,7 +120,7 @@ app.get('/getchannel', async (req, res) => {
         res.type('json');
         let toReturn = [];
 
-        config.logger('DiscordLink: GetChannel', 'INFO');
+        config.logger('DiscordLink: GetChannel', 'DEBUG');
         
         // Discord.js v14: .cache.array() n'existe plus
         const channelsall = Array.from(client.channels.cache.values());
@@ -562,7 +562,7 @@ async function deleteOldChannelMessages(channel) {
 }
 
 /* Gestionnaires d'événements Discord - À définir AVANT client.login() */
-client.on("ready", async () => {
+client.on("clientReady", async () => {
     config.logger(`DiscordLink: Bot connecté: ${client.user.tag}`, 'INFO');
     
     // Discord.js v14: setActivity prend un objet options
