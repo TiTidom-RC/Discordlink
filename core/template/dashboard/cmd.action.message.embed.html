@@ -1,38 +1,63 @@
 <div class="cmd cmd-widget reportModeHidden" data-type="action" data-subtype="message" data-template="default" data-cmd_id="#id#" data-cmd_uid="#uid#" data-version="#version#" data-eqLogic_id="#eqLogic_id#">
-    <br>
-    <table border="0" cellpadding="0" width="202">
-        <tr>
-            <td align="left" style="padding: 0px;" width="100%">  
-                <div class="title #hide_name#">
-                <div class="cmdName">#name_display#</div>
-                </div>
-            </td>
-        </tr>
-        <tr>
-            <td style="padding: 5px;" width="100%">
-                <div class="content-xs">
-                <textarea class="form-control input-sm message" rows="2" placeholder="#message_placeholder#" data-cmd_uid="#uid#" data-cmd_id="#id#"></textarea>
-                </div>
-      </td>
-        </tr>
-        <tr>
-            <td align="center" style="padding: 5px;" width="100%">
-                <div class="content-xs">
-                <a class='btn btn-xs execute'>#name_display#</a>
-                </div>
-      </td>
-        </tr></table>
-    
-        <script>
-            if('#title_disable#' == '1'){
-                $('.cmd[data-cmd_uid=#uid#] .title').hide();
-            }
-            if('#message_disable#' == '1'){
-                $('.cmd[data-cmd_uid=#uid#] .message').hide();
-            }
-            $('.cmd[data-cmd_uid=#uid#]:last .execute').on('click', function() {
-                jeedom.cmd.execute({id: '#id#', value: {title: $('.cmd[data-cmd_uid=#uid#] .title').value(), message: $('.cmd[data-cmd_uid=#uid#] .message').value()}});
-            });
-    
-        </script>
+    <div class="title #hide_name#">
+        <div class="cmdName">#name_display#</div>
     </div>
+    <div class="content-sm" style="padding: 5px;">
+        <div style="margin-bottom: 5px;">
+            <input type="text" class="form-control input-sm embedTitle" placeholder="Titre" data-cmd_uid="#uid#" data-cmd_id="#id#" style="margin-bottom: 3px;">
+        </div>
+        <div style="margin-bottom: 5px;">
+            <textarea class="form-control input-sm embedDescription" rows="2" placeholder="Description (message)" data-cmd_uid="#uid#" data-cmd_id="#id#" style="margin-bottom: 3px;"></textarea>
+        </div>
+        <div style="margin-bottom: 5px;">
+            <input type="text" class="form-control input-sm embedUrl" placeholder="URL (optionnel)" data-cmd_uid="#uid#" data-cmd_id="#id#" style="margin-bottom: 3px;">
+        </div>
+        <div style="margin-bottom: 5px;">
+            <input type="text" class="form-control input-sm embedFooter" placeholder="Footer (optionnel)" data-cmd_uid="#uid#" data-cmd_id="#id#" style="margin-bottom: 3px;">
+        </div>
+        <div style="margin-bottom: 5px; display: flex; gap: 5px;">
+            <input type="color" class="form-control input-sm embedColorPicker" data-cmd_uid="#uid#" value="#defaultColor#" style="width: 50px; padding: 2px;">
+            <input type="text" class="form-control input-sm embedColor" placeholder="Couleur (hexa)" data-cmd_uid="#uid#" data-cmd_id="#id#" value="#defaultColor#" style="flex: 1;">
+        </div>
+        <div style="text-align: center;">
+            <a class="btn btn-sm btn-success executeEmbed" style="width: 100%;">
+                <i class="fas fa-paper-plane"></i> Envoyer
+            </a>
+        </div>
+    </div>
+    
+    <script>
+        // Synchroniser le color picker avec le champ texte
+        $('.cmd[data-cmd_uid=#uid#] .embedColorPicker').off('change').on('change', function() {
+            $('.cmd[data-cmd_uid=#uid#] .embedColor').val($(this).val());
+        });
+        
+        $('.cmd[data-cmd_uid=#uid#] .embedColor').off('input').on('input', function() {
+            let color = $(this).val();
+            if (color.match(/^#[0-9A-Fa-f]{6}$/)) {
+                $('.cmd[data-cmd_uid=#uid#] .embedColorPicker').val(color);
+            }
+        });
+        
+        // Gérer le masquage du titre
+        if('#title_disable#' == '1'){
+            $('.cmd[data-cmd_uid=#uid#] .title').hide();
+        }
+        
+        // Exécuter la commande
+        $('.cmd[data-cmd_uid=#uid#] .executeEmbed').off('click').on('click', function() {
+            let options = {
+                title: $('.cmd[data-cmd_uid=#uid#] .embedTitle').val(),
+                description: $('.cmd[data-cmd_uid=#uid#] .embedDescription').val(),
+                url: $('.cmd[data-cmd_uid=#uid#] .embedUrl').val(),
+                footer: $('.cmd[data-cmd_uid=#uid#] .embedFooter').val(),
+                colors: $('.cmd[data-cmd_uid=#uid#] .embedColor').val()
+            };
+            
+            jeedom.cmd.execute({
+                id: '#id#',
+                value: options
+            });
+        });
+    </script>
+</div>

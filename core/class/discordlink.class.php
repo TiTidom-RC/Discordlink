@@ -847,6 +847,8 @@ class discordlinkCmd extends cmd {
 			if (!empty($_options['title'])) $title = $_options['title'];
 			if (!empty($_options['url'])) $url = $_options['url'];
 			if (!empty($_options['description'])) $description = $_options['description'];
+			// Support du champ 'message' comme alias de 'description' (pour le bouton test dashboard)
+			if (!empty($_options['message']) && empty($description)) $description = $_options['message'];
 			if (!empty($_options['footer'])) $footer = $_options['footer'];
 			if (!empty($_options['colors'])) $colors = $_options['colors'];
 			if (!empty($_options['field'])) $field = json_encode($_options['field']);
