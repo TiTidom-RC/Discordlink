@@ -84,6 +84,31 @@ function discordlink_update() {
             }
             $eqLogic->save();
         }
+        
+        // Migration des anciennes commandes message (1oldmsg, 2oldmsg, 3oldmsg)
+        $cmdMigrations = array(
+            '1oldmsg' => 'lastMessage',
+            '2oldmsg' => 'previousMessage1',
+            '3oldmsg' => 'previousMessage2'
+        );
+        
+        foreach ($cmdMigrations as $oldLogicalId => $newLogicalId) {
+            $oldCmd = $eqLogic->getCmd('info', $oldLogicalId);
+            if (is_object($oldCmd)) {
+                // Vérifier si la nouvelle commande n'existe pas déjà
+                $newCmd = $eqLogic->getCmd('info', $newLogicalId);
+                if (!is_object($newCmd)) {
+                    // Renommer la commande
+                    $oldCmd->setLogicalId($newLogicalId);
+                    $oldCmd->save();
+                    log::add('discordlink', 'info', 'Migration commande: ' . $oldLogicalId . ' → ' . $newLogicalId);
+                } else {
+                    // La nouvelle existe déjà, supprimer l'ancienne
+                    $oldCmd->remove();
+                    log::add('discordlink', 'info', 'Suppression ancienne commande: ' . $oldLogicalId);
+                }
+            }
+        }
     }
     
     discordlink::CreateCmd();

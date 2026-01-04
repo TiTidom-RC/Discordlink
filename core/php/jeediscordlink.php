@@ -31,21 +31,21 @@ if (init('test') != '') {
 	die();
 }
 
-$receivedString=file_get_contents("php://input");
-$name=$_GET["name"];
+$rawInput = file_get_contents("php://input");
+$name = $_GET["name"];
 log::add('discordlink', 'debug',  'Réception données sur jeediscordlink ['.$name.']');
 
-log::add('discordlink', 'debug',  "receivedString: ".$receivedString);
+log::add('discordlink', 'debug',  "receivedString: ".$rawInput);
 
-$start=strpos($receivedString, "{");
-$end=strrpos($receivedString, "}");
-$length=1+intval($end)-intval($start);
-$correctedString=substr($receivedString, $start, $length);
+$start = strpos($rawInput, "{");
+$end = strrpos($rawInput, "}");
+$length = 1 + intval($end) - intval($start);
+$jsonInput = substr($rawInput, $start, $length);
 
-log::add('discordlink', 'debug',  "correctedString: ".$correctedString);
+log::add('discordlink', 'debug',  "correctedString: ".$jsonInput);
 log::add('discordlink', 'debug',  "name: ".$name);
 
-$result = json_decode($correctedString, true);
+$result = json_decode($jsonInput, true);
 
 
 if (!is_array($result)) {
@@ -53,44 +53,44 @@ if (!is_array($result)) {
 	die();
 }
 
-$logical_id = $result['channelId']."_player";
+$logicalId = $result['channelId']."_player";
 
-$discordlinkeqlogic=eqLogic::byLogicalId($result['channelId'], 'discordlink');
+$discordEquipment=eqLogic::byLogicalId($result['channelId'], 'discordlink');
 
 switch ($name) {
 	
 		case 'messageReceived':
-		getDeviceAndUpdate("1oldmsg", $result['message'], '1oldmsg', $result['channelId'], $result['userId']);
+		getDeviceAndUpdate("lastMessage", $result['message'], 'lastMessage', $result['channelId'], $result['userId']);
 		break;	
 		case 'ASK':
 		getASK($result['response'], $result['channelId'], $result['request']);
 	break;
 				
 	default:
-			if (!is_object($discordlinkeqlogic)) {
-				log::add('discordlink', 'debug',  'Device non trouvé: '.$logical_id);
+			if (!is_object($discordEquipment)) {
+				log::add('discordlink', 'debug',  'Device non trouvé: '.$logicalId);
 				die();
 			} else {
-				log::add('discordlink', 'debug',  'Device trouvé: '.$logical_id);
+				log::add('discordlink', 'debug',  'Device trouvé: '.$logicalId);
 			}
 }
 
 function getDeviceAndUpdate($name, $value, $jeedomCommand, $_channelId, $_userId) {
-	$discordlinkeqlogic=eqLogic::byLogicalId($_channelId, 'discordlink');
+	$discordEquipment=eqLogic::byLogicalId($_channelId, 'discordlink');
 
-	if (!is_object($discordlinkeqlogic)) return;
+	if (!is_object($discordEquipment)) return;
 
-	$oldMessage1 = $discordlinkeqlogic->getCmd('info', '1oldmsg');
-	$oldMessage2 = $discordlinkeqlogic->getCmd('info', '2oldmsg');
+	$oldMessage1 = $discordEquipment->getCmd('info', 'lastMessage');
+	$oldMessage2 = $discordEquipment->getCmd('info', 'previousMessage1');
 	$oldMessage1 = $oldMessage1->execCmd();
 	$oldMessage2 = $oldMessage2->execCmd();
 
-	updateCommand("1oldmsg", $value, "1oldmsg", $discordlinkeqlogic);
-	updateCommand("2oldmsg", $oldMessage1, "2oldmsg", $discordlinkeqlogic);
-	updateCommand("3oldmsg", $oldMessage2, "3oldmsg", $discordlinkeqlogic);
+	updateCommand("lastMessage", $value, "lastMessage", $discordEquipment);
+	updateCommand("previousMessage1", $oldMessage1, "previousMessage1", $discordEquipment);
+	updateCommand("previousMessage2", $oldMessage2, "previousMessage2", $discordEquipment);
 
-	log::add('discordlink', 'debug', $discordlinkeqlogic->getConfiguration('interactionJeedom'));
-	if ($discordlinkeqlogic->getConfiguration('interactionJeedom') == 1) {
+	log::add('discordlink', 'debug', $discordEquipment->getConfiguration('interactionJeedom'));
+	if ($discordEquipment->getConfiguration('interactionJeedom') == 1) {
 		$parameters['plugin'] = 'discordlink';
 		$parameters['userid'] = $_userId;
 		$parameters['channel'] = $_channelId;
@@ -98,7 +98,7 @@ function getDeviceAndUpdate($name, $value, $jeedomCommand, $_channelId, $_userId
 		log::add('discordlink', 'debug', 'Interaction ' . print_r($reply, true));
 		if ($reply['reply'] != "Désolé je n'ai pas compris" && $reply['reply'] != "Désolé je n'ai pas compris la demande" && $reply['reply'] != "Désolé je ne comprends pas la demande" && $reply['reply'] != "Je ne comprends pas" && $reply['reply'] != "ceci est un message de test" && $reply['reply'] != "" && $reply['reply'] != " ") {
 			log::add('discordlink', 'debug',  "La reponse : ".$reply['reply']. " est valide je vous l'ai donc renvoyée");
-			$cmd = $discordlinkeqlogic->getCmd('action', 'sendMsg');
+			$cmd = $discordEquipment->getCmd('action', 'sendMsg');
 			$option = array('message' => $reply['reply']);
 			$cmd->execute($option);
 		} else {
@@ -108,11 +108,11 @@ function getDeviceAndUpdate($name, $value, $jeedomCommand, $_channelId, $_userId
 
 }
 
-function updateCommand($name, $_value, $_logicalId, $_discordlinkeqlogic, $_updateTime = null) {
+function updateCommand($name, $_value, $_logicalId, $_discordEquipment, $_updateTime = null) {
 	try {
 		if (isset($_value)) {
-			if ($_discordlinkeqlogic->getIsEnable() == 1) {
-				$cmd = is_object($_logicalId) ? $_logicalId : $_discordlinkeqlogic->getCmd('info', $_logicalId);
+			if ($_discordEquipment->getIsEnable() == 1) {
+				$cmd = is_object($_logicalId) ? $_logicalId : $_discordEquipment->getCmd('info', $_logicalId);
 				if (is_object($cmd)) {
 					$oldValue = $cmd->execCmd();
 					if ($oldValue !== $cmd->formatValue($_value) || $oldValue === '') {
@@ -132,8 +132,8 @@ function updateCommand($name, $_value, $_logicalId, $_discordlinkeqlogic, $_upda
 }
 
 function getASK($_value, $_channelId, $_request) {
-	$discordlinkeqlogic=eqLogic::byLogicalId($_channelId, 'discordlink');
-	$cmd = $discordlinkeqlogic->getCmd('action', "sendEmbed");
+	$discordEquipment=eqLogic::byLogicalId($_channelId, 'discordlink');
+	$cmd = $discordEquipment->getCmd('action', "sendEmbed");
 	if ($_request === "text") {
 		log::add('discordlink', 'debug', 'ASK : Text');
 		$value = $_value;
