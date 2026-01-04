@@ -16,8 +16,8 @@
             <input type="text" class="form-control input-sm embedFooter" placeholder="Footer (optionnel)" data-cmd_uid="#uid#" data-cmd_id="#id#" style="margin-bottom: 3px;">
         </div>
         <div style="margin-bottom: 5px; display: flex; gap: 5px;">
-            <input type="color" class="form-control input-sm embedColorPicker" data-cmd_uid="#uid#" value="#defaultColor#" style="width: 50px; padding: 2px;">
-            <input type="text" class="form-control input-sm embedColor" placeholder="Couleur (hexa)" data-cmd_uid="#uid#" data-cmd_id="#id#" value="#defaultColor#" style="flex: 1;">
+            <input type="color" class="form-control input-sm embedColorPicker" data-cmd_uid="#uid#" style="width: 50px; padding: 2px;">
+            <input type="text" class="form-control input-sm embedColor" placeholder="Couleur (hexa)" data-cmd_uid="#uid#" data-cmd_id="#id#" style="flex: 1;">
         </div>
         <div style="text-align: center;">
             <a class="btn btn-sm btn-success executeEmbed" style="width: 100%;">
@@ -27,6 +27,21 @@
     </div>
     
     <script>
+        // Charger la couleur par défaut depuis la configuration de l'équipement
+        (function() {
+            jeedom.eqLogic.byId({
+                id: '#eqLogic_id#',
+                error: function(error) {
+                    console.error('Erreur chargement équipement:', error);
+                },
+                success: function(data) {
+                    let defaultColor = data.configuration.defaultColor || '#0099ff';
+                    $('.cmd[data-cmd_uid=#uid#] .embedColorPicker').val(defaultColor);
+                    $('.cmd[data-cmd_uid=#uid#] .embedColor').val(defaultColor);
+                }
+            });
+        })();
+        
         // Synchroniser le color picker avec le champ texte
         $('.cmd[data-cmd_uid=#uid#] .embedColorPicker').off('change').on('change', function() {
             $('.cmd[data-cmd_uid=#uid#] .embedColor').val($(this).val());
