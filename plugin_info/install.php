@@ -48,11 +48,52 @@ function discordlink_update() {
         $needSave = false;
         $configuration = $eqLogic->getConfiguration();
         
-        // Migration autorefreshDependances → autorefreshDependancy
-        if (isset($configuration['autorefreshDependances']) && $configuration['autorefreshDependances'] !== '') {
-            $eqLogic->setConfiguration('autorefreshDependancy', $configuration['autorefreshDependances']);
-            unset($configuration['autorefreshDependances']);
-            $needSave = true;
+        // Migration des commandes : renommage des logicalId et requêtes
+        $commandMigrations = [
+            'deamonInfo' => 'daemonInfo',
+            'dependanceInfo' => 'dependencyInfo',
+            'batteryinfo' => 'batteryInfo',
+            'centreMsg' => 'messageCenter',
+            'LastUser' => 'lastUser'
+        ];
+        
+        foreach ($commandMigrations as $oldId => $newId) {
+            $cmd = $eqLogic->getCmd(null, $oldId);
+            if (is_object($cmd)) {
+                $cmd->setLogicalId($newId);
+                // Mettre à jour la requête dans la configuration
+                $oldRequest = $cmd->getConfiguration('request');
+                if ($oldRequest && strpos($oldRequest, $oldId) !== false) {
+                    $newRequest = str_replace($oldId, $newId, $oldRequest);
+                    $cmd->setConfiguration('request', $newRequest);
+                }
+                $cmd->save();
+                log::add('discordlink', 'info', 'Migration commande ' . $oldId . ' -> ' . $newId);
+            }
+        }
+    }
+    
+    // Migration des anciennes propriétés de configuration d'équipement
+    foreach (eqLogic::byType('discordlink') as $eqLogic) {
+        $needSave = false;
+        $configuration = $eqLogic->getConfiguration();
+        
+        // Migration des noms de configuration (anciennes versions)
+        $configMigrations = [
+            'autorefreshDependances' => 'autorefreshDependency',
+            'autorefreshDependancy' => 'autorefreshDependency',
+            'autorefreshDeamon' => 'autorefreshDaemon',
+            'deamoncheck' => 'daemonCheck',
+            'depcheck' => 'dependencyCheck'
+        ];
+        
+        foreach ($configMigrations as $oldKey => $newKey) {
+            if (isset($configuration[$oldKey]) && $configuration[$oldKey] !== '') {
+                $eqLogic->setConfiguration($newKey, $configuration[$oldKey]);
+                unset($configuration[$oldKey]);
+                $needSave = true;
+                log::add('discordlink', 'info', 'Migration configuration ' . $oldKey . ' -> ' . $newKey);
+            }
         }
         
         // Migration channelid → channelId

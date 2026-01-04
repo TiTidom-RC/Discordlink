@@ -151,18 +151,18 @@ class discordlink extends eqLogic {
 
 		foreach ($eqLogics as $eqLogic) {
 			// Vérification démon
-			if ($eqLogic->getConfiguration('deamoncheck', 0) === 1) {
-				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autorefreshDeamon'), 'deamonInfo', 'DeamonCheck', $dateRun, $options);
+			if ($eqLogic->getConfiguration('daemonCheck', 0) === 1) {
+				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autorefreshDaemon'), 'daemonInfo', 'DaemonCheck', $dateRun, $options);
 			}
 			
 			// Vérification dépendances
-			if ($eqLogic->getConfiguration('depcheck', 0) === 1) {
-				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autorefreshDependancy'), 'dependanceInfo', 'DepCheck', $dateRun, $options);
+			if ($eqLogic->getConfiguration('dependencyCheck', 0) === 1) {
+				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autorefreshDependency'), 'dependencyInfo', 'DependencyCheck', $dateRun, $options);
 			}
 			
 			// Vérification connexions utilisateurs
 			if ($eqLogic->getConfiguration('connectionCheck', 0) === 1) {
-				$cmd = $eqLogic->getCmd('action', 'LastUser');
+				$cmd = $eqLogic->getCmd('action', 'lastUser');
 				if (is_object($cmd)) {
 					log::add('discordlink', 'debug', 'Vérification connexion utilisateur pour ' . $eqLogic->getName());
 					$cmd->execCmd($options);
@@ -358,13 +358,13 @@ class discordlink extends eqLogic {
 				'sendEmbed'=>array('requiredPlugin' => '0','label'=>'Envoi message évolué', 'type'=>'action', 'subType' => 'message', 'request'=> 'sendEmbed?color=#color#&title=#title#&url=#url#&description=#description#&field=#field#&countanswer=#countanswer#&footer=#footer#&timeout=#timeout#&quickreply=#quickreply#&defaultColor=#defaultColor#', 'visible' => 0),
 				'sendFile'=>array('requiredPlugin' => '0','label'=>'Envoi fichier', 'type'=>'action', 'subType' => 'message', 'request'=> 'sendFile?patch=#patch#&name=#name#&message=#message#', 'visible' => 0),
 				'deleteMessage'=>array('requiredPlugin' => '0','label'=>'Supprime les messages du channel', 'type'=>'action', 'subType'=>'other','request'=>'deleteMessage?null', 'visible' => 0),
-				'deamonInfo'=>array('requiredPlugin' => '0','label'=>'Etat des démons', 'type'=>'action', 'subType'=>'other','request'=>'deamonInfo?null', 'visible' => 1),
-				'dependanceInfo'=>array('requiredPlugin' => '0','label'=>'Etat des dépendances', 'type'=>'action', 'subType'=>'other','request'=>'dependanceInfo?null', 'visible' => 1),
+				'daemonInfo'=>array('requiredPlugin' => '0','label'=>'Etat des démons', 'type'=>'action', 'subType'=>'other','request'=>'daemonInfo?null', 'visible' => 1),
+				'dependencyInfo'=>array('requiredPlugin' => '0','label'=>'Etat des dépendances', 'type'=>'action', 'subType'=>'other','request'=>'dependencyInfo?null', 'visible' => 1),
 				'globalSummary'=>array('requiredPlugin' => '0','label'=>'Résumé général', 'type'=>'action', 'subType'=>'other','request'=>'globalSummary?null', 'visible' => 1),
 				'objectSummary'=>array('requiredPlugin' => '0','label'=>'Résumé par objet', 'type'=>'action', 'subType'=>'select','request'=>'objectSummary?null', 'visible' => 1),
-				'batteryinfo'=>array('requiredPlugin' => '0','label'=>'Résumé des batteries', 'type'=>'action', 'subType'=>'other','request'=>'batteryinfo?null', 'visible' => 1),
-				'centreMsg'=>array('requiredPlugin' => '0','label'=>'Centre de messages', 'type'=>'action', 'subType'=>'other','request'=>'centreMsg?null', 'visible' => 1),
-				'LastUser'=>array('requiredPlugin' => '0','label'=>'Dernière Connexion utilisateur', 'type'=>'action', 'subType'=>'other','request'=>'LastUser?null', 'visible' => 1),
+				'batteryInfo'=>array('requiredPlugin' => '0','label'=>'Résumé des batteries', 'type'=>'action', 'subType'=>'other','request'=>'batteryInfo?null', 'visible' => 1),
+				'messageCenter'=>array('requiredPlugin' => '0','label'=>'Centre de messages', 'type'=>'action', 'subType'=>'other','request'=>'messageCenter?null', 'visible' => 1),
+				'lastUser'=>array('requiredPlugin' => '0','label'=>'Dernière Connexion utilisateur', 'type'=>'action', 'subType'=>'other','request'=>'lastUser?null', 'visible' => 1),
 				'lastMessage'=>array('requiredPlugin' => '0','label'=>'Dernier message', 'type'=>'info', 'subType'=>'string', 'visible' => 1),
 				'previousMessage1'=>array('requiredPlugin' => '0','label'=>'Avant dernier message', 'type'=>'info', 'subType'=>'string', 'visible' => 1),
 				'previousMessage2'=>array('requiredPlugin' => '0','label'=>'Avant Avant dernier message', 'type'=>'info', 'subType'=>'string', 'visible' => 1)
@@ -383,11 +383,11 @@ class discordlink extends eqLogic {
 					}
 					$cmd->setEqLogic_id($eqLogic->getId());
 					$cmd->setLogicalId($cmdKey);
-					if ($cmdConfig['type'] == "action" && $cmdKey != "deamonInfo") {
+					if ($cmdConfig['type'] == "action" && $cmdKey != "daemonInfo") {
 						$cmd->setConfiguration('request', $cmdConfig['request']);
 						$cmd->setConfiguration('value', 'http://' . config::byKey('internalAddr') . ':3466/' . $cmdConfig['request'] . "&channelID=" . $eqLogic->getConfiguration('channelId'));
 					}
-					if ($cmdConfig['type'] == "action" && $cmdKey == "deamonInfo") {
+					if ($cmdConfig['type'] == "action" && $cmdKey == "daemonInfo") {
 						$cmd->setConfiguration('request', $cmdConfig['request']);
 						$cmd->setConfiguration('value', $cmdConfig['request']);
 					}
@@ -710,17 +710,17 @@ class discordlinkCmd extends cmd {
 		$command = $cmdANDarg[0];
 		
 		$commandMap = array(
-			'sendMsg' => 'build_ControledeSliderSelectMessage',
-			'sendMsgTTS' => 'build_ControledeSliderSelectMessage',
-			'sendEmbed' => 'build_ControledeSliderSelectEmbed',
-			'sendFile' => 'build_ControledeSliderSelectFile',
-			'deamonInfo' => 'build_deamonInfo',
-			'dependanceInfo' => 'build_dependanceInfo',
-			'globalSummary' => 'build_globalSummary',
-			'batteryinfo' => 'build_baterieglobal',
-			'objectSummary' => 'build_objectSummary',
-			'centreMsg' => 'build_centreMsg',
-			'LastUser' => 'build_LastUser',
+			'sendMsg' => 'buildMessageRequest',
+			'sendMsgTTS' => 'buildMessageRequest',
+			'sendEmbed' => 'buildEmbedRequest',
+			'sendFile' => 'buildFileRequest',
+			'daemonInfo' => 'buildDaemonInfo',
+			'dependencyInfo' => 'buildDependencyInfo',
+			'globalSummary' => 'buildGlobalSummary',
+			'batteryInfo' => 'buildGlobalBattery',
+			'objectSummary' => 'buildObjectSummary',
+			'messageCenter' => 'buildMessageCenter',
+			'lastUser' => 'buildLastUser',
 			'deleteMessage' => 'clearChannel?'
 		);
 		
@@ -743,7 +743,7 @@ class discordlinkCmd extends cmd {
 		return 'http://' . config::byKey('internalAddr') . ':3466/' . $request . '&channelID=' . $channelID;
 	}
 
-	private function build_ControledeSliderSelectMessage($_options = array(), $default = "Une erreur est survenue") {
+	private function buildMessageRequest($_options = array(), $default = "Une erreur est survenue") {
 		$message = isset($_options['message']) && $_options['message'] != '' ? $_options['message'] : $default;
 		$message = str_replace('|', "\n", $message);
 		$request = str_replace('#message#', urlencode(self::decodeTexteAleatoire($message)), $this->getConfiguration('request'));
@@ -751,7 +751,7 @@ class discordlinkCmd extends cmd {
 		return $request;
 	}
 
-		private function build_ControledeSliderSelectFile($_options = array(), $default = "Une erreur est survenu") {
+		private function buildFileRequest($_options = array(), $default = "Une erreur est survenu") {
 			$patch = "null";
 			$nameFile = "null";
 			$message = "null";
@@ -788,16 +788,11 @@ class discordlinkCmd extends cmd {
 			return $request;
 		}
 
-		private function build_ControledeSliderSelectEmbed($_options = array(), $default = "Une erreur est survenue") {
+	private function buildEmbedRequest($_options = array(), $default = "Une erreur est survenue") {
 
-			$request = $this->getConfiguration('request');
+		$request = $this->getConfiguration('request');
 
-			$title = "null";
-			$url = "null";
-			$description = "null";
-			$footer = "null";
-			$field = "null";
-			$colors = "null";
+		$title = "null";
 			$timeout = "null";
 			$countanswer = "null";
 			$quickreply = "null";
@@ -888,7 +883,7 @@ class discordlinkCmd extends cmd {
 			return str_replace(array_keys($replace), $replace, $return);
 		}
 
-		public function build_deamonInfo($_options = array()) {
+public function buildDaemonInfo($_options = array()) {
 			$message='';
 			$colors = '#00ff08';
 
@@ -913,7 +908,7 @@ class discordlinkCmd extends cmd {
 			return 'truesendwithembed';
 		}
 
-		public function build_dependanceInfo($_options = array()) {
+public function buildDependencyInfo($_options = array()) {
 			$message='';
 			$colors = '#00ff08';
 
@@ -1024,7 +1019,7 @@ class discordlinkCmd extends cmd {
 	return 'truesendwithembed';
 	}
 
-	public function build_objectSummary($_options = array()) {
+	public function buildObjectSummary($_options = array()) {
 
 		$objectId = $_options['select'];
 		log::add('discordlink', 'debug', 'idobject : '.$objectId);
@@ -1052,7 +1047,7 @@ class discordlinkCmd extends cmd {
 			return 'truesendwithembed';
 		}
 
-	public function build_centreMsg($_options = array()) {
+	public function buildMessageCenter($_options = array()) {
 		// Parcours de tous les Updates
 		$listUpdate = "";
 		$updateCount = 0;
@@ -1128,7 +1123,7 @@ class discordlinkCmd extends cmd {
 		return 'truesendwithembed';
 	}
 
-	public function build_LastUser($_options = array()) {
+	public function buildLastUser($_options = array()) {
 		$result = discordlink::getLastUserConnections();
 		if (isset($_options['cron']) && !$result['cronOk']) return 'truesendwithembed';
 		

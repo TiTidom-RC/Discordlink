@@ -140,8 +140,8 @@ $eqLogics = eqLogic::byType($plugin->getId());
                             <div class="form-group">
                                 <label class="col-sm-3 control-label"></label>
                                 <div class="col-sm-9">
-                                    <label class="checkbox-inline"><input id="deamoncheck" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="deamoncheck" />{{Vérification Démons}}</label>
-                                    <label class="checkbox-inline"><input id="depcheck" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="depcheck" />{{Vérification Dépendances}}</label>
+                                    <label class="checkbox-inline"><input id="daemonCheck" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="daemonCheck" />{{Vérification Démons}}</label>
+                                    <label class="checkbox-inline"><input id="dependencyCheck" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="dependencyCheck" />{{Vérification Dépendances}}</label>
                                     <label class="checkbox-inline"><input id="connectionCheck" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="connectionCheck" />{{Annonce des connexions}}</label>
                                     </br>
                                     <label class="checkbox-inline"><input id="clearChannel" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="clearChannel" />{{Clear automatique des channels chaque jour}}</label>
@@ -154,7 +154,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                 </label>
                                 <div class="col-sm-7">
                                     <div class="input-group">
-                                        <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autorefreshDeamon" placeholder="{{Auto-actualisation Deamon (cron)}}" />
+                                        <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autorefreshDaemon" placeholder="{{Auto-actualisation Daemon (cron)}}" />
                                         <span class="input-group-btn">
                                             <a class="btn btn-default cursor jeeHelper roundedRight" id="bt_cronGeneratordeamon" data-helper="cron" title="Assistant cron">
                                                 <i class="fas fa-question-circle"></i>
@@ -169,7 +169,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                 </label>
                                 <div class="col-sm-7">
                                     <div class="input-group">
-                                        <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autorefreshDependancy" placeholder="{{Auto-actualisation Dépendances (cron)}}" />
+                                        <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autorefreshDependency" placeholder="{{Auto-actualisation Dépendances (cron)}}" />
                                         <span class="input-group-btn">
                                             <a class="btn btn-default cursor jeeHelper roundedRight" id="bt_cronGeneratorDependance" data-helper="cron" title="Assistant cron">
                                                 <i class="fas fa-question-circle"></i>

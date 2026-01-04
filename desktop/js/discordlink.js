@@ -162,26 +162,26 @@ function addCmdToTable(_cmd) {
 
 $('#bt_cronGeneratordeamon').on('click', function () {
   jeedom.getCronSelectModal({}, function (result) {
-    $('.eqLogicAttr[data-l1key=configuration][data-l2key=autorefreshDeamon]').value(result.value);
+    $('.eqLogicAttr[data-l1key=configuration][data-l2key=autorefreshDaemon]').value(result.value);
   });
 });
 
 $('#bt_cronGeneratorDependance').on('click', function () {
   jeedom.getCronSelectModal({}, function (result) {
-    $('.eqLogicAttr[data-l1key=configuration][data-l2key=autorefreshDependancy]').value(result.value);
+    $('.eqLogicAttr[data-l1key=configuration][data-l2key=autorefreshDependency]').value(result.value);
   });
 });
 
 function setupcase() {
   HideAll();
-  if ($('.eqLogicAttr[data-l1key=configuration][data-l2key=deamoncheck]').value() == 1) {
+  if ($('.eqLogicAttr[data-l1key=configuration][data-l2key=daemonCheck]').value() == 1) {
     const divsToShow = document.getElementsByClassName('deamon');
     Array.from(divsToShow).forEach(div => {
       div.style.visibility = "visible";
       div.style.display = "initial";
     });
   }
-  if ($('.eqLogicAttr[data-l1key=configuration][data-l2key=depcheck]').value() == 1) {
+  if ($('.eqLogicAttr[data-l1key=configuration][data-l2key=dependencyCheck]').value() == 1) {
     const divsToShow = document.getElementsByClassName('dependance');
     Array.from(divsToShow).forEach(div => {
       div.style.visibility = "visible";
@@ -204,11 +204,11 @@ function HideAll() {
   });
 }
 
-$('#deamoncheck').click(function () {
+$('#daemonCheck').click(function () {
   setupcase();
 });
 
-$('#depcheck').click(function () {
+$('#dependencyCheck').click(function () {
   setupcase();
 });
 
