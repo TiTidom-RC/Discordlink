@@ -5,11 +5,10 @@
   "description": "Bot Discord pour le plugin Discord Link sur Jeedom - Migré vers Discord.js v14",
   "main": "discordlink.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node discordlink.js"
   },
   "author": "TiTidom",
-  "license": "ISC",
+  "license": "GPL-3.0",
   "dependencies": {
     "discord.js": "^14.16.3",
     "express": "^4.19.2",
