@@ -31,21 +31,21 @@ if (init('test') != '') {
 	die();
 }
 
-$chaineRecuperee=file_get_contents("php://input");
-$nom=$_GET["nom"];
-log::add('discordlink', 'debug',  'Réception données sur jeediscordlink ['.$nom.']');
+$receivedString=file_get_contents("php://input");
+$name=$_GET["name"];
+log::add('discordlink', 'debug',  'Réception données sur jeediscordlink ['.$name.']');
 
-log::add('discordlink', 'debug',  "chaineRecuperee: ".$chaineRecuperee);
+log::add('discordlink', 'debug',  "receivedString: ".$receivedString);
 
-$debut=strpos($chaineRecuperee, "{");
-$fin=strrpos($chaineRecuperee, "}");
-$longeur=1+intval($fin)-intval($debut);
-$chaineRecupereeCorrigee=substr($chaineRecuperee, $debut, $longeur);
+$start=strpos($receivedString, "{");
+$end=strrpos($receivedString, "}");
+$length=1+intval($end)-intval($start);
+$correctedString=substr($receivedString, $start, $length);
 
-log::add('discordlink', 'debug',  "chaineRecupereeCorrigee: ".$chaineRecupereeCorrigee);
-log::add('discordlink', 'debug',  "nom: ".$nom);
+log::add('discordlink', 'debug',  "correctedString: ".$correctedString);
+log::add('discordlink', 'debug',  "name: ".$name);
 
-$result = json_decode($chaineRecupereeCorrigee, true);
+$result = json_decode($correctedString, true);
 
 
 if (!is_array($result)) {
@@ -53,20 +53,20 @@ if (!is_array($result)) {
 	die();
 }
 
-$logical_id = $result['idchannel']."_player";
+$logical_id = $result['channelId']."_player";
 
-$discordlinkeqlogic=eqLogic::byLogicalId($result['idchannel'], 'discordlink');
+$discordlinkeqlogic=eqLogic::byLogicalId($result['channelId'], 'discordlink');
 
-switch ($nom) {
+switch ($name) {
 	
-		case 'messagerecu':
-			getdevicepuisupdate("1oldmsg", $result['message'], '1oldmsg', $result['idchannel'], $result['iduser']);
+		case 'messageReceived':
+		getDeviceAndUpdate("1oldmsg", $result['message'], '1oldmsg', $result['channelId'], $result['userId']);
 		break;	
 		case 'ASK':
-			getASK($result['reponse'], $result['idchannel'], $result['demande']);
-		break;
-					
-		default:
+		getASK($result['response'], $result['channelId'], $result['request']);
+	break;
+				
+	default:
 			if (!is_object($discordlinkeqlogic)) {
 				log::add('discordlink', 'debug',  'Device non trouvé: '.$logical_id);
 				die();
@@ -75,26 +75,26 @@ switch ($nom) {
 			}
 }
 
-function getdevicepuisupdate($nom, $variable, $commandejeedom, $_idchannel, $id_user) {
-	$discordlinkeqlogic=eqLogic::byLogicalId($_idchannel, 'discordlink');
+function getDeviceAndUpdate($name, $value, $jeedomCommand, $_channelId, $_userId) {
+	$discordlinkeqlogic=eqLogic::byLogicalId($_channelId, 'discordlink');
 
 	if (!is_object($discordlinkeqlogic)) return;
 
-	$oldmsg1 = $discordlinkeqlogic->getCmd('info', '1oldmsg');
-	$oldmsg2 = $discordlinkeqlogic->getCmd('info', '2oldmsg');
-	$oldmsg1 = $oldmsg1->execCmd();
-	$oldmsg2 = $oldmsg2->execCmd();
+	$oldMessage1 = $discordlinkeqlogic->getCmd('info', '1oldmsg');
+	$oldMessage2 = $discordlinkeqlogic->getCmd('info', '2oldmsg');
+	$oldMessage1 = $oldMessage1->execCmd();
+	$oldMessage2 = $oldMessage2->execCmd();
 
-	updatecommande("1oldmsg", $variable, "1oldmsg", $discordlinkeqlogic);
-	updatecommande("2oldmsg", $oldmsg1, "2oldmsg", $discordlinkeqlogic);
-	updatecommande("3oldmsg", $oldmsg2, "3oldmsg", $discordlinkeqlogic);
+	updateCommand("1oldmsg", $value, "1oldmsg", $discordlinkeqlogic);
+	updateCommand("2oldmsg", $oldMessage1, "2oldmsg", $discordlinkeqlogic);
+	updateCommand("3oldmsg", $oldMessage2, "3oldmsg", $discordlinkeqlogic);
 
 	log::add('discordlink', 'debug', $discordlinkeqlogic->getConfiguration('interactionJeedom'));
 	if ($discordlinkeqlogic->getConfiguration('interactionJeedom') == 1) {
 		$parameters['plugin'] = 'discordlink';
-		$parameters['userid'] = $id_user;
-		$parameters['channel'] = $_idchannel;
-		$reply = interactQuery::tryToReply(trim($variable), $parameters);
+		$parameters['userid'] = $_userId;
+		$parameters['channel'] = $_channelId;
+		$reply = interactQuery::tryToReply(trim($value), $parameters);
 		log::add('discordlink', 'debug', 'Interaction ' . print_r($reply, true));
 		if ($reply['reply'] != "Désolé je n'ai pas compris" && $reply['reply'] != "Désolé je n'ai pas compris la demande" && $reply['reply'] != "Désolé je ne comprends pas la demande" && $reply['reply'] != "Je ne comprends pas" && $reply['reply'] != "ceci est un message de test" && $reply['reply'] != "" && $reply['reply'] != " ") {
 			log::add('discordlink', 'debug',  "La reponse : ".$reply['reply']. " est valide je vous l'ai donc renvoyée");
@@ -108,7 +108,7 @@ function getdevicepuisupdate($nom, $variable, $commandejeedom, $_idchannel, $id_
 
 }
 
-function updatecommande($nom, $_value, $_logicalId, $_discordlinkeqlogic, $_updateTime = null) {
+function updateCommand($name, $_value, $_logicalId, $_discordlinkeqlogic, $_updateTime = null) {
 	try {
 		if (isset($_value)) {
 			if ($_discordlinkeqlogic->getIsEnable() == 1) {
@@ -125,24 +125,24 @@ function updatecommande($nom, $_value, $_logicalId, $_discordlinkeqlogic, $_upda
 			}	
 		}
 	} catch (Exception $e) {
-		log::add('discordlink', 'info',  ' ['.$nom.'] erreur_1: '.$e);		
+		log::add('discordlink', 'info',  ' ['.$name.'] erreur_1: '.$e);		
 	} catch (Error $e) {
-		log::add('discordlink', 'info',  ' ['.$nom.'] erreur_2: '.$e);
+		log::add('discordlink', 'info',  ' ['.$name.'] erreur_2: '.$e);
     }	
 }
 
-function getASK($_value, $_idchannel, $_demande) {
-	$discordlinkeqlogic=eqLogic::byLogicalId($_idchannel, 'discordlink');
+function getASK($_value, $_channelId, $_request) {
+	$discordlinkeqlogic=eqLogic::byLogicalId($_channelId, 'discordlink');
 	$cmd = $discordlinkeqlogic->getCmd('action', "sendEmbed");
-	if ($_demande === "text") {
+	if ($_request === "text") {
 		log::add('discordlink', 'debug', 'ASK : Text');
 		$value = $_value;
 	} else {
 		log::add('discordlink', 'debug', 'ASK : Autre');
-		$value = $_demande[$_value];
+		$value = $_request[$_value];
 	}
 
-	log::add('discordlink', 'debug', 'ASK : Demande :"'.$_demande.'" || Reponse : "'.$value.'"');
+	log::add('discordlink', 'debug', 'ASK : Request :"'.$_request.'" || Response : "'.$value.'"');
 
 	$cmd->askResponse($value);
 }

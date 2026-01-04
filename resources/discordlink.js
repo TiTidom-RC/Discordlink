@@ -44,13 +44,13 @@ if (typeof globalThis.fetch === 'function') {
 }
 
 const token = process.argv[3];
-const IPJeedom = process.argv[2];
-const ClePlugin = process.argv[6];
-const joueA = decodeURI(process.argv[7]);
+const jeedomIP = process.argv[2];
+const pluginKey = process.argv[6];
+const activityStatus = decodeURI(process.argv[7]);
 
 /* Configuration */
 const config = {
-    logger: console2,
+    logger: logger,
     token: token,
     listeningPort: 3466
 };
@@ -62,33 +62,32 @@ try {
     console.log("[WARNING] Erreur chargement quickreply.json:", e.message);
 }
 
-let dernierStartServeur = 0;
+let lastServerStart = 0;
 
 if (!token) {
     config.logger('DiscordLink-Config: *********************TOKEN NON DEFINI*********************', 'ERROR');
 }
 
-function console2(text, level = '') {
+function logger(text, logLevel = 'LOG') {
     try {
-        let niveauLevel;
-        switch (level) {
-            case "ERROR":
-                niveauLevel = 400;
-                break;
-            case "WARNING":
-                niveauLevel = 300;
-                break;
-            case "INFO":
-                niveauLevel = 200;
-                break;
-            case "DEBUG":
-                niveauLevel = 100;
-                break;
-            default:
-                niveauLevel = 400;
-                break;
+        let levelLabel;
+        
+        // Conversion niveau numérique PHP → texte JavaScript
+        // PHP: 100=debug | 200=info | 300=warning | 400=error | 1000=none
+        if (typeof logLevel === 'number') {
+            switch (logLevel) {
+                case 100: levelLabel = 'DEBUG'; break;
+                case 200: levelLabel = 'INFO'; break;
+                case 300: levelLabel = 'WARNING'; break;
+                case 400: levelLabel = 'ERROR'; break;
+                case 1000: levelLabel = 'NONE'; break;
+                default: levelLabel = 'LOG'; break;
+            }
+        } else {
+            levelLabel = logLevel;
         }
-        console.log(`[${level || 'LOG'}] ${text}`);
+        
+        console.log(`[${levelLabel}] ${text}`);
     } catch (e) {
         console.log(arguments[0]);
     }
@@ -254,11 +253,11 @@ app.get('/sendEmbed', async (req, res) => {
         let title = req.query.title;
         let url = req.query.url;
         let description = req.query.description;
-        let countanswer = req.query.countanswer;
+        let answerCount = req.query.countanswer;
         let fields = req.query.field;
         let footer = req.query.footer;
         let defaultColor = req.query.defaultColor;
-        let reponse = "null";
+        let userResponse = "null";
 
         // Ajout QuickReply
         let quickreply = req.query.quickreply;
@@ -280,7 +279,7 @@ app.get('/sendEmbed', async (req, res) => {
             .setTimestamp();
 
         if (title !== "null") Embed.setTitle(title);
-        if (url !== "null" && countanswer === "null") Embed.setURL(url);
+        if (url !== "null" && answerCount === "null") Embed.setURL(url);
         if (description !== "null") Embed.setDescription(description);
         
         // Discord.js v14: setFooter prend un objet
@@ -348,30 +347,32 @@ app.get('/sendEmbed', async (req, res) => {
         }
 
         // Gestion des réponses ASK
-        if (countanswer !== "null") {
-            let timecalcul = (req.query.timeout * 1000);
+        if (answerCount !== "null") {
+            let timeoutMs = (req.query.timeout * 1000);
             toReturn.push({
-                'querry': req.query,
+                'query': req.query,
                 'timeout': req.query.timeout,
-                'timecalcul': timecalcul
+                'timeoutMs': timeoutMs
             });
             res.status(200).json(toReturn);
 
-            if (countanswer !== "0") {
+            if (answerCount !== "0") {
                 // Réponses avec emojis A-Z
                 let emojiList = ["🇦", "🇧", "🇨", "🇩", "🇪", "🇫", "🇬", "🇭", "🇮", "🇯", "🇰", "🇱", "🇲", "🇳", "🇴", "🇵", "🇶", "🇷", "🇸", "🇹", "🇺", "🇻", "🇼", "🇽", "🇾", "🇿"];
                 let a = 0;
-                while (a < countanswer) {
+                while (a < answerCount) {
                     await m.react(emojiList[a]);
                     a++;
                 }
                 
-                const filter = (reaction, user) => {
+                const emojiFilter = (reaction, user) => {
                     return emojiList.includes(reaction.emoji.name) && user.id !== m.author.id;
+                };
+                
                 m.awaitReactions({ 
-                    filter, 
+                    filter: emojiFilter, 
                     max: 1, 
-                    time: timecalcul, 
+                    time: timeoutMs, 
                     errors: ['time'] 
                 })
                     .then(collected => {
@@ -384,13 +385,13 @@ app.get('/sendEmbed', async (req, res) => {
                             '🇾': 24, '🇿': 25
                         };
                         
-                        reponse = emojiMap[reaction.emoji.name];
+                        userResponse = emojiMap[reaction.emoji.name];
                         url = JSON.parse(url);
 
                         httpPost("ASK", {
-                            idchannel: m.channel.id,
-                            reponse: reponse,
-                            demande: url
+                            channelId: m.channel.id,
+                            response: userResponse,
+                            request: url
                         });
                     })
                     .catch(() => {
@@ -398,23 +399,23 @@ app.get('/sendEmbed', async (req, res) => {
                     });
             } else {
                 // Réponse textuelle
-                let filter = msg => msg.author.bot === false;
+                const messageFilter = msg => msg.author.bot === false;
                 
                 m.channel.awaitMessages({ 
-                    filter, 
+                    filter: messageFilter, 
                     max: 1, 
-                    time: timecalcul, 
+                    time: timeoutMs, 
                     errors: ['time'] 
                 })
                     .then(collected => {
                         let msg = collected.first();
-                        reponse = msg.content;
+                        userResponse = msg.content;
                         msg.react("✅").catch(() => {});
 
                         httpPost("ASK", {
-                            idchannel: m.channel.id,
-                            reponse: reponse,
-                            demande: url
+                            channelId: m.channel.id,
+                            response: userResponse,
+                            request: url
                         });
                     })
                     .catch(() => {
@@ -422,7 +423,7 @@ app.get('/sendEmbed', async (req, res) => {
                     });
             }
         } else {
-            toReturn.push({ 'querry': req.query });
+            toReturn.push({ 'query': req.query });
             res.status(200).json(toReturn);
         }
         
@@ -555,7 +556,7 @@ async function deletemessagechannel(message) {
 startServer();
 
 function startServer() {
-    dernierStartServeur = Date.now();
+    lastServerStart = Date.now();
 
     config.logger('DiscordLink:    ******************** Lancement BOT Discord.js v14 ***********************', 'INFO');
 
@@ -568,16 +569,16 @@ function startServer() {
     });
 }
 
-function httpPost(nom, jsonaenvoyer) {
-    let url = IPJeedom + "/plugins/discordlink/core/php/jeediscordlink.php?apikey=" + ClePlugin + "&nom=" + nom;
+function httpPost(name, jsonData) {
+    let url = jeedomIP + "/plugins/discordlink/core/php/jeediscordlink.php?apikey=" + pluginKey + "&name=" + name;
 
     config.logger && config.logger('URL envoyée: ' + url, "DEBUG");
-    console.log("jsonaenvoyer : " + jsonaenvoyer);
-    config.logger && config.logger('DATA envoyé:' + jsonaenvoyer, 'DEBUG');
+    console.log("jsonData : " + jsonData);
+    config.logger && config.logger('DATA envoyé:' + jsonData, 'DEBUG');
 
     fetch(url, {
         method: 'post', 
-        body: JSON.stringify(jsonaenvoyer),
+        body: JSON.stringify(jsonData),
         headers: { 'Content-Type': 'application/json' }
     })
         .then(res => {
@@ -596,7 +597,7 @@ client.on("ready", async () => {
     config.logger('DiscordLink: Bot connecté en tant que ' + client.user.tag, 'INFO');
     
     // Discord.js v14: setActivity prend un objet options
-    await client.user.setActivity(joueA, { type: 0 }); // 0 = Playing
+    await client.user.setActivity(activityStatus, { type: 0 }); // 0 = Playing
 });
 
 // Discord.js v14: 'message' → 'messageCreate'
@@ -604,10 +605,10 @@ client.on('messageCreate', (receivedMessage) => {
     if (receivedMessage.author === client.user) return;
     if (receivedMessage.author.bot) return;
 
-    httpPost("messagerecu", {
-        idchannel: receivedMessage.channel.id,
+    httpPost("messageReceived", {
+        channelId: receivedMessage.channel.id,
         message: receivedMessage.content,
-        iduser: receivedMessage.author.id
+        userId: receivedMessage.author.id
     });
 });
 
