@@ -39,21 +39,12 @@ try {
         ajax::success();
     }
 
-    if (init('action') == 'saveUser') {
-        $arrayUser = init('arrayUser');
-        $userConfig = array();
-
-        foreach ($arrayUser as $user) {
-            $key = $user['prenomUser']."_".$user['nomUser'];
-            $userConfig[$key] = $user;
-        }
-
-        config::save('user', $userConfig, 'discordlink');
-        ajax::success();
-    }
-
     if (init('action') == 'getemojy') {
         $emojyarray = config::byKey('emojy', 'discordlink');
+        if (!is_array($emojyarray)) {
+            ajax::success(array());
+            return;
+        }
         $emojycommandetable = array();
         foreach ($emojyarray as $key => $emojy) {
             $emojycmdligne = array('keyEmojy' => $key, 'codeEmojy' => $emojy);
@@ -63,31 +54,8 @@ try {
         ajax::success($emojy);
     }
 
-    if (init('action') == 'getuser') {
-        /** @var array $users **/
-        $users = config::byKey('user', 'discordlink', array());
-        $userscommandetable = array();
-
-        foreach ($users as $user) {
-            array_push($userscommandetable, $user);
-        }
-
-        ajax::success($userscommandetable);
-    }
-
-    if (init('action') == 'getuserArray') {
-        $users = config::byKey('user', 'discordlink');
-
-        ajax::success($users);
-    }
-
-    if (init('action') == 'getinvite') {
-        $invite = discordlink::getinvite();
-        ajax::success($invite);
-    }
-
     if (init('action') == 'resetemojy') {
-        discordlink::setemojy(1);
+        discordlink::setEmoji(1);
         ajax::success();
     }
 

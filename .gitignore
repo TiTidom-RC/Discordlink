@@ -1,0 +1,43 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Jeedom
+resources/dependance.lib
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDEs
+.idea/
+*.swp
+*.swo
+*~
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+*.old
+*~
+
+# Build outputs
+dist/
+build/
+
+# Environment
+.env
+.env.local

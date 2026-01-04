@@ -31,17 +31,6 @@ if (!isConnect()) {
             </div>
         </div>
         </br>
-        <div class="form-group" hidden>
-            <label class="col-lg-4 control-label">{{Bot Invite : }}</label>
-            <div class="col-lg-6">
-                <?php
-                    echo '<a class="btn btn-success btn-sm bt_getinvite">Ajouter votre bot à votre serveur discord</a>';
-                    echo '<a class="btn btn-danger btn-sm bt_errorinvite">Erreur, lance ton démon et si tu n\'y arrives pas, clique sur moi</a>';
-                    include_file('desktop', 'configuration', 'js', 'discordlink');
-                ?>
-            </div>
-        </div>
-      <br/>
       <div class="form-group">
           <label class="col-lg-4 control-label">{{Joue à : }}</label>
           <div class="col-lg-6">

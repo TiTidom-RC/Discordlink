@@ -51,7 +51,7 @@ function addEmojyToTable(_cmd) {
         _cmd.configuration = {};
     }
 
-    var tr =  ' <tr class="emojy">'
+    const tr =  ' <tr class="emojy">'
       +   '<td>'
       +     '<div class="row">'
       +       '<div class="col-lg-8">'
@@ -99,7 +99,7 @@ $('.eqLogicAction[data-action=saveemojy]').off('click').on('click', function () 
 
 $("#bt_addemojy").off('click').on('click', function(event)
 {
-  var _cmd = {};
+  let _cmd = {};
   addEmojyToTable(_cmd);
 });
 
