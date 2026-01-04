@@ -272,18 +272,22 @@ app.get('/sendEmbed', async (req, res) => {
         // Normaliser les valeurs vides ou "null"
         const isEmpty = (val) => !val || val === "null" || val === "undefined" || val.trim() === "";
         
-        // Valider qu'une URL est bien formée
+        // Valider qu'une URL est bien formée et a un domaine valide
         const isValidUrl = (val) => {
             if (isEmpty(val)) return false;
             try {
-                new URL(val);
-                return true;
+                const urlObj = new URL(val);
+                // Vérifier que le hostname contient au moins un point (domaine.tld) ou est localhost
+                return urlObj.hostname.includes('.') || urlObj.hostname === 'localhost';
             } catch {
                 return false;
             }
         };
         
         if (isEmpty(color)) color = defaultColor;
+        
+        // Log pour debug
+        config.logger(`sendEmbed - url reçu: "${url}", isEmpty: ${isEmpty(url)}, isValidUrl: ${isValidUrl(url)}`, 'DEBUG');
 
         // Discord.js v14: MessageEmbed → EmbedBuilder
         const Embed = new EmbedBuilder()
@@ -291,7 +295,10 @@ app.get('/sendEmbed', async (req, res) => {
             .setTimestamp();
 
         if (!isEmpty(title)) Embed.setTitle(title);
-        if (isValidUrl(url) && isEmpty(answerCount)) Embed.setURL(url);
+        if (isValidUrl(url) && isEmpty(answerCount)) {
+            config.logger(`sendEmbed - URL ajoutée à l'embed: ${url}`, 'DEBUG');
+            Embed.setURL(url);
+        }
         if (!isEmpty(description)) Embed.setDescription(description);
         
         // Discord.js v14: setFooter prend un objet
