@@ -216,9 +216,17 @@ class discordlink extends eqLogic {
 			'launchable' => 'nok'
 		);
 
-		$pidCount = (int)trim(shell_exec('pgrep -f ' . escapeshellarg('discordlink.js') . ' 2>/dev/null | wc -l'));
-		if ($pidCount > 0) {
-			$return['state'] = 'ok';
+		// Vérifier si le serveur HTTP répond sur le port 3466
+		try {
+			$requestHttp = new com_http('http://127.0.0.1:3466/getchannel');
+			$requestHttp->setNoReportError(true);
+			$response = $requestHttp->exec(2, 1); // Timeout rapide: 2s
+			if ($response !== false) {
+				$return['state'] = 'ok';
+			}
+		} catch (Exception $e) {
+			// Le serveur ne répond pas, daemon non actif
+			$return['state'] = 'nok';
 		}
 
 		$token = config::byKey('Token', 'discordlink');
