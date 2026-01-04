@@ -171,32 +171,48 @@ function discordlink_update() {
         }
     }
     
-    // Nettoyage des doublons de commandes par nom avant CreateCmd
+    // Nettoyage complet : supprimer toutes les commandes qui seront recréées par CreateCmd
+    // Mapping complet : logicalId attendu => nom de commande
+    $expectedCommands = [
+        'sendMsg' => 'Envoi message',
+        'sendMsgTTS' => 'Envoi message TTS',
+        'sendEmbed' => 'Envoi message évolué',
+        'sendFile' => 'Envoi fichier',
+        'deleteMessage' => 'Supprime les messages du channel',
+        'daemonInfo' => 'Etat des démons',
+        'dependencyInfo' => 'Etat des dépendances',
+        'globalSummary' => 'Résumé général',
+        'objectSummary' => 'Résumé par objet',
+        'batteryInfo' => 'Résumé des batteries',
+        'messageCenter' => 'Centre de messages',
+        'lastUser' => 'Dernière Connexion utilisateur',
+        'lastMessage' => 'Dernier message',
+        'previousMessage1' => 'Avant dernier message',
+        'previousMessage2' => 'Avant Avant dernier message'
+    ];
+    
     foreach (eqLogic::byType('discordlink') as $eqLogic) {
-        $cmdsByName = [];
         foreach ($eqLogic->getCmd() as $cmd) {
-            $name = $cmd->getName();
+            $cmdName = $cmd->getName();
             $logicalId = $cmd->getLogicalId();
             
-            // Si on a déjà une commande avec ce nom
-            if (isset($cmdsByName[$name])) {
-                // Garder celle avec le logicalId moderne (sans chiffres au début)
-                $existingCmd = $cmdsByName[$name];
-                $existingLogicalId = $existingCmd->getLogicalId();
-                
-                // Supprimer celle qui a un format obsolète (commence par un chiffre ou contient "old")
-                if (preg_match('/^\d/', $logicalId) || strpos($logicalId, 'old') !== false) {
-                    // L'actuelle est obsolète, la supprimer
+            // Supprimer les anciens logicalId connus
+            $obsoleteLogicalIds = ['1oldmsg', '2oldmsg', '3oldmsg', 'deamonInfo', 'dependanceInfo', 
+                                   'batteryinfo', 'centreMsg', 'LastUser'];
+            if (in_array($logicalId, $obsoleteLogicalIds)) {
+                $cmd->remove();
+                log::add('discordlink', 'info', 'Suppression ancienne commande obsolète: ' . $logicalId);
+                continue;
+            }
+            
+            // Pour chaque commande qui sera créée par CreateCmd
+            foreach ($expectedCommands as $expectedLogicalId => $expectedName) {
+                // Si le nom correspond mais pas le logicalId, supprimer
+                if ($cmdName === $expectedName && $logicalId !== $expectedLogicalId) {
                     $cmd->remove();
-                    log::add('discordlink', 'info', 'Suppression commande obsolète: ' . $logicalId . ' (doublon nom: ' . $name . ')');
-                } elseif (preg_match('/^\d/', $existingLogicalId) || strpos($existingLogicalId, 'old') !== false) {
-                    // L'existante est obsolète, la supprimer et garder la nouvelle
-                    $existingCmd->remove();
-                    $cmdsByName[$name] = $cmd;
-                    log::add('discordlink', 'info', 'Suppression commande obsolète: ' . $existingLogicalId . ' (doublon nom: ' . $name . ')');
+                    log::add('discordlink', 'info', 'Suppression commande avec mauvais logicalId: ' . $cmdName . ' (logicalId: ' . $logicalId . ' au lieu de ' . $expectedLogicalId . ')');
+                    break;
                 }
-            } else {
-                $cmdsByName[$name] = $cmd;
             }
         }
     }
