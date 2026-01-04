@@ -58,17 +58,26 @@ function discordlink_update() {
         ];
         
         foreach ($commandMigrations as $oldId => $newId) {
-            $cmd = $eqLogic->getCmd(null, $oldId);
-            if (is_object($cmd)) {
-                $cmd->setLogicalId($newId);
-                // Mettre à jour la requête dans la configuration
-                $oldRequest = $cmd->getConfiguration('request');
-                if ($oldRequest && strpos($oldRequest, $oldId) !== false) {
-                    $newRequest = str_replace($oldId, $newId, $oldRequest);
-                    $cmd->setConfiguration('request', $newRequest);
+            $oldCmd = $eqLogic->getCmd(null, $oldId);
+            if (is_object($oldCmd)) {
+                // Vérifier si la nouvelle commande existe déjà
+                $newCmd = $eqLogic->getCmd(null, $newId);
+                if (is_object($newCmd)) {
+                    // La nouvelle existe, supprimer l'ancienne
+                    $oldCmd->remove();
+                    log::add('discordlink', 'info', 'Suppression ancienne commande ' . $oldId . ' (doublon avec ' . $newId . ')');
+                } else {
+                    // Renommer l'ancienne
+                    $oldCmd->setLogicalId($newId);
+                    // Mettre à jour la requête dans la configuration
+                    $oldRequest = $oldCmd->getConfiguration('request');
+                    if ($oldRequest && strpos($oldRequest, $oldId) !== false) {
+                        $newRequest = str_replace($oldId, $newId, $oldRequest);
+                        $oldCmd->setConfiguration('request', $newRequest);
+                    }
+                    $oldCmd->save();
+                    log::add('discordlink', 'info', 'Migration commande ' . $oldId . ' -> ' . $newId);
                 }
-                $cmd->save();
-                log::add('discordlink', 'info', 'Migration commande ' . $oldId . ' -> ' . $newId);
             }
         }
     }
@@ -158,6 +167,36 @@ function discordlink_update() {
                     $oldCmd->remove();
                     log::add('discordlink', 'info', 'Suppression ancienne commande: ' . $oldLogicalId);
                 }
+            }
+        }
+    }
+    
+    // Nettoyage des doublons de commandes par nom avant CreateCmd
+    foreach (eqLogic::byType('discordlink') as $eqLogic) {
+        $cmdsByName = [];
+        foreach ($eqLogic->getCmd() as $cmd) {
+            $name = $cmd->getName();
+            $logicalId = $cmd->getLogicalId();
+            
+            // Si on a déjà une commande avec ce nom
+            if (isset($cmdsByName[$name])) {
+                // Garder celle avec le logicalId moderne (sans chiffres au début)
+                $existingCmd = $cmdsByName[$name];
+                $existingLogicalId = $existingCmd->getLogicalId();
+                
+                // Supprimer celle qui a un format obsolète (commence par un chiffre ou contient "old")
+                if (preg_match('/^\d/', $logicalId) || strpos($logicalId, 'old') !== false) {
+                    // L'actuelle est obsolète, la supprimer
+                    $cmd->remove();
+                    log::add('discordlink', 'info', 'Suppression commande obsolète: ' . $logicalId . ' (doublon nom: ' . $name . ')');
+                } elseif (preg_match('/^\d/', $existingLogicalId) || strpos($existingLogicalId, 'old') !== false) {
+                    // L'existante est obsolète, la supprimer et garder la nouvelle
+                    $existingCmd->remove();
+                    $cmdsByName[$name] = $cmd;
+                    log::add('discordlink', 'info', 'Suppression commande obsolète: ' . $existingLogicalId . ' (doublon nom: ' . $name . ')');
+                }
+            } else {
+                $cmdsByName[$name] = $cmd;
             }
         }
     }
