@@ -554,6 +554,37 @@ async function deleteOldChannelMessages(channel) {
     }
 }
 
+/* Gestionnaires d'événements Discord - À définir AVANT client.login() */
+client.on("ready", async () => {
+    config.logger(`DiscordLink: Bot connecté: ${client.user.tag}`, 'INFO');
+    
+    // Discord.js v14: setActivity prend un objet options
+    await client.user.setActivity(activityStatus, { type: 0 }); // 0 = Playing
+});
+
+// Discord.js v14: 'message' → 'messageCreate'
+client.on('messageCreate', (receivedMessage) => {
+    if (receivedMessage.author === client.user) return;
+    if (receivedMessage.author.bot) return;
+
+    httpPost("messageReceived", {
+        channelId: receivedMessage.channel.id,
+        message: receivedMessage.content,
+        userId: receivedMessage.author.id
+    });
+});
+
+// Gestion des erreurs
+client.on('error', error => {
+    config.logger('DiscordLink Client ERROR: ' + error.message, 'ERROR');
+    console.error(error);
+});
+
+process.on('unhandledRejection', error => {
+    config.logger('Unhandled promise rejection: ' + error.message, 'ERROR');
+    console.error(error);
+});
+
 /* Main */
 startServer();
 
@@ -592,35 +623,3 @@ function httpPost(name, jsonData) {
             console.log("[ERROR] Erreur fetch Jeedom:", error.message);
         });
 }
-
-/***** Client Events *****/
-
-client.on("ready", async () => {
-    config.logger('DiscordLink: Bot connecté en tant que ' + client.user.tag, 'INFO');
-    
-    // Discord.js v14: setActivity prend un objet options
-    await client.user.setActivity(activityStatus, { type: 0 }); // 0 = Playing
-});
-
-// Discord.js v14: 'message' → 'messageCreate'
-client.on('messageCreate', (receivedMessage) => {
-    if (receivedMessage.author === client.user) return;
-    if (receivedMessage.author.bot) return;
-
-    httpPost("messageReceived", {
-        channelId: receivedMessage.channel.id,
-        message: receivedMessage.content,
-        userId: receivedMessage.author.id
-    });
-});
-
-// Gestion des erreurs
-client.on('error', error => {
-    config.logger('DiscordLink Client ERROR: ' + error.message, 'ERROR');
-    console.error(error);
-});
-
-process.on('unhandledRejection', error => {
-    config.logger('Unhandled promise rejection: ' + error.message, 'ERROR');
-    console.error(error);
-});
