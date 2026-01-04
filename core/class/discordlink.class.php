@@ -363,7 +363,7 @@ class discordlink extends eqLogic {
 			$commandsConfig = array(
 				'sendMsg'=>array('requiredPlugin' => '0', 'label'=>'Envoi message', 'type'=>'action', 'subType' => 'message','request'=> 'sendMsg?message=#message#', 'visible' => 1, 'template' => 'discordlink::message'),
 				'sendMsgTTS'=>array('requiredPlugin' => '0','label'=>'Envoi message TTS', 'type'=>'action', 'subType' => 'message', 'request'=> 'sendMsgTTS?message=#message#', 'visible' => 1, 'template' => 'discordlink::message'),
-				'sendEmbed'=>array('requiredPlugin' => '0','label'=>'Envoi message évolué', 'type'=>'action', 'subType' => 'message', 'request'=> 'sendEmbed?color=#color#&title=#title#&url=#url#&description=#description#&field=#field#&countanswer=#countanswer#&footer=#footer#&timeout=#timeout#&quickreply=#quickreply#&defaultColor=#defaultColor#', 'visible' => 1, 'template' => 'discordlink::embed'),
+				'sendEmbed'=>array('requiredPlugin' => '0','label'=>'Envoi message évolué', 'type'=>'action', 'subType' => 'message', 'request'=> 'sendEmbed?color=#color#&title=#title#&url=#url#&description=#description#&field=#field#&countanswer=#countanswer#&footer=#footer#&timeout=#timeout#&quickreply=#quickreply#', 'visible' => 1, 'template' => 'discordlink::embed'),
 				'sendFile'=>array('requiredPlugin' => '0','label'=>'Envoi fichier', 'type'=>'action', 'subType' => 'message', 'request'=> 'sendFile?patch=#patch#&name=#name#&message=#message#', 'visible' => 0),
 				'deleteMessage'=>array('requiredPlugin' => '0','label'=>'Supprime les messages du channel', 'type'=>'action', 'subType'=>'other','request'=>'deleteMessage?null', 'visible' => 0),
 				'daemonInfo'=>array('requiredPlugin' => '0','label'=>'Etat des démons', 'type'=>'action', 'subType'=>'other','request'=>'daemonInfo?null', 'visible' => 1),
@@ -859,6 +859,11 @@ class discordlinkCmd extends cmd {
 		log::add('discordlink', 'debug', 'description : ' . $description);
 		$description = str_replace('|', "\n", $description);
 
+		// Si aucune couleur n'est définie, utiliser la couleur par défaut
+		if (empty($colors)) {
+			$colors = $defaultColor;
+		}
+
 		// Remplacement des variables
 		$replacements = array(
 			'#title#' => $title,
@@ -868,7 +873,6 @@ class discordlinkCmd extends cmd {
 			'#countanswer#' => $countanswer,
 			'#field#' => $field,
 			'#color#' => $colors,
-			'#defaultColor#' => $defaultColor,
 			'#timeout#' => $timeout,
 			'#quickreply#' => $quickreply
 		);
