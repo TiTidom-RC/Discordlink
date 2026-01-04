@@ -35,7 +35,7 @@ function addCmdToTable(_cmd) {
 
 
   if (init(_cmd.type) == 'info') {
-    const tr =
+    let tr =
       '<tr class="cmd" data-cmd_id="' + init(_cmd.id) + '">' +
       '<td>' +
       '<span class="cmdAttr" data-l1key="id"></span>' +
@@ -76,7 +76,7 @@ function addCmdToTable(_cmd) {
   }
 
   if (init(_cmd.type) == 'action') {
-    const tr =
+    let tr =
       '<tr class="cmd" data-cmd_id="' + init(_cmd.id) + '">' +
       '<td>' +
       '<span class="cmdAttr" data-l1key="id"></span>' +
@@ -175,14 +175,14 @@ $('#bt_cronGeneratorDependance').on('click', function () {
 function setupcase() {
   HideAll();
   if ($('.eqLogicAttr[data-l1key=configuration][data-l2key=daemonCheck]').value() == 1) {
-    const divsToShow = document.getElementsByClassName('deamon');
+    let divsToShow = document.getElementsByClassName('deamon');
     Array.from(divsToShow).forEach(div => {
       div.style.visibility = "visible";
       div.style.display = "initial";
     });
   }
   if ($('.eqLogicAttr[data-l1key=configuration][data-l2key=dependencyCheck]').value() == 1) {
-    const divsToShow = document.getElementsByClassName('dependance');
+    let divsToShow = document.getElementsByClassName('dependance');
     Array.from(divsToShow).forEach(div => {
       div.style.visibility = "visible";
       div.style.display = "initial";
@@ -191,13 +191,13 @@ function setupcase() {
 }
 
 function HideAll() {
-  const divsToHide = document.getElementsByClassName('deamon');
+  let divsToHide = document.getElementsByClassName('deamon');
   Array.from(divsToHide).forEach(div => {
     div.style.visibility = "hidden";
     div.style.display = "none";
   });
   
-  const divsToHide2 = document.getElementsByClassName('dependance');
+  let divsToHide2 = document.getElementsByClassName('dependance');
   Array.from(divsToHide2).forEach(div => {
     div.style.visibility = "hidden";
     div.style.display = "none";
