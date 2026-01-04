@@ -28,6 +28,14 @@ function discordlink_update() {
     $plugin = plugin::byId("discordlink");
     $plugin->dependancy_install();
     
+    // Suppression de l'ancien fichier quickreply.json dans resources/
+    // Le nouveau fichier est automatiquement copié dans data/ lors de la mise à jour
+    $oldQuickreplyPath = dirname(__FILE__) . '/../resources/quickreply.json';
+    if (file_exists($oldQuickreplyPath)) {
+        unlink($oldQuickreplyPath);
+        log::add('discordlink', 'info', 'Suppression ancien fichier quickreply.json dans resources/');
+    }
+    
     // Migration de la clé de configuration globale emojy → emoji
     $emojiConfig = config::byKey('emojy', 'discordlink', null);
     if ($emojiConfig !== null) {

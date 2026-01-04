@@ -42,9 +42,13 @@ const config = {
     listeningPort: 3466
 };
 
+// Charger la configuration quickreply depuis le répertoire data du plugin
+const path = require('path');
 let quickreplyConf = {};
+const quickreplyPath = path.join(__dirname, '..', 'data', 'quickreply.json');
+
 try {
-    quickreplyConf = JSON.parse(fs.readFileSync(__dirname + '/quickreply.json', 'utf8'));
+    quickreplyConf = JSON.parse(fs.readFileSync(quickreplyPath, 'utf8'));
 } catch (e) {
     console.log("[WARNING] Erreur chargement quickreply.json:", e.message);
 }
@@ -444,9 +448,8 @@ app.get('/clearChannel', async (req, res) => {
         });
         
         // Effectuer le nettoyage en arrière-plan
-        const fakeMessage = { channel: channel };
         try {
-            await deletemessagechannel(fakeMessage);
+            await deleteOldChannelMessages(channel);
             console.log('[INFO] Nettoyage du channel ' + channelID + ' terminé avec succès');
         } catch (error) {
             console.log('[ERROR] Erreur lors du nettoyage du channel ' + channelID + ': ' + error.message);
@@ -458,79 +461,91 @@ app.get('/clearChannel', async (req, res) => {
     }
 });
 
-/***** Delete messages in channel *****/
-async function deletemessagechannel(message) {
+/***** Delete old messages in channel *****/
+async function deleteOldChannelMessages(channel) {
     try {
-        let date = new Date();
-        let timestamp = date.getTime();
-        let mindaytimestamp = timestamp - 86400000;      // -1 jour (24h)
-        let maxbulkdeletetimestamp = timestamp - 1209600000; // -14 jours (limite API Discord pour bulkDelete)
-        let allDelete = true;
+        // Constantes de durée
+        const ONE_DAY_MS = 86400000;
+        const FOURTEEN_DAYS_MS = 14 * ONE_DAY_MS;
+        
+        // Timestamps de référence (minuit aujourd'hui en heure locale)
+        const todayTimestamp = new Date().setHours(0, 0, 0, 0);
+        const yesterdayTimestamp = todayTimestamp - ONE_DAY_MS;
+        const fourteenDaysAgoTimestamp = todayTimestamp - FOURTEEN_DAYS_MS;
+        
         let totalDeleted = 0;
         let totalBulkDeleted = 0;
         let totalIndividualDeleted = 0;
         
-        console.log('[INFO] Début du nettoyage du channel ' + message.channel.id);
+        console.log('[INFO] Début du nettoyage du channel ' + channel.id);
+        console.log('[INFO] Suppression des messages avant ' + new Date(yesterdayTimestamp).toISOString());
+        console.log('[INFO] Conservation : messages d\'aujourd\'hui + d\'hier (jours calendaires)');
         
-        while (allDelete) {
-            // Discord.js v14: force n'existe plus, remplacé par cache
-            const fetched = await message.channel.messages.fetch({ 
+        while (true) {
+            // Récupérer les 100 derniers messages
+            const messages = await channel.messages.fetch({ 
                 limit: 100,
                 cache: false 
             });
             
-            const bulkDeleteMessages = [];
-            const oldMessages = [];
+            // Si plus de messages, on arrête
+            if (messages.size === 0) {
+                break;
+            }
             
-            for (const [msgId, msg] of fetched) {
-                // Messages de plus de 1 jour
-                if (msg.createdTimestamp <= mindaytimestamp) {
-                    if (msg.deletable) {
-                        // Messages de 1 à 14 jours : suppression en masse
-                        if (msg.createdTimestamp > maxbulkdeletetimestamp) {
-                            bulkDeleteMessages.push(msg);
-                        } else {
-                            // Messages de plus de 14 jours : suppression individuelle
-                            oldMessages.push(msg);
-                        }
+            const recentMessages = [];      // Avant-hier jusqu'à -14j : suppression en masse
+            const ancientMessages = [];     // > 14 jours : suppression individuelle
+            
+            for (const [msgId, message] of messages) {
+                // Supprimer uniquement les messages d'avant-hier et plus anciens
+                if (message.createdTimestamp < yesterdayTimestamp && message.deletable) {
+                    if (message.createdTimestamp > fourteenDaysAgoTimestamp) {
+                        recentMessages.push(message);
+                    } else {
+                        ancientMessages.push(message);
                     }
                 }
             }
             
-            // Suppression en masse (messages < 14 jours)
-            if (bulkDeleteMessages.length > 0) {
-                await message.channel.bulkDelete(bulkDeleteMessages);
-                totalBulkDeleted += bulkDeleteMessages.length;
-                totalDeleted += bulkDeleteMessages.length;
-                console.log('[DEBUG] ' + bulkDeleteMessages.length + ' messages supprimés en masse');
+            // Aucun message à supprimer dans ce batch
+            if (recentMessages.length === 0 && ancientMessages.length === 0) {
+                break;
+            }
+            
+            // Suppression en masse (messages avant-hier jusqu'à -14j)
+            if (recentMessages.length > 0) {
+                await channel.bulkDelete(recentMessages);
+                totalBulkDeleted += recentMessages.length;
+                totalDeleted += recentMessages.length;
+                console.log('[DEBUG] ' + recentMessages.length + ' messages supprimés en masse');
             }
             
             // Suppression individuelle (messages > 14 jours)
-            if (oldMessages.length > 0) {
+            if (ancientMessages.length > 0) {
                 let deletedInThisBatch = 0;
-                for (const oldMsg of oldMessages) {
+                for (const message of ancientMessages) {
                     try {
-                        await oldMsg.delete();
+                        await message.delete();
                         deletedInThisBatch++;
                         totalIndividualDeleted++;
                         totalDeleted++;
+                        
+                        // Petit délai pour éviter le rate limiting Discord
+                        await new Promise(resolve => setTimeout(resolve, 100));
                     } catch (e) {
-                        console.log('[WARNING] Impossible de supprimer le message ' + oldMsg.id + ': ' + e.message);
+                        console.log('[WARNING] Impossible de supprimer le message ' + message.id + ': ' + e.message);
                     }
                 }
                 console.log('[DEBUG] ' + deletedInThisBatch + ' vieux messages (>14j) supprimés individuellement');
-            }
-            
-            if (bulkDeleteMessages.length === 0 && oldMessages.length === 0) {
-                allDelete = false;
             }
         }
         
         console.log('[INFO] ========================================');
         console.log('[INFO] Nettoyage terminé - Récapitulatif :');
-        console.log('[INFO] - Messages supprimés en masse (<14j) : ' + totalBulkDeleted);
+        console.log('[INFO] - Messages supprimés en masse : ' + totalBulkDeleted);
         console.log('[INFO] - Messages supprimés individuellement (>14j) : ' + totalIndividualDeleted);
         console.log('[INFO] - TOTAL supprimé : ' + totalDeleted);
+        console.log('[INFO] - Conservés : aujourd\'hui + hier (jours calendaires)');
         console.log('[INFO] ========================================');
         
     } catch (error) {

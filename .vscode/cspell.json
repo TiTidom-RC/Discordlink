@@ -13,6 +13,7 @@
     "nohup",
     "pgrep",
     "pkill",
+    "quickreply",
     "Reponse"
   ],
   "ignoreWords": [],
