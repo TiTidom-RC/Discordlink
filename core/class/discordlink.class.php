@@ -869,9 +869,10 @@ class discordlinkCmd extends cmd {
 		}
 
 		log::add('discordlink_node', 'info', '---->RequestFinale:' . $request);
-		}
+		return $request;
+	}
 
-		public static function decodeTexteAleatoire($_text) {
+	public static function decodeTexteAleatoire($_text) {
 			$return = $_text;
 			if (strpos($_text, '|') !== false && strpos($_text, '[') !== false && strpos($_text, ']') !== false) {
 				$replies = interactDef::generateTextVariant($_text);
