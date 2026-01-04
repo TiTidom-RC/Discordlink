@@ -42,6 +42,13 @@ const config = {
     listeningPort: 3466
 };
 
+// Debug: Afficher les arguments reçus (masquer le token pour la sécurité)
+console.log('[DEBUG] Arguments reçus:');
+console.log('[DEBUG] - argv[2] (jeedomIP):', jeedomIP);
+console.log('[DEBUG] - argv[3] (token):', token ? `[PRESENT - ${token.length} caractères]` : '[ABSENT]');
+console.log('[DEBUG] - argv[6] (pluginKey):', pluginKey);
+console.log('[DEBUG] - argv[7] (activityStatus):', activityStatus);
+
 // Charger la configuration quickreply depuis le répertoire data du plugin
 const path = require('path');
 let quickreplyConf = {};
