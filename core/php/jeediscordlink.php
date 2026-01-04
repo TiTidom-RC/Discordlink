@@ -89,8 +89,8 @@ function getdevicepuisupdate($nom, $variable, $commandejeedom, $_idchannel, $id_
 	updatecommande("2oldmsg", $oldmsg1, "2oldmsg", $discordlinkeqlogic);
 	updatecommande("3oldmsg", $oldmsg2, "3oldmsg", $discordlinkeqlogic);
 
-	log::add('discordlink', 'debug', $discordlinkeqlogic->getConfiguration('interactionjeedom'));
-	if ($discordlinkeqlogic->getConfiguration('interactionjeedom') == 1) {
+	log::add('discordlink', 'debug', $discordlinkeqlogic->getConfiguration('interactionJeedom'));
+	if ($discordlinkeqlogic->getConfiguration('interactionJeedom') == 1) {
 		$parameters['plugin'] = 'discordlink';
 		$parameters['userid'] = $id_user;
 		$parameters['channel'] = $_idchannel;

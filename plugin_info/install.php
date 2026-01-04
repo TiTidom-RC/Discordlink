@@ -27,6 +27,65 @@ function discordlink_install() {
 function discordlink_update() {
     $plugin = plugin::byId("discordlink");
     $plugin->dependancy_install();
+    
+    // Migration de la clé de configuration globale emojy → emoji
+    $emojiConfig = config::byKey('emojy', 'discordlink', null);
+    if ($emojiConfig !== null) {
+        config::save('emoji', $emojiConfig, 'discordlink');
+        config::remove('emojy', 'discordlink');
+    }
+    
+    // Migration des anciennes propriétés de configuration
+    foreach (eqLogic::byType('discordlink') as $eqLogic) {
+        $needSave = false;
+        $configuration = $eqLogic->getConfiguration();
+        
+        // Migration autorefreshDependances → autorefreshDependancy
+        if (isset($configuration['autorefreshDependances']) && $configuration['autorefreshDependances'] !== '') {
+            $eqLogic->setConfiguration('autorefreshDependancy', $configuration['autorefreshDependances']);
+            unset($configuration['autorefreshDependances']);
+            $needSave = true;
+        }
+        
+        // Migration channelid → channelId
+        if (isset($configuration['channelid']) && $configuration['channelid'] !== '') {
+            $eqLogic->setConfiguration('channelId', $configuration['channelid']);
+            unset($configuration['channelid']);
+            $needSave = true;
+        }
+        
+        // Migration connectcheck → connectionCheck
+        if (isset($configuration['connectcheck']) && $configuration['connectcheck'] !== '') {
+            $eqLogic->setConfiguration('connectionCheck', $configuration['connectcheck']);
+            unset($configuration['connectcheck']);
+            $needSave = true;
+        }
+        
+        // Migration clearchannel → clearChannel
+        if (isset($configuration['clearchannel']) && $configuration['clearchannel'] !== '') {
+            $eqLogic->setConfiguration('clearChannel', $configuration['clearchannel']);
+            unset($configuration['clearchannel']);
+            $needSave = true;
+        }
+        
+        // Migration interactionjeedom → interactionJeedom
+        if (isset($configuration['interactionjeedom']) && $configuration['interactionjeedom'] !== '') {
+            $eqLogic->setConfiguration('interactionJeedom', $configuration['interactionjeedom']);
+            unset($configuration['interactionjeedom']);
+            $needSave = true;
+        }
+        
+        // Appliquer les suppressions
+        if ($needSave) {
+            foreach (array_keys($configuration) as $key) {
+                if (!isset($configuration[$key])) {
+                    $eqLogic->setConfiguration($key, null);
+                }
+            }
+            $eqLogic->save();
+        }
+    }
+    
     discordlink::CreateCmd();
     discordlink::setEmoji();
     discordlink::updateObject();

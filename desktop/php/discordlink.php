@@ -108,7 +108,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                 <div class="col-sm-9">
                                     <label class="checkbox-inline"><input type="checkbox" class="eqLogicAttr" data-l1key="isEnable" title="Activer l'équipement" checked />{{Activer}}</label>
                                     <label class="checkbox-inline"><input type="checkbox" class="eqLogicAttr" data-l1key="isVisible" title="Rendre l'équipement visible" checked />{{Visible}}</label>
-                                    <label class="checkbox-inline"><input type="checkbox" class="eqLogicAttr" data-l1key="configuration" title="Activer les intéractions avec Jeedom" data-l2key="interactionjeedom" />{{Interactions avec Jeedom}}</label>
+                                    <label class="checkbox-inline"><input type="checkbox" class="eqLogicAttr" data-l1key="configuration" title="Activer les intéractions avec Jeedom" data-l2key="interactionJeedom" />{{Interactions avec Jeedom}}</label>
                                 </div>
                             </div>
                             </br>
@@ -116,7 +116,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                             <div class="form-group">
                                 <label class="col-sm-3 control-label">{{Channels}}</label>
                                 <div class="col-sm-7">
-                                    <select class="form-control eqLogicAttr" data-l1key="configuration" data-l2key="channelid">
+                                    <select class="form-control eqLogicAttr" data-l1key="configuration" data-l2key="channelId">
                                         <?php
                                         $channels = config::byKey('channels', 'discordlink', 'null');
                                         $deamon = discordlink::deamon_info();
@@ -142,9 +142,9 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                 <div class="col-sm-9">
                                     <label class="checkbox-inline"><input id="deamoncheck" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="deamoncheck" />{{Vérification Démons}}</label>
                                     <label class="checkbox-inline"><input id="depcheck" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="depcheck" />{{Vérification Dépendances}}</label>
-                                    <label class="checkbox-inline"><input id="connectcheck" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="connectcheck" />{{Annonce des connexions}}</label>
+                                    <label class="checkbox-inline"><input id="connectionCheck" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="connectionCheck" />{{Annonce des connexions}}</label>
                                     </br>
-                                    <label class="checkbox-inline"><input id="clearchannel" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="clearchannel" />{{Clear automatique des channels chaque jour}}</label>
+                                    <label class="checkbox-inline"><input id="clearChannel" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="clearChannel" />{{Clear automatique des channels chaque jour}}</label>
                                 </div>
                             </div>
                             </br>
@@ -169,7 +169,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                 </label>
                                 <div class="col-sm-7">
                                     <div class="input-group">
-                                        <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autorefreshDependances" placeholder="{{Auto-actualisation Dépendances (cron)}}" />
+                                        <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autorefreshDependancy" placeholder="{{Auto-actualisation Dépendances (cron)}}" />
                                         <span class="input-group-btn">
                                             <a class="btn btn-default cursor jeeHelper roundedRight" id="bt_cronGeneratorDependance" data-helper="cron" title="Assistant cron">
                                                 <i class="fas fa-question-circle"></i>

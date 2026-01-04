@@ -16,8 +16,8 @@ $eqLogics = eqLogic::byType($plugin->getId());
 </div>
 <div class="input-group pull-right" style="display:inline-flex">
     <span class="input-group-btn">
-        <a class="btn btn-sm btn-success cmdAction roundedLeft" id="bt_addemojy"><i class="fas fa-plus-circle"></i> {{Ajouter un émoji}}
-        </a><a class="btn btn-sm btn-success eqLogicAction" data-action="saveemojy"><i class="fas fa-check-circle"></i> {{Sauvegarder}}
+        <a class="btn btn-sm btn-success cmdAction roundedLeft" id="bt_addEmoji"><i class="fas fa-plus-circle"></i> {{Ajouter un émoji}}
+        </a><a class="btn btn-sm btn-success eqLogicAction" data-action="saveEmoji"><i class="fas fa-check-circle"></i> {{Sauvegarder}}
         </a><a class="btn btn-sm btn-danger cmdAction roundedRight" id="bt_reset"><i class="fas fa-plus-circle"></i> {{Reset émoji}}</a>
     </span>
 </div>
@@ -25,7 +25,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
 <div role="tabpanel" class="tab-pane active" id="commandtab">
     <table id="table_cmd" class="table table-bordered table-condensed ui-sortable">
         <thead>
-            <tr class="emojy">
+            <tr class="emoji">
                 <th>{{Clé émoji}}</th>
                 <th>{{Code émoji}}</th>
                 <th style="width: 100px;"></th>

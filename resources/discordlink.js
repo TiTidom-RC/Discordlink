@@ -359,18 +359,15 @@ app.get('/sendEmbed', async (req, res) => {
 
             if (countanswer !== "0") {
                 // Réponses avec emojis A-Z
-                let emojy = ["🇦", "🇧", "🇨", "🇩", "🇪", "🇫", "🇬", "🇭", "🇮", "🇯", "🇰", "🇱", "🇲", "🇳", "🇴", "🇵", "🇶", "🇷", "🇸", "🇹", "🇺", "🇻", "🇼", "🇽", "🇾", "🇿"];
+                let emojiList = ["🇦", "🇧", "🇨", "🇩", "🇪", "🇫", "🇬", "🇭", "🇮", "🇯", "🇰", "🇱", "🇲", "🇳", "🇴", "🇵", "🇶", "🇷", "🇸", "🇹", "🇺", "🇻", "🇼", "🇽", "🇾", "🇿"];
                 let a = 0;
                 while (a < countanswer) {
-                    await m.react(emojy[a]);
+                    await m.react(emojiList[a]);
                     a++;
                 }
                 
                 const filter = (reaction, user) => {
-                    return emojy.includes(reaction.emoji.name) && user.id !== m.author.id;
-                };
-                
-                // Discord.js v14: awaitReactions prend un objet options
+                    return emojiList.includes(reaction.emoji.name) && user.id !== m.author.id;
                 m.awaitReactions({ 
                     filter, 
                     max: 1, 

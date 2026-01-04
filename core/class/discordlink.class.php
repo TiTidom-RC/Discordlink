@@ -97,8 +97,8 @@ class discordlink extends eqLogic {
 			'batterie_nok' => ':red_circle:'
 		);
 		
-		$emojyarray = ($reset == 1) ? $default : config::byKey('emojy', 'discordlink', $default);
-		config::save('emojy', $emojyarray, 'discordlink');
+		$emojiArray = ($reset == 1) ? $default : config::byKey('emoji', 'discordlink', $default);
+		config::save('emoji', $emojiArray, 'discordlink');
 	}
 
 	public static function updateInfo() {
@@ -107,14 +107,14 @@ class discordlink extends eqLogic {
 		static::setChannel();
 	}
 
-	public static function emojyconvert($_text): string
+	public static function emojiConvert($_text): string
 	{
 		$_returntext = '';
 		$textsplit = explode(" ", $_text);
 		foreach ($textsplit as $value) {
 			if (substr($value,0,4) === "emo_") {
-				$emojy = discordlink::getIcon(str_replace("emo_","",$value));
-				$_returntext .= $emojy;
+				$emoji = discordlink::getIcon(str_replace("emo_","",$value));
+				$_returntext .= $emoji;
 			} else {
 				$_returntext .= $value;
 			}
@@ -141,27 +141,31 @@ class discordlink extends eqLogic {
 	}
 
 	public static function checkAll() {
-		$dateRun = new DateTime();
-		$_options = array('cron' => true);
 		$eqLogics = eqLogic::byType('discordlink');
+		if (empty($eqLogics)) {
+			return;
+		}
+
+		$dateRun = new DateTime();
+		$options = ['cron' => true];
 
 		foreach ($eqLogics as $eqLogic) {
 			// Vérification démon
-			if ($eqLogic->getConfiguration('deamoncheck', 0) == 1) {
-				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autorefreshDeamon'), 'deamonInfo', 'DeamonCheck', $dateRun, $_options);
+			if ($eqLogic->getConfiguration('deamoncheck', 0) === 1) {
+				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autorefreshDeamon'), 'deamonInfo', 'DeamonCheck', $dateRun, $options);
 			}
 			
 			// Vérification dépendances
-			if ($eqLogic->getConfiguration('depcheck', 0) == 1) {
-				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autorefreshDependances'), 'dependanceInfo', 'DepCheck', $dateRun, $_options);
+			if ($eqLogic->getConfiguration('depcheck', 0) === 1) {
+				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autorefreshDependancy'), 'dependanceInfo', 'DepCheck', $dateRun, $options);
 			}
 			
 			// Vérification connexions utilisateurs
-			if ($eqLogic->getConfiguration('connectcheck', 0) == 1) {
-				log::add('discordlink', 'debug', 'connectcheck');
+			if ($eqLogic->getConfiguration('connectionCheck', 0) === 1) {
 				$cmd = $eqLogic->getCmd('action', 'LastUser');
 				if (is_object($cmd)) {
-					$cmd->execCmd($_options);
+					log::add('discordlink', 'debug', 'Vérification connexion utilisateur pour ' . $eqLogic->getName());
+					$cmd->execCmd($options);
 				}
 			}
 		}
@@ -186,7 +190,7 @@ class discordlink extends eqLogic {
 	public static function cronDaily() {
 		$eqLogics = eqLogic::byType('discordlink');
 		foreach ($eqLogics as $eqLogic) {
-			if ($eqLogic->getConfiguration('clearchannel', 0) != 1) continue;
+			if ($eqLogic->getConfiguration('clearChannel', 0) != 1) continue;
 			
 			$cmd = $eqLogic->getCmd('action', 'deleteMessage');
 			if (!is_object($cmd)) continue;
@@ -321,26 +325,26 @@ class discordlink extends eqLogic {
     }
 
     public function preSave() {
-		$channel = $this->getConfiguration('channelid');
+		$channel = $this->getConfiguration('channelId');
 		if (!empty($channel) && $channel != 'null') {
 			$this->setLogicalId($channel);
 			log::add('discordlink', 'debug', 'setLogicalId : ' . $channel);
 		} else {
-			$this->setConfiguration('channelid', $this->getLogicalId());
+			$this->setConfiguration('channelId', $this->getLogicalId());
 		}
 	}
 
 	public static function getIcon($_icon) {
-		$emojyArray = config::byKey('emojy', 'discordlink', array());
-		$icon = isset($emojyArray[$_icon]) && !empty($emojyArray[$_icon]) ? $emojyArray[$_icon] : static::addEmoji($_icon);
+		$emojiArray = config::byKey('emoji', 'discordlink', array());
+		$icon = isset($emojiArray[$_icon]) && !empty($emojiArray[$_icon]) ? $emojiArray[$_icon] : static::addEmoji($_icon);
 		return $icon . ' ';
 	}
 
-	public static function addEmoji($_icon, $_emojy = null) {
-		$emojyArray = config::byKey('emojy', 'discordlink', array());
-		$emojyArray[$_icon] = $_emojy ?? ':interrobang:';
-		config::save('emojy', $emojyArray, 'discordlink');
-		return $emojyArray[$_icon];
+	public static function addEmoji($_icon, $_emoji = null) {
+		$emojiArray = config::byKey('emoji', 'discordlink', array());
+		$emojiArray[$_icon] = $_emoji ?? ':interrobang:';
+		config::save('emoji', $emojiArray, 'discordlink');
+		return $emojiArray[$_icon];
 	}
 
 	public static function CreateCmd() {
@@ -383,7 +387,7 @@ class discordlink extends eqLogic {
 					$Cmddiscordlink->setLogicalId($CmdKey);
 					if ($Cmd['Type'] == "action" && $CmdKey != "deamonInfo") {
 						$Cmddiscordlink->setConfiguration('request', $Cmd['request']);
-						$Cmddiscordlink->setConfiguration('value', 'http://' . config::byKey('internalAddr') . ':3466/' . $Cmd['request'] . "&channelID=" . $eqLogic->getConfiguration('channelid'));
+						$Cmddiscordlink->setConfiguration('value', 'http://' . config::byKey('internalAddr') . ':3466/' . $Cmd['request'] . "&channelID=" . $eqLogic->getConfiguration('channelId'));
 					}
 					if ($Cmd['Type'] == "action" && $CmdKey == "deamonInfo") {
 						$Cmddiscordlink->setConfiguration('request', $Cmd['request']);
@@ -481,7 +485,7 @@ class discordlink extends eqLogic {
 		$level = log::getLogLevel('connection');
 		$levelName = log::convertLogLevel($level);
 
-		//Add Emojy
+		//Add Emoji
 		$emo_warning = discordlink::addEmoji("lastUser_warning",":warning:");
 		$emo_mag_right = discordlink::addEmoji("lastUser_mag_right",":mag_right:");
 		$emo_mag = discordlink::addEmoji("lastUser_mag",":mag:");
@@ -737,7 +741,7 @@ class discordlinkCmd extends cmd {
 			throw new Exception(__('Commande inconnue ou requête vide : ', __FILE__) . print_r($this, true));
 		}
 		
-		$channelID = str_replace('_player', '', $this->getEqLogic()->getConfiguration('channelid'));
+		$channelID = str_replace('_player', '', $this->getEqLogic()->getConfiguration('channelId'));
 		return 'http://' . config::byKey('internalAddr') . ':3466/' . $request . '&channelID=' . $channelID;
 	}
 
@@ -841,7 +845,7 @@ class discordlinkCmd extends cmd {
 				if (!empty($_options['quickreply'])) $quickreply = $_options['quickreply'];
 			}
 
-			$description = discordlink::emojyconvert($description);
+			$description = discordlink::emojiConvert($description);
 		log::add('discordlink', 'debug', 'description : ' . $description);
 		$description = str_replace('|', "\n", $description);
 
