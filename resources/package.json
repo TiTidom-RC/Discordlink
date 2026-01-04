@@ -1,0 +1,30 @@
+{
+  "name": "Jeedom_DiscordLink",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ceci est le bot relié au plugin Discord Link sur Jeedom",
+  "main": "discordlink.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Thibaut Trarbach",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^12.5.3",
+    "express": "^4.17.1",
+    "extend": "^3.0.2",
+    "http-proxy-middleware": "^1.2.0",
+    "http-proxy-response-rewrite": "0.0.1",
+    "https": "^1.0.0",
+    "node-fetch": "^2.6.1",
+    "querystring": "^0.2.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/trmaud/discordlink.git"
+  },
+  "optionalDependencies": {
+    "bufferutil": "^4.0.3",
+    "utf-8-validate": "^5.0.4"
+  }
+}

@@ -1,0 +1,157 @@
+<div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
+  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">Titre</span>
+  <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="Titre" rows="1"
+    style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#Titre#</textarea>
+  <span class="input-group-btn">
+    <button class="btn btn-default listEquipementInfoTitre roundedRight" type="button"
+      title="{{Sélectionner la commande}}" data-cmd_id="#id#" data-uid="#uid#"><i class="fas fa-list-alt"></i></button>
+  </span>
+</div>
+
+<div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
+  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">Lien</span>
+  <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="url" rows="1"
+    style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#url#</textarea>
+  <span class="input-group-btn">
+    <button class="btn btn-default listEquipementInfourl roundedRight" type="button"
+      title="{{Sélectionner la commande}}" data-cmd_id="#id#" data-uid="#uid#"><i class="fas fa-list-alt"></i></button>
+  </span>
+</div>
+
+<div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
+  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">Description</span>
+  <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="description"
+    rows="1" style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#description#</textarea>
+  <span class="input-group-btn">
+    <button class="btn btn-default listEquipementInfoDesk roundedRight" type="button"
+      title="{{Sélectionner la commande}}" data-cmd_id="#id#" data-uid="#uid#"><i class="fas fa-list-alt"></i></button>
+  </span>
+</div>
+
+<div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
+  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">Footer</span>
+  <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="footer" rows="1"
+    style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#footer#</textarea>
+  <span class="input-group-btn">
+    <button class="btn btn-default listEquipementInfoFooter roundedRight" type="button"
+      title="{{Sélectionner la commande}}" data-cmd_id="#id#" data-uid="#uid#"><i class="fas fa-list-alt"></i></button>
+  </span>
+</div>
+
+
+<div class="input-group input-group-sm" style="width: 100%">
+  <span class="input-group-addon roundedLeft" style="width: 100px">Couleur</span>
+  <input type="color" class="form-control input-sm cursor colorChooser" data-uid="#uid#" value="#colors#"
+    style="width: 20%; display: inline-block;" />
+  <input class="expressionAttr form-control input-sm" data-l1key="options" data-l2key="colors" value="#colors#"
+    data-uid="#uid#" style="width: 80%; display: inline-block;" placeholder="Couleur (hexa)" />
+</div>
+<script>
+</script>
+
+<script>
+  $('.listEquipementInfoTitre[data-uid=#uid#]').on('click', function () {
+    if ('#message_cmd_subtype#' != '') {
+      jeedom.cmd.getSelectModal({
+        cmd: {
+          type: '#message_cmd_type#',
+          subType: '#message_cmd_subtype#'
+        }
+      }, function (result) {
+        $('.expressionAttr[data-l1key=options][data-l2key=Titre][data-uid=#uid#]').atCaret('insert', result
+          .human);
+      });
+    } else {
+      jeedom.cmd.getSelectModal({
+        cmd: {
+          type: '#message_cmd_type#'
+        }
+      }, function (result) {
+        $('.expressionAttr[data-l1key=options][data-l2key=Titre][data-uid=#uid#]').atCaret('insert', result
+          .human);
+      });
+    }
+  });
+
+  $('.listEquipementInfourl[data-uid=#uid#]').on('click', function () {
+    if ('#message_cmd_subtype#' != '') {
+      jeedom.cmd.getSelectModal({
+        cmd: {
+          type: '#message_cmd_type#',
+          subType: '#message_cmd_subtype#'
+        }
+      }, function (result) {
+        $('.expressionAttr[data-l1key=options][data-l2key=url][data-uid=#uid#]').atCaret('insert', result
+          .human);
+      });
+    } else {
+      jeedom.cmd.getSelectModal({
+        cmd: {
+          type: '#message_cmd_type#'
+        }
+      }, function (result) {
+        $('.expressionAttr[data-l1key=options][data-l2key=url][data-uid=#uid#]').atCaret('insert', result
+          .human);
+      });
+    }
+  });
+
+  $('.listEquipementInfoDesk[data-uid=#uid#]').on('click', function () {
+    if ('#message_cmd_subtype#' != '') {
+      jeedom.cmd.getSelectModal({
+        cmd: {
+          type: '#message_cmd_type#',
+          subType: '#message_cmd_subtype#'
+        }
+      }, function (result) {
+        $('.expressionAttr[data-l1key=options][data-l2key=description][data-uid=#uid#]').atCaret('insert',
+          result.human);
+      });
+    } else {
+      jeedom.cmd.getSelectModal({
+        cmd: {
+          type: '#message_cmd_type#'
+        }
+      }, function (result) {
+        $('.expressionAttr[data-l1key=options][data-l2key=description][data-uid=#uid#]').atCaret('insert',
+          result.human);
+      });
+    }
+  });
+
+  $('.listEquipementInfoFooter[data-uid=#uid#]').on('click', function () {
+    if ('#message_cmd_subtype#' != '') {
+      jeedom.cmd.getSelectModal({
+        cmd: {
+          type: '#message_cmd_type#',
+          subType: '#message_cmd_subtype#'
+        }
+      }, function (result) {
+        $('.expressionAttr[data-l1key=options][data-l2key=footer][data-uid=#uid#]').atCaret('insert', result
+          .human);
+      });
+    } else {
+      jeedom.cmd.getSelectModal({
+        cmd: {
+          type: '#message_cmd_type#'
+        }
+      }, function (result) {
+        $('.expressionAttr[data-l1key=options][data-l2key=footer][data-uid=#uid#]').atCaret('insert', result
+          .human);
+      });
+    }
+  });
+
+  $('.colorChooser[data-uid=#uid#]').off('change').on('change', function () {
+    $('.expressionAttr[data-uid=#uid#][data-l1key=options][data-l2key=colors]').value($(this).value())
+  });
+
+  if ('#Titre#' == '#' + 'Titre#') document.querySelector('.expressionAttr[data-uid=#uid#][data-l1key=options][data-l2key=Titre]').value = '#defaultTitle#'
+  if ('#url#' == '#' + 'url#') document.querySelector('.expressionAttr[data-uid=#uid#][data-l1key=options][data-l2key=url]').value = '#defaultUrl#'
+  if ('#description#' == '#' + 'description#') document.querySelector('.expressionAttr[data-uid=#uid#][data-l1key=options][data-l2key=description]').value = '#defaultDescription#'
+  if ('#footer#' == '#' + 'footer#') document.querySelector('.expressionAttr[data-uid=#uid#][data-l1key=options][data-l2key=footer]').value = '#defaultFooter#'
+  if ('#colors#' == '#' + 'colors#') {
+    document.querySelector('.colorChooser[data-uid=#uid#]').value = '#defaultColor#'
+    $('.colorChooser[data-uid=#uid#]').trigger("change")
+  }
+</script>
