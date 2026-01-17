@@ -37,7 +37,7 @@ function discordlink_update() {
     config::save('pluginVersion', $version, 'discordlink');
 
     // Initialisation du port socket s'il n'est pas défini (mise à jour)
-    if (config::byKey('socketport', 'discordlink', null) === null) {
+    if (config::byKey('socketport', 'discordlink', '') === '') {
         config::save('socketport', discordlink::SOCKET_PORT, 'discordlink');
     }
 
