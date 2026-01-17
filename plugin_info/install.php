@@ -41,7 +41,18 @@ function discordlink_update() {
         $eqLogics = eqLogic::byType('discordlink');
         foreach ($eqLogics as $eqLogic) {
             // Liste des commandes critiques qui provoquaient des doublons
-            $cmdsToFix = array('Etat des démons' => 'daemonInfo', 'Etat des dépendances' => 'dependencyInfo', 'Résumé général' => 'globalSummary');
+            $cmdsToFix = array(
+                'Etat des démons' => 'daemonInfo', 
+                'Etat des dépendances' => 'dependencyInfo', 
+                'Résumé général' => 'globalSummary',
+                'Résumé par objet' => 'objectSummary',
+                'Résumé des batteries' => 'batteryInfo',
+                'Centre de messages' => 'messageCenter',
+                'Dernière Connexion utilisateur' => 'lastUser',
+                'Dernier message' => 'lastMessage',
+                'Avant dernier message' => 'previousMessage1',
+                'Avant Avant dernier message' => 'previousMessage2'
+            );
             
             // On itère sur toutes les commandes de l'équipement pour être sûr de trouver celles qui ont le "bon nom" mais le "mauvais ID"
             foreach ($eqLogic->getCmd() as $cmd) {
