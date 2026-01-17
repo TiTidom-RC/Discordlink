@@ -42,11 +42,14 @@ function discordlink_update() {
     }
     
     // Migration de la clé de configuration globale emojy → emoji
-    $emojiConfig = config::byKey('emojy', 'discordlink', null);
-    if ($emojiConfig !== null) {
-        config::save('emoji', $emojiConfig, 'discordlink');
+    $oldEmojiConfig = config::byKey('emojy', 'discordlink', null);
+    if ($oldEmojiConfig !== null) {
+        // On ne migre que si la nouvelle clé n'existe pas déjà pour éviter d'écraser des modifications récentes
+        if (config::byKey('emoji', 'discordlink', null) === null) {
+            config::save('emoji', $oldEmojiConfig, 'discordlink');
+            log::add('discordlink', 'info', 'Migration configuration globale: emojy → emoji');
+        }
         config::remove('emojy', 'discordlink');
-        log::add('discordlink', 'info', 'Migration configuration globale: emojy → emoji');
     }
     
     // Migration des paramètres de configuration des équipements
