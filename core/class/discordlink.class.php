@@ -26,7 +26,17 @@ class discordlink extends eqLogic {
 	const SOCKET_PORT = 3466;
 
 	public static function getInfo() {
-		return plugin::byId('discordlink')->getInfo();
+		$file = __DIR__ . '/../../plugin_info/info.json';
+		if (file_exists($file)) {
+			try {
+				$data = json_decode(file_get_contents($file), true);
+				return is_array($data) ? $data : array();
+			} catch (Exception $e) {
+				log::add('discordlink', 'error', 'Erreur lors de la lecture du fichier info.json : ' . $e->getMessage());
+				return array();
+			}
+		}
+		return array();
 	}
 	
 	public static function templateWidget() {
@@ -41,8 +51,8 @@ class discordlink extends eqLogic {
 		return $return;
 	}
 
-	public static function testPlugin($_pluginid) {
-		$plugin = plugin::byId($_pluginid);
+	public static function testPlugin($_pluginId) {
+		$plugin = plugin::byId($_pluginId);
 		return (is_object($plugin) && $plugin->isActive());
 	}
 
@@ -114,18 +124,18 @@ class discordlink extends eqLogic {
 
 	public static function emojiConvert($_text): string
 	{
-		$_returntext = '';
+		$_returnText = '';
 		$textParts = explode(" ", $_text);
 		foreach ($textParts as $value) {
 			if (substr($value,0,4) === "emo_") {
 				$emoji = discordlink::getIcon(str_replace("emo_","",$value));
-				$_returntext .= $emoji;
+				$_returnText .= $emoji;
 			} else {
-				$_returntext .= $value;
+				$_returnText .= $value;
 			}
-			$_returntext .= " ";
+			$_returnText .= " ";
 		}
-		return $_returntext;
+		return $_returnText;
 	}
 
 	private static function executeCronIfDue($eqLogic, $cronExpr, $cmdLogicId, $debugLabel, $dateRun, $_options) {
@@ -508,7 +518,7 @@ class discordlink extends eqLogic {
 		$cronInterval = 65;
 		$timeNow = date("Y-m-d H:i:s");
 		$maxLine = log::getConfig('maxLineLog');
-		// Récupération du niveau de log du log Connection (//100=debug | 200=info | 300=warning | 400=erreur=defaut | 1000=none)
+		// Récupération du niveau de log du log Connection :: 100 = debug | 200 = info | 300 = warning | 400 = error (default) | 1000 = none
 		$level = log::getLogLevel('connection');
 		$levelName = log::convertLogLevel($level);
 
@@ -529,91 +539,124 @@ class discordlink extends eqLogic {
 			$logLevelWarning = "";
 		}
 		$offlineDelay = 10;
-		$userIndex = 0;
+		$timestampNow = strtotime($timeNow);
+		$userConnectName = array();
+		$userConnectDate = array();
+		$userConnectStatus = array();
+		$userConnectListParts = array();
+
 		foreach (user::all() as $user) {
-			$userIndex++;
-				$userConnectDate[$userIndex] = $user->getOptions('lastConnection');
-			if($userConnectDate[$userIndex] == ""){
-				$userConnectDate[$userIndex] = "1970-01-01 00:00:00";
+			$lastDate = $user->getOptions('lastConnection');
+			if (empty($lastDate)) {
+				$lastDate = "1970-01-01 00:00:00";
 			}
-			if(strtotime($timeNow) - strtotime($userConnectDate[$userIndex]) < $offlineDelay*60){
-				$userConnectStatus[$userIndex] = 'en ligne';
-			}else{
-				$userConnectStatus[$userIndex] = 'hors ligne';
+			
+			$status = 'hors ligne';
+			if (($timestampNow - strtotime($lastDate)) < ($offlineDelay * 60)) {
+				$status = 'en ligne';
 			}
-			$userConnectName[$userIndex] = $user->getLogin();
-			if($userConnectList != ''){
-				$userConnectList = $userConnectList.'|';
-			}
-			$userConnectList .= $userConnectName[$userIndex].';'.$userConnectDate[$userIndex].';'.$userConnectStatus[$userIndex];
+
+			// Stockage dans les tableaux pour usage ultérieur
+			$userConnectName[] = $user->getLogin();
+			$userConnectDate[] = $lastDate;
+			$userConnectStatus[] = $status;
+			
+			// Construction de la liste
+			$userConnectListParts[] = $user->getLogin() . ';' . $lastDate . ';' . $status;
 		}
+		$userConnectList = implode('|', $userConnectListParts);
 		
 		$userConnectListNew = '';
 		// Récupération des lignes du log Connection
-		$logConnectionList = log::get('connection', 0, $maxLine);
-		$plageRecherche = date("Y-m-d H:i:s", strtotime($timeNow)-$cronInterval);
+		$delta = log::getDelta('connection', 0, '', false, false, 0, $maxLine);
+		$logConnectionList = array();
+		if (isset($delta['logText']) && !empty($delta['logText'])) {
+			$lines = explode("\n", $delta['logText']);
+			$logConnectionList = array_reverse(array_filter($lines));
+		}
+
 		$logUserIndex = 0;
 		$lastLogConnectionName = '';
 		if (is_array($logConnectionList)) {
 			foreach ($logConnectionList as $value) {
-				$logConnection = explode("]", $value);
-				$logConnection = substr($logConnection[0], 1);
-				if (strtotime($timeNow) - strtotime($logConnection) > $cronInterval) {
-					if ($logUserIndex == 0) {
-						$message = "\n" . "**Pas de connexion** ces **" . $cronInterval . "** dernières minutes !";
+				// Format attendu: [2026-01-16 18:46:50] INFO  Connexion de l'utilisateur par clef : admin
+				if (preg_match('/^\[(.*?)\]\s+INFO\s+(.*)\s:\s(.*)$/', $value, $matches)) {
+					$currentLogDate = $matches[1];
+					$currentLogMsg = $matches[2];
+					$currentLogUser = strtolower(trim($matches[3]));
+					
+					// Vérification de la date
+					if (strtotime($timeNow) - strtotime($currentLogDate) > $cronInterval) {
+						if ($logUserIndex == 0) {
+							$message = "\n" . "**Pas de connexion** ces **" . $cronInterval . "** dernières secondes !";
+						}
+						break;
 					}
-					break;
-				} else {
+					
 					$logUserIndex++;
-					$logConnectionDate[$logUserIndex] = $logConnection;
-					$logConnection = explode(" : ", $value);
-					$logConnectionName[$logUserIndex] = strtolower($logConnection[2]);
-					if (strpos($logConnection[1], 'clef') !== false) {
+					$logConnectionDate[$logUserIndex] = $currentLogDate;
+					$logConnectionName[$logUserIndex] = $currentLogUser;
+					
+					// Détermination du type de connexion
+					if (strpos($currentLogMsg, 'clef') !== false) {
 						$logConnectionType[$logUserIndex] = 'clef';
-					} elseif (strpos($logConnection[1], 'API') !== false) {
+					} elseif (strpos($currentLogMsg, 'API') !== false) {
 						$logConnectionType[$logUserIndex] = 'api';
 					} else {
 						$logConnectionType[$logUserIndex] = 'navigateur';
 					}
+					
 					if ($logUserIndex == 1) {
 						$message .= "\n" . $emojiMagRight . "__Récapitulatif de ces " . $cronInterval . " dernières secondes :__ " . $emojiMag;
 					}
+					
 					$onlineCount++;
 					$message .= "\n" . $emojiCheck . "**" . $logConnectionName[$logUserIndex] . "** s'est connecté par **" . $logConnectionType[$logUserIndex] . "** à **" . date("H", strtotime($logConnectionDate[$logUserIndex])) . "h" . date("i", strtotime($logConnectionDate[$logUserIndex])) . "**";
+					
 					$hasCronActivity = true;
-					$userNumber = 0;
-					$foundCount = 0;
-					if (strpos($lastLogConnectionName, $logConnectionName[$logUserIndex]) === false) {
-					} else {
+					
+					// Évite les doublons consécutifs dans le log pour le même utilisateur
+					if ($lastLogConnectionName === $logConnectionName[$logUserIndex]) {
 						continue;
 					}
 					$lastLogConnectionName = $logConnectionName[$logUserIndex];
-					foreach ($userConnectName as $userName) {
+					
+					// Mise à jour du statut des utilisateurs
+					$userNumber = 0;
+					$foundCount = 0;
+					foreach ($userConnectName as $key => $userName) {
 						$userNumber++;
-						if ($logConnectionName[$logUserIndex] == $userConnectName[$userNumber]) {        ///Utilisateur déjà enregistré
+						if ($logConnectionName[$logUserIndex] == $userName) {
 							$foundCount++;
-							if ($userConnectStatus[$userNumber] == 'hors ligne') {
-								$userConnectDate[$userNumber] = $logConnectionDate[$logUserIndex];
-								$userConnectStatus[$userNumber] = 'en ligne';
+							if ($userConnectStatus[$key] == 'hors ligne') {
+								$userConnectDate[$key] = $logConnectionDate[$logUserIndex];
+								$userConnectStatus[$key] = 'en ligne';
 							}
 						}
-						if ($userConnectListNew != '') {
-							$userConnectListNew = $userConnectListNew . '|';
-						}
-						$userConnectListNew .= $userConnectName[$userNumber] . ';' . $userConnectDate[$userNumber] . ';' . $userConnectStatus[$userNumber];
 					}
-					if ($foundCount == 0) {                                                                //Utilisateur nouveau
-						$userConnectName[$userNumber] = $logConnectionName[$logUserIndex];
-						$userConnectDate[$userNumber] = $logConnectionDate[$logUserIndex];
-						$userConnectStatus[$userNumber] = 'en ligne';
-						if ($userConnectListNew != '') {
-							$userConnectListNew = $userConnectListNew . '|';
-						}
-						$userConnectListNew .= $userConnectName[$userNumber] . ';' . $userConnectDate[$userNumber] . ';' . $userConnectStatus[$userNumber];
+					
+					// Ajout nouvel utilisateur si non trouvé
+					if ($foundCount == 0) {
+						$userConnectName[] = $logConnectionName[$logUserIndex];
+						$userConnectDate[] = $logConnectionDate[$logUserIndex];
+						$userConnectStatus[] = 'en ligne';
+						$userConnectIP[] = ''; // Initialiser IP pour éviter warning plus tard
 					}
-					$userConnectList = $userConnectListNew;
 				}
 			}
+			
+			// Reconstruction propre de la liste finale une seule fois
+			$userConnectListNew = '';
+			foreach ($userConnectName as $key => $name) {
+				if ($userConnectListNew != '') {
+					$userConnectListNew .= '|';
+				}
+				// Gérer les index qui peuvent être numériques ou string selon l'initialisation précédente
+				$date = isset($userConnectDate[$key]) ? $userConnectDate[$key] : '';
+				$status = isset($userConnectStatus[$key]) ? $userConnectStatus[$key] : 'hors ligne';
+				$userConnectListNew .= $name . ';' . $date . ';' . $status;
+			}
+			$userConnectList = $userConnectListNew;
 		}
 		
 		$sessions = listSession();

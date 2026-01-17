@@ -19,8 +19,7 @@
 require_once dirname(__FILE__) . '/../../../core/php/core.inc.php';
 
 function discordlink_install() {
-    $plugin = plugin::byId('discordlink');
-    $info = $plugin->getInfo();
+    $info = discordlink::getInfo();
     $version = $info['pluginVersion'];
     config::save('pluginVersion', $version, 'discordlink');
     
@@ -30,12 +29,9 @@ function discordlink_install() {
 }
 
 function discordlink_update() {
-    $plugin = plugin::byId('discordlink');
-    $info = $plugin->getInfo();
+    $info = discordlink::getInfo();
     $version = $info['pluginVersion'];
     config::save('pluginVersion', $version, 'discordlink');
-
-    $plugin->dependancy_install();
     
     // Suppression de l'ancien fichier quickreply.json dans resources/
     // Le nouveau fichier est automatiquement copié dans data/ lors de la mise à jour
