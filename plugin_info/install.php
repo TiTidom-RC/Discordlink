@@ -42,13 +42,15 @@ function discordlink_update() {
         foreach ($eqLogics as $eqLogic) {
             // Liste des commandes critiques qui provoquaient des doublons
             $cmdsToFix = array('Etat des démons' => 'daemonInfo', 'Etat des dépendances' => 'dependencyInfo', 'Résumé général' => 'globalSummary');
-            foreach ($cmdsToFix as $cmdName => $logicId) {
-                // On cherche la commande par son nom
-                $cmd = $eqLogic->getCmd(null, null, null, $cmdName);
-                if (is_object($cmd)) {
-                    // Si elle existe, on force son logicalId pour que discordlink::CreateCmd() la retrouve
-                    if ($cmd->getLogicalId() != $logicId) {
-                        $cmd->setLogicalId($logicId);
+            
+            // On itère sur toutes les commandes de l'équipement pour être sûr de trouver celles qui ont le "bon nom" mais le "mauvais ID"
+            foreach ($eqLogic->getCmd() as $cmd) {
+                if (array_key_exists($cmd->getName(), $cmdsToFix)) {
+                    $targetLogicalId = $cmdsToFix[$cmd->getName()];
+                    // Si le logicalID est différent de celui attendu (vide ou obsolète)
+                    if ($cmd->getLogicalId() != $targetLogicalId) {
+                        log::add('discordlink', 'info', '[Migration] Correction LogicalId pour commande: ' . $cmd->getName() . ' (' . $cmd->getLogicalId() . ' -> ' . $targetLogicalId . ')');
+                        $cmd->setLogicalId($targetLogicalId);
                         $cmd->save();
                     }
                 }
