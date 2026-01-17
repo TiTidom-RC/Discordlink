@@ -23,25 +23,27 @@ if (!isConnect()) {
 }
 ?>
 <form class="form-horizontal">
-    <legend>{{Général}}</legend>
     <fieldset>
+        <legend><i class="fas fa-info"></i> {{Plugin}}</legend>
         <div class="form-group">
-            <label class="col-lg-4 control-label">{{Version Plugin}}
+            <label class="col-lg-3 control-label">{{Version Plugin}}
                 <sup><i class="fas fa-question-circle tooltips" title="{{Version du Plugin (A indiquer sur Community)}}"></i></sup>
             </label>
-            <div class="col-lg-6">
+            <div class="col-lg-1">
                 <input class="configKey form-control" data-l1key="pluginVersion" readonly />
             </div>
         </div>
+        
+        <legend><i class="fas fa-cogs"></i> {{Général}}</legend>
         <div class="form-group">
-            <label class="col-lg-4 control-label">{{Token : }}</label>
+            <label class="col-lg-3 control-label">{{Token : }}</label>
             <div class="col-lg-6">
                 <input class="configKey form-control" data-l1key="Token" />
             </div>
         </div>
         </br>
       <div class="form-group">
-          <label class="col-lg-4 control-label">{{Joue à : }}</label>
+          <label class="col-lg-3 control-label">{{Joue à : }}</label>
           <div class="col-lg-6">
               <input class="configKey form-control" data-l1key="joueA" placeholder="Travailler main dans la main avec votre Jeedom"/>
           </div>
