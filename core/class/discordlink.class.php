@@ -1169,7 +1169,7 @@ public function buildDependencyInfo($_options = array()) {
 		}
 
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-		$_options = array('title'=>':gear: CENTRE DE MISES A JOUR :gear:', 'description'=> $msg, 'colors'=> '#ff0000', 'footer'=> 'By jcamus86');
+		$_options = array('title'=>':gear: CENTRE DE MISES A JOUR :gear:', 'description'=> $msg, 'colors'=> '#ff0000', 'footer'=> 'By DiscordLink');
 		$cmd->execCmd($_options);
 
 		// -------------------------------------------------------------------------------------- //
@@ -1195,13 +1195,13 @@ public function buildDependencyInfo($_options = array()) {
 		}
 				
 		if ($messageCount == 0) {
-			$_options = array('title'=>':clipboard: CENTRE DE MESSAGES :clipboard:', 'description'=> "*Le centre de message est vide !*", 'colors'=> '#ff8040', 'footer'=> 'By Jcamus86');
+			$_options = array('title'=>':clipboard: CENTRE DE MESSAGES :clipboard:', 'description'=> "*Le centre de message est vide !*", 'colors'=> '#ff8040', 'footer'=> 'By DiscordLink');
 			$cmd->execCmd($_options);
 		} else {
 			$i = 0;
 			foreach ($msg as $value) {
 				$i++;
-				$_options = array('title'=>':clipboard: CENTRE DE MESSAGES ' . $i . '/' . count($msg) . ' :clipboard:', 'description'=> $value, 'colors'=> '#ff8040', 'footer'=> 'By Jcamus86');
+				$_options = array('title'=>':clipboard: CENTRE DE MESSAGES ' . $i . '/' . count($msg) . ' :clipboard:', 'description'=> $value, 'colors'=> '#ff8040', 'footer'=> 'By DiscordLink');
 				$cmd->execCmd($_options);
 			}
 		}
@@ -1214,7 +1214,7 @@ public function buildDependencyInfo($_options = array()) {
 		if (isset($_options['cron']) && !$result['cronOk']) return 'truesendwithembed';
 		
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-		$_options = array('title'=>$result['title'], 'description'=> str_replace("|","\n", $result['message']), 'colors'=> '#ff00ff', 'footer'=> 'By Yasu et Jcamus86');
+		$_options = array('title'=>$result['title'], 'description'=> str_replace("|","\n", $result['message']), 'colors'=> '#ff00ff', 'footer'=> 'By DiscordLink');
 		$cmd->execCmd($_options);
 		return 'truesendwithembed';
 	}
