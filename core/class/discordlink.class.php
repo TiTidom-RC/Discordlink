@@ -23,6 +23,7 @@ class discordlink extends eqLogic {
     /*     * *************************Attributs****************************** */
 
 	const DEFAULT_COLOR = '#ff0000';
+	const SOCKET_PORT = 3466;
 
 	public static function templateWidget() {
 		$return['action']['message']['message'] =    array(
@@ -43,7 +44,7 @@ class discordlink extends eqLogic {
 
 	public static function getChannel() {
 		try {
-			$requestHttp = new com_http('http://127.0.0.1:3466/getchannel');
+			$requestHttp = new com_http('http://127.0.0.1:' . self::SOCKET_PORT . '/getchannel');
 			$response = $requestHttp->exec(10, 2);
 			if ($response === false || empty($response)) {
 				log::add('discordlink', 'error', 'Impossible de récupérer les channels depuis le daemon');
@@ -218,7 +219,7 @@ class discordlink extends eqLogic {
 
 		// Vérifier si le serveur HTTP répond sur le port 3466
 		try {
-			$requestHttp = new com_http('http://127.0.0.1:3466/getchannel');
+			$requestHttp = new com_http('http://127.0.0.1:' . self::SOCKET_PORT . '/getchannel');
 			$requestHttp->setNoReportError(true);
 			$response = $requestHttp->exec(2, 1); // Timeout rapide: 2s
 			if ($response !== false) {
@@ -250,14 +251,15 @@ class discordlink extends eqLogic {
 		
 		$apiKey = jeedom::getApiKey('discordlink');
 		$cmd = sprintf(
-			'nice -n 19 node %s/discordlink.js %s %s %s %s %s %s',
+			'nice -n 19 node %s/discordlink.js %s %s %s %s %s %s %s',
 			escapeshellarg(realpath(dirname(__FILE__) . '/../../resources')),
 			escapeshellarg(network::getNetworkAccess('internal')),
 			escapeshellarg(config::byKey('Token', 'discordlink')),
 			escapeshellarg(log::getLogLevel('discordlink')),
 			escapeshellarg(network::getNetworkAccess('internal', 'proto:127.0.0.1:port:comp') . '/plugins/discordlink/core/api/jeeDiscordlink.php?apikey=' . $apiKey),
 			escapeshellarg($apiKey),
-			escapeshellarg(config::byKey('joueA', 'discordlink', 'Travailler main dans la main avec votre Jeedom'))
+			escapeshellarg(config::byKey('joueA', 'discordlink', 'Travailler main dans la main avec votre Jeedom')),
+			escapeshellarg(self::SOCKET_PORT)
 		);
 		
 		log::add('discordlink', 'debug', 'Lancement démon discordlink : ' . $cmd);
@@ -291,37 +293,52 @@ class discordlink extends eqLogic {
 	}
 
 	public static function deamon_stop() {
-		log::add('discordlink', 'info', 'Arrêt du service discordlink');
+		log::add('discordlink', 'info', 'Arrêt du démon discordlink');
 		
 		// Arrêt gracieux via API HTTP
 		try {
-			$requestHttp = new com_http('http://' . config::byKey('internalAddr') . ':3466/stop');
+			$requestHttp = new com_http('http://' . config::byKey('internalAddr') . ':' . self::SOCKET_PORT . '/stop');
 			$requestHttp->setNoReportError(true);
 			$requestHttp->setAllowEmptyReponse(true);
 			$requestHttp->exec(1, 1);
 		} catch (Exception $e) {
-			log::add('discordlink', 'debug', 'Erreur arrêt gracieux : ' . $e->getMessage());
+			log::add('discordlink', 'error', 'Erreur Arrêt du Démon :: ' . $e->getMessage());
 		}
 		
-		sleep(3);
+		// Attente dynamique de l'arrêt du processus (max 3s)
+		$processPattern = escapeshellarg('discordlink.js');
+		for ($i = 0; $i < 30; $i++) {
+			$pidCount = (int)trim(shell_exec('pgrep -f ' . $processPattern . ' 2>/dev/null | wc -l'));
+			if ($pidCount == 0) {
+				log::add('discordlink', 'info', 'Démon arrêté avec succès');
+				break;
+			}
+			usleep(100000); // Pause de 0.1s
+		}
 		
 		// Vérification et kill forcé si le processus est toujours actif
-		$processPattern = escapeshellarg('discordlink.js');
-		$pidCount = (int)trim(shell_exec('pgrep -f ' . $processPattern . ' 2>/dev/null | wc -l'));
-		
 		if ($pidCount > 0) {
+			log::add('discordlink', 'warning', 'Le Démon est toujours actif, envoi de SIGTERM');
 			// SIGTERM d'abord
 			exec('pkill -f ' . $processPattern . ' 2>&1');
-			sleep(1);
+			
+			// Attente dynamique de l'effet du SIGTERM (max 1s)
+			for ($i = 0; $i < 10; $i++) {
+				$pidCount = (int)trim(shell_exec('pgrep -f ' . $processPattern . ' 2>/dev/null | wc -l'));
+				if ($pidCount == 0) {
+					log::add('discordlink', 'info', 'Démon arrêté suite au SIGTERM');
+					break;
+				}
+				usleep(100000); // Pause de 0.1s
+			}
 			
 			// Vérifier si toujours actif, puis SIGKILL
-			if (static::deamon_info()['state'] == 'ok') {
+			if ($pidCount > 0) {
+				log::add('discordlink', 'warning', 'Le Démon résiste au SIGTERM, envoi de SIGKILL');
 				exec('pkill -9 -f ' . $processPattern . ' 2>&1');
-				log::add('discordlink', 'warning', 'Arrêt forcé du démon requis (SIGKILL)');
 			}
 		}
 	}
-
 
     public function preInsert() {
 		$this->setConfiguration('defaultColor', self::DEFAULT_COLOR);

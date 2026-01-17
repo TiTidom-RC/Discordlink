@@ -34,12 +34,13 @@ const token = process.argv[3];
 const jeedomIP = process.argv[2];
 const pluginKey = process.argv[6];
 const activityStatus = decodeURI(process.argv[7]);
+const listeningPort = process.argv[8] || 3466;
 
 /* Configuration */
 const config = {
     logger: logger,
     token: token,
-    listeningPort: 3466
+    listeningPort: listeningPort
 };
 
 // Debug: Afficher les arguments reçus (masquer le token pour la sécurité)
@@ -48,6 +49,7 @@ console.log('[DEBUG] - argv[2] (jeedomIP):', jeedomIP);
 console.log('[DEBUG] - argv[3] (token):', token ? `[PRESENT - ${token.length} caractères]` : '[ABSENT]');
 console.log('[DEBUG] - argv[6] (pluginKey):', pluginKey);
 console.log('[DEBUG] - argv[7] (activityStatus):', activityStatus);
+console.log('[DEBUG] - argv[8] (listeningPort):', listeningPort);
 
 // Charger la configuration quickreply depuis le répertoire data du plugin
 const path = require('path');
@@ -627,7 +629,9 @@ function startServer() {
 
     config.logger('DiscordLink:    ******************** Lancement BOT Discord.js v14 ***********************', 'INFO');
 
-    client.login(config.token);
+    client.login(config.token).catch(err => {
+        config.logger('DiscordLink FATAL ERROR Login: ' + err.message, 'ERROR');
+    });
 
     server = app.listen(config.listeningPort, () => {
         config.logger('DiscordLink:    **************************************************************', 'INFO');
@@ -640,8 +644,8 @@ function httpPost(name, jsonData) {
     let url = jeedomIP + "/plugins/discordlink/core/php/jeediscordlink.php?apikey=" + pluginKey + "&name=" + name;
 
     config.logger && config.logger('URL envoyée: ' + url, "DEBUG");
-    console.log("jsonData : " + jsonData);
-    config.logger && config.logger('DATA envoyé:' + jsonData, 'DEBUG');
+    console.log("jsonData : " + JSON.stringify(jsonData));
+    config.logger && config.logger('DATA envoyé:' + JSON.stringify(jsonData), 'DEBUG');
 
     fetch(url, {
         method: 'post', 

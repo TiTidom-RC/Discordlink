@@ -13,10 +13,10 @@
 	"os" : {
 		"min" : 11
 	},
-	"changelog" : "https://titidom-rc.github.io/Documentation/fr_FR/discordlink/changelog",
-	"changelog_beta" : "https://titidom-rc.github.io/Documentation/fr_FR/discordlink/changelog",
-	"documentation" : "https://titidom-rc.github.io/Documentation/fr_FR/discordlink/",
-	"documentation_beta" : "https://titidom-rc.github.io/Documentation/fr_FR/discordlink/",
+	"changelog" : "https://titidom-rc.github.io/Documentation/fr_FR/DiscordLink/changelog",
+	"changelog_beta" : "https://titidom-rc.github.io/Documentation/fr_FR/DiscordLink/beta/changelog",
+	"documentation" : "https://titidom-rc.github.io/Documentation/fr_FR/DiscordLink/index",
+	"documentation_beta" : "https://titidom-rc.github.io/Documentation/fr_FR/DiscordLink/index",
 	"link" : {
 		"forum":"https://community.jeedom.com/tag/plugin-discordlink",
 		"video" : ""
