@@ -122,7 +122,7 @@ function logger(text, logLevel = 'LOG') {
         const seconds = String(now.getSeconds()).padStart(2, '0');
         const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
         
-        console.log(`[${timestamp}] [${levelLabel}] ${text}`);
+        console.log(`[${timestamp}][${levelLabel}] ${text}`);
     } catch (e) {
         console.log(arguments[0]);
     }

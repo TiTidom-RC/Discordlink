@@ -20,7 +20,7 @@ require_once __DIR__  . '/../../../../core/php/core.inc.php';
 
 class discordMsg {
 
-    public static function LastUser() {
+    public static function lastUser() {
         $message = "";
         $userConnectListNew = '';
         $userConnectList = '';
@@ -54,30 +54,30 @@ class discordMsg {
         $userIndex = 0;
         foreach (user::all() as $user) {
             $userIndex++;
-                $userConnectDate[$userIndex] = $user->getOptions('lastConnection');
-            if($userConnectDate[$userIndex] == ""){
-                $userConnectDate[$userIndex] = "1970-01-01 00:00:00";
+                $connectedUserDates[$userIndex] = $user->getOptions('lastConnection');
+            if($connectedUserDates[$userIndex] == ""){
+                $connectedUserDates[$userIndex] = "1970-01-01 00:00:00";
             }
-            if(strtotime($timeNow) - strtotime($userConnectDate[$userIndex]) < $offlineDelay*60){
-                $userConnectStatus[$userIndex] = 'en ligne';
+            if(strtotime($timeNow) - strtotime($connectedUserDates[$userIndex]) < $offlineDelay*60){
+                $connectedUserStatuses[$userIndex] = 'en ligne';
             }else{
-                $userConnectStatus[$userIndex] = 'hors ligne';
+                $connectedUserStatuses[$userIndex] = 'hors ligne';
             }
-            $userConnectName[$userIndex] = $user->getLogin();
-            if($userConnectList != ''){
-                $userConnectList = $userConnectList.'|';
+            $connectedUserNames[$userIndex] = $user->getLogin();
+            if($connectedUserList != ''){
+                $connectedUserList = $connectedUserList.'|';
             }
-            $userConnectList .= $userConnectName[$userIndex].';'.$userConnectDate[$userIndex].';'.$userConnectStatus[$userIndex];
+            $connectedUserList .= $connectedUserNames[$userIndex].';'.$connectedUserDates[$userIndex].';'.$connectedUserStatuses[$userIndex];
         }
         
-        $userConnectListNew = '';
+        $connectedUserListNew = '';
         // Récupération des lignes du log Connection
         $logData = log::getDelta('connection', 0, '', false, false, 0, $maxLine);
-        $logConnectionList = !empty($logData['logText']) ? explode("\n", trim($logData['logText'])) : array();
+        $connectionLogs = !empty($logData['logText']) ? explode("\n", trim($logData['logText'])) : array();
         $logUserIndex = 0;
         $lastLogConnectionName = '';
-        if (is_array($logConnectionList)) {
-            foreach ($logConnectionList as $value) {
+        if (is_array($connectionLogs)) {
+            foreach ($connectionLogs as $value) {
                 $logConnection = explode("]", $value);
                 $logConnection = substr($logConnection[0], 1);
                 if (strtotime($timeNow) - strtotime($logConnection) > $cronInterval) {
@@ -87,53 +87,53 @@ class discordMsg {
                     break;
                 } else {
                     $logUserIndex++;
-                    $logConnectionDate[$logUserIndex] = $logConnection;
+                    $connectionLogDates[$logUserIndex] = $logConnection;
                     $logConnection = explode(" : ", $value);
-                    $logConnectionName[$logUserIndex] = strtolower($logConnection[2]);
+                    $connectionLogNames[$logUserIndex] = strtolower($logConnection[2]);
                     if (strpos($logConnection[1], 'clef') !== false) {
-                        $logConnectionType[$logUserIndex] = 'clef';
+                        $connectionLogTypes[$logUserIndex] = 'clef';
                     } elseif (strpos($logConnection[1], 'API') !== false) {
-                        $logConnectionType[$logUserIndex] = 'api';
+                        $connectionLogTypes[$logUserIndex] = 'api';
                     } else {
-                        $logConnectionType[$logUserIndex] = 'navigateur';
+                        $connectionLogTypes[$logUserIndex] = 'navigateur';
                     }
                     if ($logUserIndex == 1) {
                         $message .= "\n" . $emojiMagRight . "__Récapitulatif de ces " . $cronInterval . " dernières secondes :__ " . $emojiMag;
                     }
                     $onlineCount++;
-                    $message .= "\n" . $emojiCheck . "**" . $logConnectionName[$logUserIndex] . "** s'est connecté par **" . $logConnectionType[$logUserIndex] . "** à **" . date("H", strtotime($logConnectionDate[$logUserIndex])) . "h" . date("i", strtotime($logConnectionDate[$logUserIndex])) . "**";
+                    $message .= "\n" . $emojiCheck . "**" . $connectionLogNames[$logUserIndex] . "** s'est connecté par **" . $connectionLogTypes[$logUserIndex] . "** à **" . date("H", strtotime($connectionLogDates[$logUserIndex])) . "h" . date("i", strtotime($connectionLogDates[$logUserIndex])) . "**";
                     $hasCronActivity = true;
-                    $userNumber = 0;
+                    $userIndex = 0;
                     $foundCount = 0;
-                    if (strpos($lastLogConnectionName, $logConnectionName[$logUserIndex]) === false) {
+                    if (strpos($lastLogConnectionName, $connectionLogNames[$logUserIndex]) === false) {
                     } else {
                         continue;
                     }
-                    $lastLogConnectionName = $logConnectionName[$logUserIndex];
-                    foreach ($userConnectName as $userName) {
-                        $userNumber++;
-                        if ($logConnectionName[$logUserIndex] == $userConnectName[$userNumber]) {        ///Utilisateur déjà enregistré
+                    $lastLogConnectionName = $connectionLogNames[$logUserIndex];
+                    foreach ($connectedUserNames as $userName) {
+                        $userIndex++;
+                        if ($connectionLogNames[$logUserIndex] == $connectedUserNames[$userIndex]) {        ///Utilisateur déjà enregistré
                             $foundCount++;
-                            if ($userConnectStatus[$userNumber] == 'hors ligne') {
-                                $userConnectDate[$userNumber] = $logConnectionDate[$logUserIndex];
-                                $userConnectStatus[$userNumber] = 'en ligne';
+                            if ($connectedUserStatuses[$userIndex] == 'hors ligne') {
+                                $connectedUserDates[$userIndex] = $connectionLogDates[$logUserIndex];
+                                $connectedUserStatuses[$userIndex] = 'en ligne';
                             }
                         }
-                        if ($userConnectListNew != '') {
-                            $userConnectListNew = $userConnectListNew . '|';
+                        if ($connectedUserListNew != '') {
+                            $connectedUserListNew = $connectedUserListNew . '|';
                         }
-                        $userConnectListNew .= $userConnectName[$userNumber] . ';' . $userConnectDate[$userNumber] . ';' . $userConnectStatus[$userNumber];
+                        $connectedUserListNew .= $connectedUserNames[$userIndex] . ';' . $connectedUserDates[$userIndex] . ';' . $connectedUserStatuses[$userIndex];
                     }
                     if ($foundCount == 0) {                                                                //Utilisateur nouveau
-                        $userConnectName[$userNumber] = $logConnectionName[$logUserIndex];
-                        $userConnectDate[$userNumber] = $logConnectionDate[$logUserIndex];
-                        $userConnectStatus[$userNumber] = 'en ligne';
-                        if ($userConnectListNew != '') {
-                            $userConnectListNew = $userConnectListNew . '|';
+                        $connectedUserNames[$userIndex] = $connectionLogNames[$logUserIndex];
+                        $connectedUserDates[$userIndex] = $connectionLogDates[$logUserIndex];
+                        $connectedUserStatuses[$userIndex] = 'en ligne';
+                        if ($connectedUserListNew != '') {
+                            $connectedUserListNew = $connectedUserListNew . '|';
                         }
-                        $userConnectListNew .= $userConnectName[$userNumber] . ';' . $userConnectDate[$userNumber] . ';' . $userConnectStatus[$userNumber];
+                        $connectedUserListNew .= $connectedUserNames[$userIndex] . ';' . $connectedUserDates[$userIndex] . ';' . $connectedUserStatuses[$userIndex];
                     }
-                    $userConnectList = $userConnectListNew;
+                    $connectedUserList = $connectedUserListNew;
                 }
             }
         }
@@ -143,56 +143,56 @@ class discordMsg {
         
         $message .= "\n"."\n".$emojiMagRight."__Récapitulatif des sessions actuelles :__ ".$emojiMag;
         // Parcours des sessions pour vérifier le statut et le nombre de sessions
-        $userNumber=0;
-        $userConnectListNew = '';
-        foreach($userConnectName as $value){
-            $userNumber++;
-            $userSession=0;
+        $userIndex=0;
+        $connectedUserListNew = '';
+        foreach($connectedUserNames as $value){
+            $userIndex++;
+            $sessionIndex=0;
             $foundCount = 0;
-            $userConnectStatus[$userNumber] = 'hors ligne';
-            $userConnectIP[$userNumber] = '';
+            $connectedUserStatuses[$userIndex] = 'hors ligne';
+            $connectedUserIPs[$userIndex] = '';
 
             foreach($sessions as $id => $session){
-                $userSession++;
+                $sessionIndex++;
                 
-                $userDelai = strtotime(date("Y-m-d H:i:s")) - strtotime($session['datetime']);
+                $userDelay = strtotime(date("Y-m-d H:i:s")) - strtotime($session['datetime']);
 
-                if($userConnectName[$userNumber] == $session['login']){
-                    if($userDelai < $offlineDelay*60){
+                if($connectedUserNames[$userIndex] == $session['login']){
+                    if($userDelay < $offlineDelay*60){
                         $foundCount++;
                         $onlineCount++;
-                        $userConnectStatus[$userNumber] = 'en ligne';
-                        $userConnectIP[$userNumber] .= "\n"."-> ".$emojiInternet." IP : ".$session['ip'];
+                        $connectedUserStatuses[$userIndex] = 'en ligne';
+                        $connectedUserIPs[$userIndex] .= "\n"."-> ".$emojiInternet." IP : ".$session['ip'];
                     }else{
                     }
                 }			
             }
-            if(date("Y-m-d",strtotime($userConnectDate[$userNumber])) == date("Y-m-d",strtotime($timeNow))){
-                $hours = date("H",strtotime($userConnectDate[$userNumber]));
-                $minutes = date("i",strtotime($userConnectDate[$userNumber]));
+            if(date("Y-m-d",strtotime($connectedUserDates[$userIndex])) == date("Y-m-d",strtotime($timeNow))){
+                $hours = date("H",strtotime($connectedUserDates[$userIndex]));
+                $minutes = date("i",strtotime($connectedUserDates[$userIndex]));
                 $date = $hours."h".$minutes;
             }else{
-                $dayName = date_fr(date("l", strtotime($userConnectDate[$userNumber])));
-                $dayNumber = date("d",strtotime($userConnectDate[$userNumber]));
-                $monthName = date_fr(date("F", strtotime($userConnectDate[$userNumber])));
-                $yearNumber = date("Y",strtotime($userConnectDate[$userNumber]));
-                $hours = date("H",strtotime($userConnectDate[$userNumber]));
-                $minutes = date("i",strtotime($userConnectDate[$userNumber]));
+                $dayName = date_fr(date("l", strtotime($connectedUserDates[$userIndex])));
+                $dayNumber = date("d",strtotime($connectedUserDates[$userIndex]));
+                $monthName = date_fr(date("F", strtotime($connectedUserDates[$userIndex])));
+                $yearNumber = date("Y",strtotime($connectedUserDates[$userIndex]));
+                $hours = date("H",strtotime($connectedUserDates[$userIndex]));
+                $minutes = date("i",strtotime($connectedUserDates[$userIndex]));
                 $date = $dayName." ".$dayNumber." ".$monthName." ".$yearNumber."** à **".$hours."h".$minutes;
             }
             if($foundCount > 0){
-                $message .= "\n".$emojiConnected." **".$userConnectName[$userNumber]."** est **en ligne** depuis **".$date."**";
-                $message .= $userConnectIP[$userNumber];
+                $message .= "\n".$emojiConnected." **".$connectedUserNames[$userIndex]."** est **en ligne** depuis **".$date."**";
+                $message .= $connectedUserIPs[$userIndex];
             }else{
-                if(strtotime($timeNow) - strtotime($userConnectDate[$userNumber]) < ($daysBeforeUserRemoval*24*60*60)){
-                    $message .= "\n".$emojiDisconnected." **".$userConnectName[$userNumber]."** est **hors ligne** (dernière connexion **".$date."**)";
+                if(strtotime($timeNow) - strtotime($connectedUserDates[$userIndex]) < ($daysBeforeUserRemoval*24*60*60)){
+                    $message .= "\n".$emojiDisconnected." **".$connectedUserNames[$userIndex]."** est **hors ligne** (dernière connexion **".$date."**)";
                 }
             }
-            if($userConnectListNew != ''){
-                $userConnectListNew = $userConnectListNew.'|';
+            if($connectedUserListNew != ''){
+                $connectedUserListNew = $connectedUserListNew.'|';
             }
-            $userConnectListNew .= $userConnectName[$userNumber].';'.$userConnectDate[$userNumber].';'.$userConnectStatus[$userNumber];
-            $userConnectList=$userConnectListNew;
+            $connectedUserListNew .= $connectedUserNames[$userIndex].';'.$connectedUserDates[$userIndex].';'.$connectedUserStatuses[$userIndex];
+            $connectedUserList=$connectedUserListNew;
         }
         
         // Préparation des tags de notification
