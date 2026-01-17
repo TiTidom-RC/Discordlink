@@ -35,6 +35,30 @@ function discordlink_update() {
     $version = $info['pluginVersion'];
     config::save('pluginVersion', $version, 'discordlink');
 
+    // MIGRATION V2.0 : Correction des commandes existantes sans LogicalId
+    // Pour éviter l'erreur SQL 1062 Duplicate Entry lors de la recréation des commandes
+    try {
+        $eqLogics = eqLogic::byType('discordlink');
+        foreach ($eqLogics as $eqLogic) {
+            // Liste des commandes critiques qui provoquaient des doublons
+            $cmdsToFix = array('Etat des démons' => 'daemonInfo', 'Etat des dépendances' => 'dependencyInfo', 'Résumé général' => 'globalSummary');
+            foreach ($cmdsToFix as $cmdName => $logicId) {
+                // On cherche la commande par son nom
+                $cmd = $eqLogic->getCmd(null, null, null, $cmdName);
+                if (is_object($cmd)) {
+                    // Si elle existe, on force son logicalId pour que discordlink::CreateCmd() la retrouve
+                    if ($cmd->getLogicalId() != $logicId) {
+                        $cmd->setLogicalId($logicId);
+                        $cmd->save();
+                    }
+                }
+            }
+        }
+    } catch (Exception $e) {
+        // En cas d'erreur de migration, on continue
+        log::add('discordlink', 'error', 'Erreur lors de la migration des commandes : ' . $e->getMessage());
+    }
+
     if (config::byKey('disableUpdateMessage', 'discordlink', 0) == 0) {
         message::add('discordlink', 'Le plugin DiscordLink a été mis à jour en version ' . $version);
     }
