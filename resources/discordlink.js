@@ -670,6 +670,15 @@ function startServer() {
         config.logger('DiscordLink:    ************** Server OK listening on port ' + server.address().port + ' **************', 'INFO');
         config.logger('DiscordLink:    **************************************************************', 'INFO');
     });
+
+    server.on('error', (e) => {
+        if (e.code === 'EADDRINUSE') {
+            config.logger(`FATAL ERROR: Port ${config.listeningPort} is already in use`, 'ERROR');
+            process.exit(1);
+        } else {
+            config.logger('Server error: ' + e.message, 'ERROR');
+        }
+    });
 }
 
 function httpPost(name, jsonData) {
