@@ -431,7 +431,7 @@ class discordlink extends eqLogic {
 					$cmd->setLogicalId($cmdKey);
 					if ($cmdConfig['type'] == "action" && $cmdKey != "daemonInfo") {
 						$cmd->setConfiguration('request', $cmdConfig['request']);
-						$cmd->setConfiguration('value', 'http://' . config::byKey('internalAddr') . ':3466/' . $cmdConfig['request'] . "&channelID=" . $eqLogic->getConfiguration('channelId'));
+						$cmd->setConfiguration('value', 'http://127.0.0.1:' . discordlink::SOCKET_PORT . '/' . $cmdConfig['request'] . "&channelID=" . $eqLogic->getConfiguration('channelId'));
 					}
 					if ($cmdConfig['type'] == "action" && $cmdKey == "daemonInfo") {
 						$cmd->setConfiguration('request', $cmdConfig['request']);
@@ -695,18 +695,11 @@ class discordlink extends eqLogic {
 					}
 				}			
 			}
-			if(date("Y-m-d",strtotime($userConnectDate[$userNumber])) == date("Y-m-d",strtotime($timeNow))){
-				$heures = date("H",strtotime($userConnectDate[$userNumber]));
-				$minutes = date("i",strtotime($userConnectDate[$userNumber]));
-				$date = $heures."h".$minutes;
-			}else{
-				$dayName = date_fr(date("l", strtotime($userConnectDate[$userNumber])));
-				$numJour = date("d",strtotime($userConnectDate[$userNumber]));
-				$monthName = date_fr(date("F", strtotime($userConnectDate[$userNumber])));
-				$numAnnee = date("Y",strtotime($userConnectDate[$userNumber]));
-				$heures = date("H",strtotime($userConnectDate[$userNumber]));
-				$minutes = date("i",strtotime($userConnectDate[$userNumber]));
-				$date = $dayName." ".$numJour." ".$monthName." ".$numAnnee."** à **".$heures."h".$minutes;
+			$connectTimestamp = strtotime($userConnectDate[$userNumber]);
+			if (date("Y-m-d", $connectTimestamp) == date("Y-m-d", $timestampNow)) {
+				$date = date("H\hi", $connectTimestamp);
+			} else {
+				$date = date_fr(date("l d F Y", $connectTimestamp)) . "** à **" . date("H\hi", $connectTimestamp);
 			}
 			if($foundCount > 0){
 				$message .= "\n".$emojiConnected." **".$userConnectName[$userNumber]."** est **en ligne** depuis **".$date."**";
@@ -819,7 +812,7 @@ class discordlinkCmd extends cmd {
 		}
 		
 		$channelID = str_replace('_player', '', $this->getEqLogic()->getConfiguration('channelId'));
-		return 'http://' . config::byKey('internalAddr') . ':3466/' . $request . '&channelID=' . $channelID;
+		return 'http://127.0.0.1:' . discordlink::SOCKET_PORT . '/' . $request . '&channelID=' . $channelID;
 	}
 
 	private function buildMessageRequest($_options = array(), $default = "Une erreur est survenue") {
@@ -1029,7 +1022,7 @@ public function buildDependencyInfo($_options = array()) {
 			return 'truesendwithembed';
 		}
 
-		public function build_globalSummary($_options = array()) {
+		public function buildGlobalSummary($_options = array()) {
 
 			$objects = jeeObject::all();
 			$def = config::byKey('object:summary');
@@ -1056,7 +1049,7 @@ public function buildDependencyInfo($_options = array()) {
 			return 'truesendwithembed';
 		}
 
-		public function build_baterieglobal($_options = array()) {
+		public function buildGlobalBattery($_options = array()) {
 			$message='null';
 			$colors = '#00ff08';
 			$alertThreshold = 30;
@@ -1252,9 +1245,7 @@ public function buildDependencyInfo($_options = array()) {
 		$data = str_replace(array_keys($replace), array_values($replace), $data);
 		
 		if (!is_null($data)) {
-			if (version_compare(jeedom::version(),'4.2.0','>=')) {
-				if(!is_array($data)) return array('template' => $data, 'isCoreWidget' => false);
-			} else return $data;
+			if(!is_array($data)) return array('template' => $data, 'isCoreWidget' => false);
 		}
 		return parent::getWidgetTemplateCode($_version, $_clean, $_widgetName);
 	}
