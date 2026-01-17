@@ -273,7 +273,7 @@ class discordlink extends eqLogic {
 		$cmd = sprintf(
 			'nice -n 19 node %s/discordlink.js %s %s %s %s %s %s %s',
 			escapeshellarg(realpath(dirname(__FILE__) . '/../../resources')),
-			escapeshellarg(network::getNetworkAccess('internal')),
+			escapeshellarg(network::getNetworkAccess('internal', 'proto:127.0.0.1:port:comp')),
 			escapeshellarg(config::byKey('Token', 'discordlink')),
 			escapeshellarg(log::getLogLevel('discordlink')),
 			escapeshellarg(network::getNetworkAccess('internal', 'proto:127.0.0.1:port:comp') . '/plugins/discordlink/core/api/jeeDiscordlink.php?apikey=' . $apiKey),
