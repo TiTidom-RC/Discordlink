@@ -45,15 +45,13 @@ const config = {
 };
 
 // Debug: Afficher les arguments reçus (masquer le token pour la sécurité)
-if (logLevelLimit <= 100) {
-    console.log('[DEBUG] Arguments reçus:');
-    console.log('[DEBUG] - argv[2] (jeedomURL):', jeedomURL);
-    console.log('[DEBUG] - argv[3] (token):', token ? `[PRESENT - ${token.length} caractères]` : '[ABSENT]');
-    console.log('[DEBUG] - argv[4] (logLevel):', logLevelLimit);
-    console.log('[DEBUG] - argv[6] (pluginKey):', pluginKey);
-    console.log('[DEBUG] - argv[7] (activityStatus):', activityStatus);
-    console.log('[DEBUG] - argv[8] (listeningPort):', listeningPort);
-}
+config.logger('Arguments reçus:', 'DEBUG');
+config.logger(' - argv[2] (jeedomURL): ' + jeedomURL, 'DEBUG');
+config.logger(' - argv[3] (token): ' + (token ? `[PRESENT - ${token.length} caractères]` : '[ABSENT]'), 'DEBUG');
+config.logger(' - argv[4] (logLevel): ' + logLevelLimit, 'DEBUG');
+config.logger(' - argv[6] (pluginKey): ' + pluginKey, 'DEBUG');
+config.logger(' - argv[7] (activityStatus): ' + activityStatus, 'DEBUG');
+config.logger(' - argv[8] (listeningPort): ' + listeningPort, 'DEBUG');
 
 // Charger la configuration quickreply depuis le répertoire data du plugin
 const path = require('path');
