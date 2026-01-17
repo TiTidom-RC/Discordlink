@@ -320,7 +320,8 @@ class discordlink extends eqLogic {
 		}
 		
 		// Attente dynamique de l'arrêt du processus (max 3s)
-		$processPattern = escapeshellarg('discordlink.js');
+		// On précise "node" pour éviter de tuer/compter des processus parasites (éditeur, tail, etc.)
+		$processPattern = escapeshellarg('node .*discordlink.js');
 		for ($i = 0; $i < 30; $i++) {
 			$pidCount = (int)trim(shell_exec('pgrep -f ' . $processPattern . ' 2>/dev/null | wc -l'));
 			if ($pidCount == 0) {
