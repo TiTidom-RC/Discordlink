@@ -1,14 +1,5 @@
 {
-  "apt": {
-    "nodejs" : {}
-  },
   "npm": {
-    "yarn": {}
-  },
-  "pre-install": {
-    "script" : "plugins/discordlink/resources/pre_install.sh"
-  },
-  "post-install": {
-    "script" : "plugins/discordlink/resources/post_install.sh"
+    "plugins/discordlink/resources": {}
   }
 }

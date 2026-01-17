@@ -15,31 +15,18 @@
  */
 
 setupcase();
-$('.bt_test').off('click').on('click', function () {
 
-  console.log(getchannel);
-
-});
-
-$("#table_cmd").sortable({
-  axis: "y",
-  cursor: "move",
-  items: ".cmd",
-  placeholder: "ui-state-highlight",
-  tolerance: "intersect",
-  forcePlaceholderSize: true
-});
 /*
- * Fonction pour l'ajout de commande, appellé automatiquement par plugin.template
+ * Fonction pour l'ajout de commande, appelé automatiquement par plugin.template
  */
 function addCmdToTable(_cmd) {
   if (!isset(_cmd)) {
-    var _cmd = {
+    _cmd = {
       configuration: {}
     };
   }
 
-  var DefinitionDivPourCommandesPredefinies = 'style="display: none;"';
+  let DefinitionDivPourCommandesPredefinies = 'style="display: none;"';
   if (init(_cmd.logicalId) == "") DefinitionDivPourCommandesPredefinies = "";
 
   if (!isset(_cmd.configuration)) {
@@ -48,7 +35,7 @@ function addCmdToTable(_cmd) {
 
 
   if (init(_cmd.type) == 'info') {
-    var tr =
+    let tr =
       '<tr class="cmd" data-cmd_id="' + init(_cmd.id) + '">' +
       '<td>' +
       '<span class="cmdAttr" data-l1key="id"></span>' +
@@ -89,7 +76,7 @@ function addCmdToTable(_cmd) {
   }
 
   if (init(_cmd.type) == 'action') {
-    var tr =
+    let tr =
       '<tr class="cmd" data-cmd_id="' + init(_cmd.id) + '">' +
       '<td>' +
       '<span class="cmdAttr" data-l1key="id"></span>' +
@@ -152,7 +139,7 @@ function addCmdToTable(_cmd) {
       '</tr>';
 
     $('#table_cmd tbody').append(tr);
-    var tr = $('#table_cmd tbody tr:last');
+    const $tr = $('#table_cmd tbody tr:last');
     jeedom.eqLogic.builSelectCmd({
       id: $(".li_eqLogic.active").attr('data-eqLogic_id'),
       filter: {
@@ -165,9 +152,9 @@ function addCmdToTable(_cmd) {
         });
       },
       success: function (result) {
-        tr.find('.cmdAttr[data-l1key=value]').append(result);
-        tr.setValues(_cmd, '.cmdAttr');
-        jeedom.cmd.changeType(tr, init(_cmd.subType));
+        $tr.find('.cmdAttr[data-l1key=value]').append(result);
+        $tr.setValues(_cmd, '.cmdAttr');
+        jeedom.cmd.changeType($tr, init(_cmd.subType));
       }
     });
   }
@@ -175,74 +162,53 @@ function addCmdToTable(_cmd) {
 
 $('#bt_cronGeneratordeamon').on('click', function () {
   jeedom.getCronSelectModal({}, function (result) {
-    $('.eqLogicAttr[data-l1key=configuration][data-l2key=autorefreshDeamon]').value(result.value);
+    $('.eqLogicAttr[data-l1key=configuration][data-l2key=autoRefreshDaemon]').value(result.value);
   });
 });
 
 $('#bt_cronGeneratorDependance').on('click', function () {
   jeedom.getCronSelectModal({}, function (result) {
-    $('.eqLogicAttr[data-l1key=configuration][data-l2key=autorefreshDependances]').value(result.value);
-  });
-});
-
-$('#bt_cronGeneratorzwave').on('click', function () {
-  jeedom.getCronSelectModal({}, function (result) {
-    $('.eqLogicAttr[data-l1key=configuration][data-l2key=autorefreshZWave]').value(result.value);
+    $('.eqLogicAttr[data-l1key=configuration][data-l2key=autoRefreshDependency]').value(result.value);
   });
 });
 
 function setupcase() {
   HideAll();
-  if ($('.eqLogicAttr[data-l1key=configuration][data-l2key=deamoncheck]').value() == 1) {
-    var divsToHide = document.getElementsByClassName('deamon'); //divsToHide is an array
-    for (var i = 0; i < divsToHide.length; i++) {
-      divsToHide[i].style.visibility = "visible"; // or
-      divsToHide[i].style.display = "initial"; // depending on what you're doing
-    }
+  if ($('.eqLogicAttr[data-l1key=configuration][data-l2key=daemonCheck]').value() == 1) {
+    let divsToShow = document.getElementsByClassName('deamon');
+    Array.from(divsToShow).forEach(div => {
+      div.style.visibility = "visible";
+      div.style.display = "initial";
+    });
   }
-  if ($('.eqLogicAttr[data-l1key=configuration][data-l2key=depcheck]').value() == 1) {
-    var divsToHide2 = document.getElementsByClassName('dependance'); //divsToHide is an array
-    for (var a = 0; a < divsToHide2.length; a++) {
-      divsToHide2[a].style.visibility = "visible"; // or
-      divsToHide2[a].style.display = "initial"; // depending on what you're doing
-    }
-  }
-  if ($('.eqLogicAttr[data-l1key=configuration][data-l2key=zwavecheck]').value() == 1) {
-    var divsToHide3 = document.getElementsByClassName('zwave'); //divsToHide is an array
-    for (var b = 0; b < divsToHide3.length; b++) {
-      divsToHide3[b].style.visibility = "visible"; // or
-      divsToHide3[b].style.display = "initial"; // depending on what you're doing
-    }
+  if ($('.eqLogicAttr[data-l1key=configuration][data-l2key=dependencyCheck]').value() == 1) {
+    let divsToShow = document.getElementsByClassName('dependance');
+    Array.from(divsToShow).forEach(div => {
+      div.style.visibility = "visible";
+      div.style.display = "initial";
+    });
   }
 }
 
 function HideAll() {
-  var divsToHide = document.getElementsByClassName('deamon'); //divsToHide is an array
-  for (var i = 0; i < divsToHide.length; i++) {
-    divsToHide[i].style.visibility = "hidden"; // or
-    divsToHide[i].style.display = "none"; // depending on what you're doing
-  }
-  var divsToHide2 = document.getElementsByClassName('dependance'); //divsToHide is an array
-  for (var a = 0; a < divsToHide2.length; a++) {
-    divsToHide2[a].style.visibility = "hidden"; // or
-    divsToHide2[a].style.display = "none"; // depending on what you're doing
-  }
-  var divsToHide3 = document.getElementsByClassName('zwave'); //divsToHide is an array
-  for (var b = 0; b < divsToHide3.length; b++) {
-    divsToHide3[b].style.visibility = "hidden"; // or
-    divsToHide3[b].style.display = "none"; // depending on what you're doing
-  }
+  let divsToHide = document.getElementsByClassName('deamon');
+  Array.from(divsToHide).forEach(div => {
+    div.style.visibility = "hidden";
+    div.style.display = "none";
+  });
+  
+  let divsToHide2 = document.getElementsByClassName('dependance');
+  Array.from(divsToHide2).forEach(div => {
+    div.style.visibility = "hidden";
+    div.style.display = "none";
+  });
 }
 
-$('#deamoncheck').click(function () {
+$('#daemonCheck').click(function () {
   setupcase();
 });
 
-$('#depcheck').click(function () {
-  setupcase();
-});
-
-$('#zwavecheck').click(function () {
+$('#dependencyCheck').click(function () {
   setupcase();
 });
 

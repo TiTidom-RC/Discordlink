@@ -24,26 +24,32 @@ if (!isConnect()) {
 ?>
 <form class="form-horizontal">
     <fieldset>
+        <legend><i class="fas fa-info"></i> {{Plugin}}</legend>
         <div class="form-group">
-            <label class="col-lg-4 control-label">{{Token : }}</label>
+            <label class="col-lg-3 control-label">{{Version Plugin}}
+                <sup><i class="fas fa-question-circle tooltips" title="{{Version du Plugin (A indiquer sur Community)}}"></i></sup>
+            </label>
+            <div class="col-lg-1">
+                <input class="configKey form-control" data-l1key="pluginVersion" readonly />
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-lg-3 control-label">{{Ne pas afficher le message de mise à jour}}</label>
+            <div class="col-lg-1">
+                <input type="checkbox" class="configKey" data-l1key="disableUpdateMessage" />
+            </div>
+        </div>
+        
+        <legend><i class="fas fa-cogs"></i> {{Général}}</legend>
+        <div class="form-group">
+            <label class="col-lg-3 control-label">{{Token : }}</label>
             <div class="col-lg-6">
                 <input class="configKey form-control" data-l1key="Token" />
             </div>
         </div>
         </br>
-        <div class="form-group" hidden>
-            <label class="col-lg-4 control-label">{{Bot Invite : }}</label>
-            <div class="col-lg-6">
-                <?php
-                    echo '<a class="btn btn-success btn-sm bt_getinvite">Ajouter votre bot à votre serveur discord</a>';
-                    echo '<a class="btn btn-danger btn-sm bt_errorinvite">Erreur, lance ton démon et si tu n\'y arrives pas, clique sur moi</a>';
-                    include_file('desktop', 'configuration', 'js', 'discordlink');
-                ?>
-            </div>
-        </div>
-      <br/>
       <div class="form-group">
-          <label class="col-lg-4 control-label">{{Joue à : }}</label>
+          <label class="col-lg-3 control-label">{{Joue à : }}</label>
           <div class="col-lg-6">
               <input class="configKey form-control" data-l1key="joueA" placeholder="Travailler main dans la main avec votre Jeedom"/>
           </div>

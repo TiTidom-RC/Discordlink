@@ -15,19 +15,17 @@
  * along with Jeedom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-$("#table_cmd").sortable({axis: "y", cursor: "move", items: ".cmd", placeholder: "ui-state-highlight", tolerance: "intersect", forcePlaceholderSize: true});
-
 /*
- * Fonction pour l'ajout de commande, appellé automatiquement par plugin.template
+ * Fonction pour l'ajout de commande, appelé automatiquement par plugin.template
  */
-initemojy();
-function initemojy() {
+initEmoji();
+function initEmoji() {
   
   $.ajax({
     type: 'POST',
     url: 'plugins/discordlink/core/ajax/discordlink.ajax.php',
     data: {
-      action: 'getemojy'
+      action: 'getEmoji'
     },
     dataType: 'json',
     error: function (request, status, error) {
@@ -39,50 +37,50 @@ function initemojy() {
         return;
       }
       for (var i in data.result) {
-        addEmojyToTable(data.result[i]);
+        addEmojiToTable(data.result[i]);
       }
     }
   });
 }
 
-function addEmojyToTable(_cmd) {
+function addEmojiToTable(_cmd) {
 
     if (!isset(_cmd.configuration)) {
         _cmd.configuration = {};
     }
 
-    var tr =  ' <tr class="emojy">'
+    const tr =  ' <tr class="emoji">'
       +   '<td>'
       +     '<div class="row">'
       +       '<div class="col-lg-8">'
-      +         '<input class="emojyAttr form-control input-sm" data-l1key="keyEmojy">'
+      +         '<input class="emojiAttr form-control input-sm" data-l1key="keyEmoji">'
       +       '</div>'
       +   '</td>'
       +   '<td>'
       +     '<div class="row">'
       +        '<div class="col-lg-8">'
-      +          '<input class="emojyAttr form-control input-sm" data-l1key="codeEmojy">'
+      +          '<input class="emojiAttr form-control input-sm" data-l1key="codeEmoji">'
       +        '</div>'
       +     '</div>'
       + '<td>'
-      + '<i class="fas fa-minus-circle pull-right emojyAction cursor" data-action="remove"></i>'
+      + '<i class="fas fa-minus-circle pull-right emojiAction cursor" data-action="remove"></i>'
       +   '</td>'
       + '</tr>';
 
     $('#table_cmd tbody').append(tr);
-    $('#table_cmd tbody tr:last').setValues(_cmd, '.emojyAttr');
+    $('#table_cmd tbody tr:last').setValues(_cmd, '.emojiAttr');
 }
 
-$('.eqLogicAction[data-action=saveemojy]').off('click').on('click', function () {
+$('.eqLogicAction[data-action=saveEmoji]').off('click').on('click', function () {
   
-  emojyarray = $('#commandtab').find('.emojy').getValues('.emojyAttr');
+  emojiArray = $('#commandtab').find('.emoji').getValues('.emojiAttr');
 
   $.ajax({
     type: 'POST',
     url: 'plugins/discordlink/core/ajax/discordlink.ajax.php',
     data: {
-      action: 'saveemojy',
-      arrayemojy: emojyarray
+      action: 'saveEmoji',
+      arrayEmoji: emojiArray
     },
     dataType: 'json',
     error: function (request, status, error) {
@@ -97,10 +95,10 @@ $('.eqLogicAction[data-action=saveemojy]').off('click').on('click', function () 
   });
 });
 
-$("#bt_addemojy").off('click').on('click', function(event)
+$("#bt_addEmoji").off('click').on('click', function(event)
 {
-  var _cmd = {};
-  addEmojyToTable(_cmd);
+  let _cmd = {};
+  addEmojiToTable(_cmd);
 });
 
 $("#bt_reset").off('click').on('click', function(event)
@@ -109,7 +107,7 @@ $("#bt_reset").off('click').on('click', function(event)
     type: 'POST',
     url: 'plugins/discordlink/core/ajax/discordlink.ajax.php',
     data: {
-      action: 'resetemojy'
+      action: 'resetEmoji'
     },
     dataType: 'json',
     error: function (request, status, error) {
@@ -125,7 +123,7 @@ $("#bt_reset").off('click').on('click', function(event)
   });
 });
 
-$('#div_pageContainer').on( 'click', '.emojy .emojyAction[data-action=remove]',function () {
+$('#div_pageContainer').on( 'click', '.emoji .emojiAction[data-action=remove]',function () {
   modifyWithoutSave = true;
   $(this).closest('tr').remove();
 });

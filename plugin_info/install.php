@@ -19,17 +19,150 @@
 require_once dirname(__FILE__) . '/../../../core/php/core.inc.php';
 
 function discordlink_install() {
+    $info = discordlink::getInfo();
+    $version = $info['pluginVersion'];
+    config::save('pluginVersion', $version, 'discordlink');
+    
+    message::add('discordlink', 'Merci d\'avoir installé le plugin DiscordLink version ' . $version);
+    
     discordlink::CreateCmd();
-    discordlink::setemojy();
-    discordlink::updateobject();
+    discordlink::setEmoji();
+    discordlink::updateObject();
 }
 
 function discordlink_update() {
-    $plugin = plugin::byId("discordlink");
-    $plugin->dependancy_install();
-    discordlink::CreateCmd();
-    discordlink::setemojy();
-    discordlink::updateobject();
+    $info = discordlink::getInfo();
+    $version = $info['pluginVersion'];
+    config::save('pluginVersion', $version, 'discordlink');
+
+    if (config::byKey('disableUpdateMessage', 'discordlink', 0) == 0) {
+        message::add('discordlink', 'Le plugin DiscordLink a été mis à jour en version ' . $version);
+    }
+    
+    // Suppression de l'ancien fichier quickreply.json dans resources/
+    // Le nouveau fichier est automatiquement copié dans data/ lors de la mise à jour
+    $oldQuickreplyPath = dirname(__FILE__) . '/../resources/quickreply.json';
+    if (file_exists($oldQuickreplyPath)) {
+        unlink($oldQuickreplyPath);
+        log::add('discordlink', 'info', 'Suppression ancien fichier quickreply.json dans resources/');
+    }
+    
+    // Migration de la clé de configuration globale emojy → emoji
+    $oldEmojiConfig = config::byKey('emojy', 'discordlink', null);
+    if ($oldEmojiConfig !== null) {
+        // On ne migre que si la nouvelle clé n'existe pas déjà pour éviter d'écraser des modifications récentes
+        if (config::byKey('emoji', 'discordlink', null) === null) {
+            config::save('emoji', $oldEmojiConfig, 'discordlink');
+            log::add('discordlink', 'info', 'Migration configuration globale: emojy → emoji');
+        }
+        config::remove('emojy', 'discordlink');
+    }
+    
+    // Migration des paramètres de configuration des équipements
+    foreach (eqLogic::byType('discordlink') as $eqLogic) {
+        $needSave = false;
+        $configuration = $eqLogic->getConfiguration();
+        
+        // Migration des noms de configuration (anciennes versions)
+        $configMigrations = [
+            'autorefreshDependances' => 'autoRefreshDependency',
+            'autorefreshDependancy' => 'autoRefreshDependency',
+            'autorefreshDeamon' => 'autoRefreshDaemon',
+            'autorefreshDaemon' => 'autoRefreshDaemon',
+            'autorefreshDependency' => 'autoRefreshDependency',
+            'deamoncheck' => 'daemonCheck',
+            'depcheck' => 'dependencyCheck',
+            'channelid' => 'channelId',
+            'connectcheck' => 'connectionCheck',
+            'clearchannel' => 'clearChannel',
+            'interactionjeedom' => 'interactionJeedom'
+        ];
+        
+        foreach ($configMigrations as $oldKey => $newKey) {
+            if (isset($configuration[$oldKey]) && $configuration[$oldKey] !== '') {
+                $eqLogic->setConfiguration($newKey, $configuration[$oldKey]);
+                unset($configuration[$oldKey]);
+                $needSave = true;
+                log::add('discordlink', 'info', 'Migration configuration équipement ' . $eqLogic->getHumanName() . ': ' . $oldKey . ' → ' . $newKey);
+            }
+        }
+        
+        // Appliquer les suppressions
+        if ($needSave) {
+            foreach (array_keys($configuration) as $key) {
+                if (!isset($configuration[$key])) {
+                    $eqLogic->setConfiguration($key, null);
+                }
+            }
+            $eqLogic->save();
+        }
+    }
+    
+    // Détection des commandes obsolètes ou avec mauvais logicalId
+    $obsoleteLogicalIds = ['1oldmsg', '2oldmsg', '3oldmsg', 'deamonInfo', 'dependanceInfo', 
+                           'batteryinfo', 'centreMsg', 'LastUser'];
+    
+    $expectedCommands = [
+        'sendMsg' => 'Envoi message',
+        'sendMsgTTS' => 'Envoi message TTS',
+        'sendEmbed' => 'Envoi message évolué',
+        'sendFile' => 'Envoi fichier',
+        'deleteMessage' => 'Supprime les messages du channel',
+        'daemonInfo' => 'Etat des démons',
+        'dependencyInfo' => 'Etat des dépendances',
+        'globalSummary' => 'Résumé général',
+        'objectSummary' => 'Résumé par objet',
+        'batteryInfo' => 'Résumé des batteries',
+        'messageCenter' => 'Centre de messages',
+        'lastUser' => 'Dernière Connexion utilisateur',
+        'lastMessage' => 'Dernier message',
+        'previousMessage1' => 'Avant dernier message',
+        'previousMessage2' => 'Avant Avant dernier message'
+    ];
+    
+    $hasProblematicCommands = false;
+    
+    foreach (eqLogic::byType('discordlink') as $eqLogic) {
+        $problematicCommands = [];
+        
+        foreach ($eqLogic->getCmd() as $cmd) {
+            $cmdName = $cmd->getName();
+            $logicalId = $cmd->getLogicalId();
+            $cmdId = $cmd->getId();
+            
+            // Détecter les anciens logicalId obsolètes
+            if (in_array($logicalId, $obsoleteLogicalIds)) {
+                $problematicCommands[] = "  - Commande obsolète : '$cmdName' (logicalId: $logicalId, ID: $cmdId)";
+                $hasProblematicCommands = true;
+            }
+            
+            // Détecter les commandes avec mauvais logicalId
+            foreach ($expectedCommands as $expectedLogicalId => $expectedName) {
+                if ($cmdName === $expectedName && $logicalId !== $expectedLogicalId) {
+                    $problematicCommands[] = "  - Commande '$cmdName' a un mauvais logicalId : '$logicalId' (attendu: '$expectedLogicalId', ID: $cmdId)";
+                    $hasProblematicCommands = true;
+                    break;
+                }
+            }
+        }
+        
+        if (!empty($problematicCommands)) {
+            log::add('discordlink', 'warning', 'Équipement ' . $eqLogic->getHumanName() . ' - Commandes à corriger :');
+            foreach ($problematicCommands as $message) {
+                log::add('discordlink', 'warning', $message);
+            }
+        }
+    }
+    
+    if ($hasProblematicCommands) {
+        log::add('discordlink', 'warning', '==========================================================================');
+        log::add('discordlink', 'warning', 'MISE À JOUR : Des commandes obsolètes ou incorrectes ont été détectées.');
+        log::add('discordlink', 'warning', 'Veuillez supprimer manuellement les commandes listées ci-dessus.');
+        log::add('discordlink', 'warning', 'Les nouvelles commandes seront recréées automatiquement.');
+        log::add('discordlink', 'warning', '==========================================================================');
+    } else {
+        log::add('discordlink', 'info', 'Mise à jour terminée - Aucune commande problématique détectée.');
+    }
 }
 
 

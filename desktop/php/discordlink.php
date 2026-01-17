@@ -26,11 +26,6 @@ $eqLogics = eqLogic::byType($plugin->getId());
                     <br>
                     <span>Emojis Settings</span></a>
             </div>
-            <div class="cursor eqLogicAction logoSecondary">
-                <a href="index.php?v=d&m=discordlink&p=discordlinkuser"><img style="margin-top:-32px;" src="plugins/discordlink/plugin_info/discordlink_icon.png" width="75" height="75">
-                    <br>
-                    <span>Covid User</span></a>
-            </div>
         </div>
         <legend><i class="fas fa-table"></i> {{Mes Channels}}</legend>
         <!-- Champ de recherche -->
@@ -113,7 +108,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                 <div class="col-sm-9">
                                     <label class="checkbox-inline"><input type="checkbox" class="eqLogicAttr" data-l1key="isEnable" title="Activer l'équipement" checked />{{Activer}}</label>
                                     <label class="checkbox-inline"><input type="checkbox" class="eqLogicAttr" data-l1key="isVisible" title="Rendre l'équipement visible" checked />{{Visible}}</label>
-                                    <label class="checkbox-inline"><input type="checkbox" class="eqLogicAttr" data-l1key="configuration" title="Activer les intéractions avec Jeedom" data-l2key="interactionjeedom" />{{Interactions avec Jeedom}}</label>
+                                    <label class="checkbox-inline"><input type="checkbox" class="eqLogicAttr" data-l1key="configuration" title="Activer les intéractions avec Jeedom" data-l2key="interactionJeedom" />{{Interactions avec Jeedom}}</label>
                                 </div>
                             </div>
                             </br>
@@ -121,13 +116,13 @@ $eqLogics = eqLogic::byType($plugin->getId());
                             <div class="form-group">
                                 <label class="col-sm-3 control-label">{{Channels}}</label>
                                 <div class="col-sm-7">
-                                    <select class="form-control eqLogicAttr" data-l1key="configuration" data-l2key="channelid">
+                                    <select class="form-control eqLogicAttr" data-l1key="configuration" data-l2key="channelId">
                                         <?php
                                         $channels = config::byKey('channels', 'discordlink', 'null');
                                         $deamon = discordlink::deamon_info();
                                         $i = 0;
                                         if ($deamon['state'] == 'ok') {
-                                            $channels = discordlink::getchannel();
+                                            $channels = discordlink::getChannel();
                                             foreach ($channels as $channel) {
                                                 echo '<option value="' . $channel['id'] . '">(' . $channel['guildName'] . ') ' . $channel['name'] . '</option>';
                                                 $i++;
@@ -145,18 +140,11 @@ $eqLogics = eqLogic::byType($plugin->getId());
                             <div class="form-group">
                                 <label class="col-sm-3 control-label"></label>
                                 <div class="col-sm-9">
-                                    <label class="checkbox-inline"><input id="deamoncheck" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="deamoncheck" />{{Vérification Démons}}</label>
-                                    <label class="checkbox-inline"><input id="depcheck" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="depcheck" />{{Vérification Dépendances}}</label>
-                                    <label class="checkbox-inline"><input id="connectcheck" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="connectcheck" />{{Annonce des connexions}}</label>
-                                    <?php
-                                    if (discordlink::testplugin('openzwave')) {
-                                        echo '<label class="checkbox-inline"><input id="zwavecheck" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="zwavecheck"/>{{Vérification Z-wave}}</label>';
-                                    } else {
-                                        echo '<div style="visibility: hidden; display: none;"><label class="checkbox-inline"><input id="zwavecheck" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="zwavecheck"/>{{Vérification Z-wave}}</label></div>';
-                                    }
-                                    ?>
+                                    <label class="checkbox-inline"><input id="daemonCheck" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="daemonCheck" />{{Vérification Démons}}</label>
+                                    <label class="checkbox-inline"><input id="dependencyCheck" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="dependencyCheck" />{{Vérification Dépendances}}</label>
+                                    <label class="checkbox-inline"><input id="connectionCheck" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="connectionCheck" />{{Annonce des connexions}}</label>
                                     </br>
-                                    <label class="checkbox-inline"><input id="clearchannel" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="clearchannel" />{{Clear automatique des channels chaque jour}}</label>
+                                    <label class="checkbox-inline"><input id="clearChannel" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="clearChannel" />{{Clear automatique des channels chaque jour}}</label>
                                 </div>
                             </div>
                             </br>
@@ -166,7 +154,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                 </label>
                                 <div class="col-sm-7">
                                     <div class="input-group">
-                                        <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autorefreshDeamon" placeholder="{{Auto-actualisation Deamon (cron)}}" />
+                                        <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autoRefreshDaemon" placeholder="{{Auto-actualisation Daemon (cron)}}" />
                                         <span class="input-group-btn">
                                             <a class="btn btn-default cursor jeeHelper roundedRight" id="bt_cronGeneratordeamon" data-helper="cron" title="Assistant cron">
                                                 <i class="fas fa-question-circle"></i>
@@ -181,40 +169,13 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                 </label>
                                 <div class="col-sm-7">
                                     <div class="input-group">
-                                        <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autorefreshDependances" placeholder="{{Auto-actualisation Dépendances (cron)}}" />
+                                        <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autoRefreshDependency" placeholder="{{Auto-actualisation Dépendances (cron)}}" />
                                         <span class="input-group-btn">
                                             <a class="btn btn-default cursor jeeHelper roundedRight" id="bt_cronGeneratorDependance" data-helper="cron" title="Assistant cron">
                                                 <i class="fas fa-question-circle"></i>
                                             </a>
                                         </span>
                                     </div>
-                                </div>
-                            </div>
-                            <div class="form-group zwave">
-                                <label class="col-sm-3 control-label">{{Auto-actualisation Z-Wave}}
-                                    <sup><i class="fas fa-question-circle" title="{{Fréquence de rafraîchissement de la vérification Z-Wave}}"></i></sup>
-                                </label>
-                                <div class="col-sm-7">
-                                    <div class="input-group">
-                                        <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autorefreshZWave" placeholder="{{Auto-actualisation Z-Wave (cron)}}" />
-                                        <span class="input-group-btn">
-                                            <a class="btn btn-default cursor jeeHelper roundedRight" id="bt_cronGeneratorzwave" data-helper="cron" title="Assistant cron">
-                                                <i class="fas fa-question-circle"></i>
-                                            </a>
-                                        </span>
-                                    </div>
-                                </div>
-                                <label class="col-sm-3 control-label">{{Node Id Zwave à exclure}}
-
-                                </label>
-                                <div class="col-sm-7">
-                                    <input type="text" class="eqLogicAttr form-control roundedLeft roundedRight" data-l1key="configuration" data-l2key="zwaveIdExclude" placeholder="{{exemple : 21 17 58}}" />
-                                </div>
-                                <label class="col-sm-3 control-label">{{Temps maximal entre la dernière réponse (Z-Wave)}}
-                                    <sup><i class="fas fa-question-circle" title="{{En seconde}}"></i></sup>
-                                </label>
-                                <div class="col-sm-7">
-                                    <input type="number" class="eqLogicAttr form-control roundedLeft roundedRight" data-l1key="configuration" data-l2key="TempMax" placeholder="{{default : 43200}}" />
                                 </div>
                             </div>
                             <div class="form-group customColor">
