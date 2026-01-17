@@ -1,21 +1,26 @@
 {
 	"id" : "discordlink",
 	"name" : "Discord Link",
-	"description" : "Le plugin Discord Link permet d'envoyer des messages sur son serveur Discord : - Messages Classiques - Messages Evolués - Messages TTS - Gestion des Channels ( Salon ) - Fonction ASK - Envoi de Fichiers - Compatible avec les interactions de Jeedom - Fonction Etat des Démons de Jeedom - Fonction Etat des Dépendances des plugins Jeedom - Fonction Etat du résumé global. VERSION 2.0 - Migré vers Discord.js v14",
+	"description" : {"fr_FR" : "Le plugin DiscordLink permet d'envoyer des messages sur son serveur Discord : messages standards, évolués, TTS - Gestion des Channels (Salons) - Fonction ASK - Envoi de Fichiers - Compatible avec les interactions de Jeedom - Fonction état des Démons de Jeedom - Fonction état des Dépendances des plugins Jeedom - Fonction état du résumé global."},
+	"utilization": "Ce plugin nécessite la création d'une 'Application' Discord et d'un 'Bot' associé depuis le portail développeur Discord.",
 	"licence" : "AGPL",
 	"author" : "TiTidom",
-	"require" : "4.4",
+	"require" : "4.4.2",
 	"category" : "communication",
 	"hasDependency" : true,
 	"hasOwnDeamon" : true,
 	"maxDependancyInstallTime" : 600,
-	"requireOsVersion": "12",
-	"changelog" : "https://domotechdiscord.github.io/Docs/discordlink/fr_FR/changelog",
-	"documentation" : "https://domotechdiscord.github.io/Docs/discordlink/fr_FR/",
+	"os" : {
+		"min" : 11
+	},
+	"changelog" : "https://titidom-rc.github.io/Documentation/fr_FR/discordlink/changelog",
+	"changelog_beta" : "https://titidom-rc.github.io/Documentation/fr_FR/discordlink/changelog",
+	"documentation" : "https://titidom-rc.github.io/Documentation/fr_FR/discordlink/",
+	"documentation_beta" : "https://titidom-rc.github.io/Documentation/fr_FR/discordlink/",
 	"link" : {
-		"forum":"https://community.jeedom.com/t/plugin-tiers-discord-link-actualites/26528?u=titi_titi",
-		"video" : "https://www.youtube.com/watch?v=DinkR8TcGes"
+		"forum":"https://community.jeedom.com/tag/plugin-discordlink",
+		"video" : ""
 	},
 	"language" : ["fr_FR"],
-	"compatibility" : ["atlas","smart","rpi","docker","diy", "v4"]
+	"compatibility" : ["atlas","smart","rpi","docker","diy","mobile","v4"]
 }
