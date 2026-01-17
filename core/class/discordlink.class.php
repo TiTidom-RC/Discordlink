@@ -393,7 +393,7 @@ class discordlink extends eqLogic {
 		return $emojiArray[$_icon];
 	}
 
-	public static function CreateCmd() {
+	public static function createCmd() {
 
 		$eqLogics = eqLogic::byType('discordlink');
 		foreach ($eqLogics as $eqLogic) {
@@ -458,7 +458,7 @@ class discordlink extends eqLogic {
 	}
 
     public function postSave() {
-		static::CreateCmd();
+		static::createCmd();
 		static::updateObject();
 	}
 
@@ -467,8 +467,8 @@ class discordlink extends eqLogic {
     }
 
     public function postUpdate() {
-		discordlink::CreateCmd();
-    }
+		discordlink::createCmd();
+	}
 
     public function preRemove() {
 
@@ -517,8 +517,8 @@ class discordlink extends eqLogic {
 
 	public static function getLastUserConnections() {
 		$message = "";
-		$userConnectListNew = '';
-		$userConnectList = '';
+		$connectedUserListNew = '';
+		$connectedUserList = '';
 		$onlineCount = 0;
 		$daysBeforeUserRemoval = 61;
 		$hasCronActivity = false;
@@ -547,10 +547,10 @@ class discordlink extends eqLogic {
 		}
 		$offlineDelay = 10;
 		$timestampNow = strtotime($timeNow);
-		$userConnectName = array();
-		$userConnectDate = array();
-		$userConnectStatus = array();
-		$userConnectListParts = array();
+		$connectedUserNames = array();
+		$connectedUserDates = array();
+		$connectedUserStatuses = array();
+		$connectedUserListParts = array();
 
 		foreach (user::all() as $user) {
 			$lastDate = $user->getOptions('lastConnection');
@@ -564,28 +564,28 @@ class discordlink extends eqLogic {
 			}
 
 			// Stockage dans les tableaux pour usage ultérieur
-			$userConnectName[] = $user->getLogin();
-			$userConnectDate[] = $lastDate;
-			$userConnectStatus[] = $status;
+			$connectedUserNames[] = $user->getLogin();
+			$connectedUserDates[] = $lastDate;
+			$connectedUserStatuses[] = $status;
 			
 			// Construction de la liste
-			$userConnectListParts[] = $user->getLogin() . ';' . $lastDate . ';' . $status;
+			$connectedUserListParts[] = $user->getLogin() . ';' . $lastDate . ';' . $status;
 		}
-		$userConnectList = implode('|', $userConnectListParts);
+		$connectedUserList = implode('|', $connectedUserListParts);
 		
-		$userConnectListNew = '';
+		$connectedUserListNew = '';
 		// Récupération des lignes du log Connection
 		$delta = log::getDelta('connection', 0, '', false, false, 0, $maxLine);
-		$logConnectionList = array();
+		$connectionLogs = array();
 		if (isset($delta['logText']) && !empty($delta['logText'])) {
 			$lines = explode("\n", $delta['logText']);
-			$logConnectionList = array_reverse(array_filter($lines));
+			$connectionLogs = array_reverse(array_filter($lines));
 		}
 
 		$logUserIndex = 0;
 		$lastLogConnectionName = '';
-		if (is_array($logConnectionList)) {
-			foreach ($logConnectionList as $value) {
+		if (is_array($connectionLogs)) {
+			foreach ($connectionLogs as $value) {
 				// Format attendu: [2026-01-16 18:46:50] INFO  Connexion de l'utilisateur par clef : admin
 				if (preg_match('/^\[(.*?)\]\s+INFO\s+(.*)\s:\s(.*)$/', $value, $matches)) {
 					$currentLogDate = $matches[1];
@@ -601,16 +601,16 @@ class discordlink extends eqLogic {
 					}
 					
 					$logUserIndex++;
-					$logConnectionDate[$logUserIndex] = $currentLogDate;
-					$logConnectionName[$logUserIndex] = $currentLogUser;
+					$connectionLogDates[$logUserIndex] = $currentLogDate;
+					$connectionLogNames[$logUserIndex] = $currentLogUser;
 					
 					// Détermination du type de connexion
 					if (strpos($currentLogMsg, 'clef') !== false) {
-						$logConnectionType[$logUserIndex] = 'clef';
+						$connectionLogTypes[$logUserIndex] = 'clef';
 					} elseif (strpos($currentLogMsg, 'API') !== false) {
-						$logConnectionType[$logUserIndex] = 'api';
+						$connectionLogTypes[$logUserIndex] = 'api';
 					} else {
-						$logConnectionType[$logUserIndex] = 'navigateur';
+						$connectionLogTypes[$logUserIndex] = 'navigateur';
 					}
 					
 					if ($logUserIndex == 1) {
@@ -618,52 +618,52 @@ class discordlink extends eqLogic {
 					}
 					
 					$onlineCount++;
-					$message .= "\n" . $emojiCheck . "**" . $logConnectionName[$logUserIndex] . "** s'est connecté par **" . $logConnectionType[$logUserIndex] . "** à **" . date("H", strtotime($logConnectionDate[$logUserIndex])) . "h" . date("i", strtotime($logConnectionDate[$logUserIndex])) . "**";
+					$message .= "\n" . $emojiCheck . "**" . $connectionLogNames[$logUserIndex] . "** s'est connecté par **" . $connectionLogTypes[$logUserIndex] . "** à **" . date("H", strtotime($connectionLogDates[$logUserIndex])) . "h" . date("i", strtotime($connectionLogDates[$logUserIndex])) . "**";
 					
 					$hasCronActivity = true;
 					
 					// Évite les doublons consécutifs dans le log pour le même utilisateur
-					if ($lastLogConnectionName === $logConnectionName[$logUserIndex]) {
+					if ($lastLogConnectionName === $connectionLogNames[$logUserIndex]) {
 						continue;
 					}
-					$lastLogConnectionName = $logConnectionName[$logUserIndex];
+					$lastLogConnectionName = $connectionLogNames[$logUserIndex];
 					
 					// Mise à jour du statut des utilisateurs
-					$userNumber = 0;
+					$userIndex = 0;
 					$foundCount = 0;
-					foreach ($userConnectName as $key => $userName) {
-						$userNumber++;
-						if ($logConnectionName[$logUserIndex] == $userName) {
+					foreach ($connectedUserNames as $key => $userName) {
+						$userIndex++;
+						if ($connectionLogNames[$logUserIndex] == $userName) {
 							$foundCount++;
-							if ($userConnectStatus[$key] == 'hors ligne') {
-								$userConnectDate[$key] = $logConnectionDate[$logUserIndex];
-								$userConnectStatus[$key] = 'en ligne';
+							if ($connectedUserStatuses[$key] == 'hors ligne') {
+								$connectedUserDates[$key] = $connectionLogDates[$logUserIndex];
+								$connectedUserStatuses[$key] = 'en ligne';
 							}
 						}
 					}
 					
 					// Ajout nouvel utilisateur si non trouvé
 					if ($foundCount == 0) {
-						$userConnectName[] = $logConnectionName[$logUserIndex];
-						$userConnectDate[] = $logConnectionDate[$logUserIndex];
-						$userConnectStatus[] = 'en ligne';
-						$userConnectIP[] = ''; // Initialiser IP pour éviter warning plus tard
+						$connectedUserNames[] = $connectionLogNames[$logUserIndex];
+						$connectedUserDates[] = $connectionLogDates[$logUserIndex];
+						$connectedUserStatuses[] = 'en ligne';
+						$connectedUserIPs[] = ''; // Initialiser IP pour éviter warning plus tard
 					}
 				}
 			}
 			
 			// Reconstruction propre de la liste finale une seule fois
-			$userConnectListNew = '';
-			foreach ($userConnectName as $key => $name) {
-				if ($userConnectListNew != '') {
-					$userConnectListNew .= '|';
+			$connectedUserListNew = '';
+			foreach ($connectedUserNames as $key => $name) {
+				if ($connectedUserListNew != '') {
+					$connectedUserListNew .= '|';
 				}
 				// Gérer les index qui peuvent être numériques ou string selon l'initialisation précédente
-				$date = isset($userConnectDate[$key]) ? $userConnectDate[$key] : '';
-				$status = isset($userConnectStatus[$key]) ? $userConnectStatus[$key] : 'hors ligne';
-				$userConnectListNew .= $name . ';' . $date . ';' . $status;
+				$date = isset($connectedUserDates[$key]) ? $connectedUserDates[$key] : '';
+				$status = isset($connectedUserStatuses[$key]) ? $connectedUserStatuses[$key] : 'hors ligne';
+				$connectedUserListNew .= $name . ';' . $date . ';' . $status;
 			}
-			$userConnectList = $userConnectListNew;
+			$connectedUserList = $connectedUserListNew;
 		}
 		
 		$sessions = listSession();
@@ -671,49 +671,49 @@ class discordlink extends eqLogic {
 		
 		$message .= "\n"."\n".$emojiMagRight."__Récapitulatif des sessions actuelles :__ ".$emojiMag;
 		// Parcours des sessions pour vérifier le statut et le nombre de sessions
-		$userNumber=0;
-		$userConnectListNew = '';
-		foreach($userConnectName as $value){
-			$userNumber++;
-			$userSession=0;
+		$userIndex=0;
+		$connectedUserListNew = '';
+		foreach($connectedUserNames as $value){
+			$userIndex++;
+			$sessionIndex=0;
 			$foundCount = 0;
-			$userConnectStatus[$userNumber] = 'hors ligne';
-			$userConnectIP[$userNumber] = '';
+			$connectedUserStatuses[$userIndex] = 'hors ligne';
+			$connectedUserIPs[$userIndex] = '';
 
 			foreach($sessions as $id => $session){
-				$userSession++;
+				$sessionIndex++;
 				
-				$userDelai = strtotime(date("Y-m-d H:i:s")) - strtotime($session['datetime']);
+				$userDelay = strtotime(date("Y-m-d H:i:s")) - strtotime($session['datetime']);
 
-				if($userConnectName[$userNumber] == $session['login']){
-					if($userDelai < $offlineDelay*60){
+				if($connectedUserNames[$userIndex] == $session['login']){
+					if($userDelay < $offlineDelay*60){
 						$foundCount++;
 						$onlineCount++;
-						$userConnectStatus[$userNumber] = 'en ligne';
-						$userConnectIP[$userNumber] .= "\n"."-> ".$emojiInternet." IP : ".$session['ip'];
+						$connectedUserStatuses[$userIndex] = 'en ligne';
+						$connectedUserIPs[$userIndex] .= "\n"."-> ".$emojiInternet." IP : ".$session['ip'];
 					}else{
 					}
 				}			
 			}
-			$connectTimestamp = strtotime($userConnectDate[$userNumber]);
+			$connectTimestamp = strtotime($connectedUserDates[$userIndex]);
 			if (date("Y-m-d", $connectTimestamp) == date("Y-m-d", $timestampNow)) {
 				$date = date("H\hi", $connectTimestamp);
 			} else {
 				$date = date_fr(date("l d F Y", $connectTimestamp)) . "** à **" . date("H\hi", $connectTimestamp);
 			}
 			if($foundCount > 0){
-				$message .= "\n".$emojiConnected." **".$userConnectName[$userNumber]."** est **en ligne** depuis **".$date."**";
-				$message .= $userConnectIP[$userNumber];
+				$message .= "\n".$emojiConnected." **".$connectedUserNames[$userIndex]."** est **en ligne** depuis **".$date."**";
+				$message .= $connectedUserIPs[$userIndex];
 			}else{
-				if(strtotime($timeNow) - strtotime($userConnectDate[$userNumber]) < ($daysBeforeUserRemoval*24*60*60)){
-					$message .= "\n".$emojiDisconnected." **".$userConnectName[$userNumber]."** est **hors ligne** (dernière connexion **".$date."**)";
+				if(strtotime($timeNow) - strtotime($connectedUserDates[$userIndex]) < ($daysBeforeUserRemoval*24*60*60)){
+					$message .= "\n".$emojiDisconnected." **".$connectedUserNames[$userIndex]."** est **hors ligne** (dernière connexion **".$date."**)";
 				}
 			}
-			if($userConnectListNew != ''){
-				$userConnectListNew = $userConnectListNew.'|';
+			if($connectedUserListNew != ''){
+				$connectedUserListNew = $connectedUserListNew.'|';
 			}
-			$userConnectListNew .= $userConnectName[$userNumber].';'.$userConnectDate[$userNumber].';'.$userConnectStatus[$userNumber];
-			$userConnectList=$userConnectListNew;
+			$connectedUserListNew .= $connectedUserNames[$userIndex].';'.$connectedUserDates[$userIndex].';'.$connectedUserStatuses[$userIndex];
+			$connectedUserList=$connectedUserListNew;
 		}
 		
 		// Préparation des tags de notification
@@ -754,7 +754,7 @@ class discordlinkCmd extends cmd {
 			$deamon = discordlink::deamon_info();
 			if ($deamon['state'] == 'ok') {
 				$request = $this->buildRequest($_options);
-				if ($request != 'truesendwithembed') {
+				if ($request != 'requestHandledInternally') {
 					log::add('discordlink', 'debug', 'Envoi de ' . $request);
 					$request_http = new com_http($request);
 					$request_http->setAllowEmptyReponse(true);//Autorise les réponses vides
@@ -778,8 +778,8 @@ class discordlinkCmd extends cmd {
 		private function buildRequest($_options = array()) {
 			if ($this->getType() != 'action') return $this->getConfiguration('request');
 		
-		$cmdANDarg = explode('?', $this->getConfiguration('request'), 2);
-		$command = $cmdANDarg[0];
+		$cmdAndArg = explode('?', $this->getConfiguration('request'), 2);
+		$command = $cmdAndArg[0];
 		
 		$commandMap = array(
 			'sendMsg' => 'buildMessageRequest',
@@ -804,7 +804,7 @@ class discordlinkCmd extends cmd {
 			$request = '';
 		}
 		
-		if ($request == 'truesendwithembed') return $request;
+		if ($request == 'requestHandledInternally') return $request;
 		
 		$request = scenarioExpression::setTags($request);
 		if (trim($request) == '') {
@@ -818,14 +818,14 @@ class discordlinkCmd extends cmd {
 	private function buildMessageRequest($_options = array(), $default = "Une erreur est survenue") {
 		$message = isset($_options['message']) && $_options['message'] != '' ? $_options['message'] : $default;
 		$message = str_replace('|', "\n", $message);
-		$request = str_replace('#message#', urlencode(self::decodeTexteAleatoire($message)), $this->getConfiguration('request'));
-		log::add('discordlink_node', 'info', '---->RequestFinale:' . $request);
+		$request = str_replace('#message#', urlencode(self::decodeRandomText($message)), $this->getConfiguration('request'));
+		log::add('discordlink', 'info', 'Final Request :: ' . $request);
 		return $request;
 	}
 
 		private function buildFileRequest($_options = array(), $default = "Une erreur est survenu") {
 			$patch = "null";
-			$nameFile = "null";
+			$fileName = "null";
 			$message = "null";
 
 			$request = $this->getConfiguration('request');
@@ -837,26 +837,26 @@ class discordlinkCmd extends cmd {
 					if (version_compare(phpversion(), '5.5.0', '>=')) {
 						$patch = $file;
 						$files = new CurlFile($file);
-						$nameexplode = explode('.',$files->getFilename());
-						log::add('discordlink', 'info', $_options['title'].' taille : '.$nameexplode[sizeof($nameexplode)-1]);
-						$nameFile = (isset($_options['title']) ? $_options['title'].'.'.$nameexplode[sizeof($nameexplode)-1] : $files->getFilename());
+						$fileNameParts = explode('.',$files->getFilename());
+						log::add('discordlink', 'info', $_options['title'].' taille : '.$fileNameParts[sizeof($fileNameParts)-1]);
+						$fileName = (isset($_options['title']) ? $_options['title'].'.'.$fileNameParts[sizeof($fileNameParts)-1] : $files->getFilename());
 					}
 				}
 				$message = $_options['message'];
 
 			} else {
 				$patch = $_options['patch'];
-				$nameFile = $_options['Name_File'];
+				$fileName = $_options['Name_File'];
 			}
 
 			$request = str_replace(array('#message#'),
-			array(urlencode(self::decodeTexteAleatoire($message))), $request);
+			array(urlencode(self::decodeRandomText($message))), $request);
 			$request = str_replace(array('#name#'),
-			array(urlencode(self::decodeTexteAleatoire($nameFile))), $request);
+			array(urlencode(self::decodeRandomText($fileName))), $request);
 			$request = str_replace(array('#patch#'),
-			array(urlencode(self::decodeTexteAleatoire($patch))), $request);
+			array(urlencode(self::decodeRandomText($patch))), $request);
 
-			log::add('discordlink_node', 'info', '---->RequestFinale:'.$request);
+			log::add('discordlink', 'info', 'Final Request :: ' . $request);
 			return $request;
 		}
 
@@ -890,9 +890,9 @@ class discordlinkCmd extends cmd {
 
 				$a = 0;
 				$url = "[";
-				$choix = [":regional_indicator_a:", ":regional_indicator_b:", ":regional_indicator_c:", ":regional_indicator_d:", ":regional_indicator_e:", ":regional_indicator_f:", ":regional_indicator_g:", ":regional_indicator_h:", ":regional_indicator_i:", ":regional_indicator_j:", ":regional_indicator_k:", ":regional_indicator_l:", ":regional_indicator_m:", ":regional_indicator_n:", ":regional_indicator_o:", ":regional_indicator_p:", ":regional_indicator_q:", ":regional_indicator_r:", ":regional_indicator_s:", ":regional_indicator_t:", ":regional_indicator_u:", ":regional_indicator_v:", ":regional_indicator_w:", ":regional_indicator_x:", ":regional_indicator_y:", ":regional_indicator_z:"];
+				$choices = [":regional_indicator_a:", ":regional_indicator_b:", ":regional_indicator_c:", ":regional_indicator_d:", ":regional_indicator_e:", ":regional_indicator_f:", ":regional_indicator_g:", ":regional_indicator_h:", ":regional_indicator_i:", ":regional_indicator_j:", ":regional_indicator_k:", ":regional_indicator_l:", ":regional_indicator_m:", ":regional_indicator_n:", ":regional_indicator_o:", ":regional_indicator_p:", ":regional_indicator_q:", ":regional_indicator_r:", ":regional_indicator_s:", ":regional_indicator_t:", ":regional_indicator_u:", ":regional_indicator_v:", ":regional_indicator_w:", ":regional_indicator_x:", ":regional_indicator_y:", ":regional_indicator_z:"];
 				while ($a < count($answer)) {
-					$description .= $choix[$a] . " : " . $answer[$a];
+					$description .= $choices[$a] . " : " . $answer[$a];
 					$description .= "
 ";
 					$url .= '"' . $answer[$a] . '",';
@@ -942,14 +942,14 @@ class discordlinkCmd extends cmd {
 		);
 		
 		foreach ($replacements as $key => $value) {
-			$request = str_replace($key, urlencode(self::decodeTexteAleatoire($value)), $request);
+			$request = str_replace($key, urlencode(self::decodeRandomText($value)), $request);
 		}
 
-		log::add('discordlink_node', 'info', '---->RequestFinale:' . $request);
+		log::add('discordlink', 'info', 'Final Request :: ' . $request);
 		return $request;
 	}
 
-	public static function decodeTexteAleatoire($_text) {
+	public static function decodeRandomText($_text) {
 			$return = $_text;
 			if (strpos($_text, '|') !== false && strpos($_text, '[') !== false && strpos($_text, ']') !== false) {
 				$replies = interactDef::generateTextVariant($_text);
@@ -975,8 +975,8 @@ public function buildDaemonInfo($_options = array()) {
 
 			foreach(plugin::listPlugin(true) as $plugin){
 				if($plugin->getHasOwnDeamon() && config::byKey('deamonAutoMode', $plugin->getId(), 1) == 1) {
-					$deamon_info = $plugin->deamon_info();
-					if ($deamon_info['state'] != 'ok') {
+					$daemonInfo = $plugin->deamon_info();
+					if ($daemonInfo['state'] != 'ok') {
 						$message .='|'.discordlink::getIcon("deamon_nok").$plugin->getName().' ('.$plugin->getId().')';
 						if ($colors != '#ff0000') $colors = '#ff0000';
 					} else {
@@ -986,12 +986,12 @@ public function buildDaemonInfo($_options = array()) {
 				}
 			}
 
-			if (isset($_options['cron']) AND $colors == '#00ff08') return 'truesendwithembed';
+			if (isset($_options['cron']) AND $colors == '#00ff08') return 'requestHandledInternally';
 			$message=str_replace("|","\n",$message);
 			$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
 			$_options = array('title'=>'Etat des démons', 'description'=> $message, 'colors'=> $colors, 'footer'=> 'By DiscordLink');
 			$cmd->execCmd($_options);
-			return 'truesendwithembed';
+			return 'requestHandledInternally';
 		}
 
 public function buildDependencyInfo($_options = array()) {
@@ -1000,10 +1000,10 @@ public function buildDependencyInfo($_options = array()) {
 
 			foreach(plugin::listPlugin(true) as $plugin){
 				if($plugin->getHasDependency()) {
-					$dependency_info = $plugin->dependancy_info();
-					if ($dependency_info['state'] == 'ok') {
+					$dependencyInfo = $plugin->dependancy_info();
+					if ($dependencyInfo['state'] == 'ok') {
 						$message .='|'.discordlink::getIcon("dep_ok").$plugin->getName().' ('.$plugin->getId().')';
-					} elseif ($dependency_info['state'] == 'in_progress') {
+					} elseif ($dependencyInfo['state'] == 'in_progress') {
 						$message .='|'.discordlink::getIcon("dep_progress").$plugin->getName().' ('.$plugin->getId().')';
 						if ($colors == '#00ff08') $colors = '#ffae00';
 					} else {
@@ -1014,12 +1014,12 @@ public function buildDependencyInfo($_options = array()) {
 				}
 			}
 
-			if (isset($_options['cron']) && $colors == '#00ff08') return 'truesendwithembed';
+			if (isset($_options['cron']) && $colors == '#00ff08') return 'requestHandledInternally';
 			$message=str_replace("|","\n",$message);
 			$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
 			$_options = array('title'=>'Etat des dépendances', 'description'=> $message, 'colors'=> $colors, 'footer'=> 'By DiscordLink');
 			$cmd->execCmd($_options);
-			return 'truesendwithembed';
+			return 'requestHandledInternally';
 		}
 
 		public function buildGlobalSummary($_options = array()) {
@@ -1031,7 +1031,7 @@ public function buildDependencyInfo($_options = array()) {
 				$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
 				$_options = array('title'=>'Erreur', 'description'=> '⚠️ Configuration des résumés non initialisée. Veuillez vérifier votre configuration Jeedom.', 'colors'=> '#ff0000');
 				$cmd->execCmd($_options);
-				return 'truesendwithembed';
+				return 'requestHandledInternally';
 			}
 			$values = array();
 			$message='';
@@ -1046,7 +1046,7 @@ public function buildDependencyInfo($_options = array()) {
 				$_options = array('title'=>'Résumé général', 'description'=> $message, 'colors'=> '#0033ff', 'footer'=> 'By DiscordLink');
 				$cmd->execCmd($_options);
 
-			return 'truesendwithembed';
+			return 'requestHandledInternally';
 		}
 
 		public function buildGlobalBattery($_options = array()) {
@@ -1102,7 +1102,7 @@ public function buildDependencyInfo($_options = array()) {
 	$_options2 = array('title'=>'Résumé Batterie', 'description'=> str_replace("|","\n", $message2), 'colors'=> $colors, 'footer'=> 'By DiscordLink');
 	$cmd->execCmd($_options2);
 	
-	return 'truesendwithembed';
+	return 'requestHandledInternally';
 	}
 
 	public function buildObjectSummary($_options = array()) {
@@ -1116,7 +1116,7 @@ public function buildDependencyInfo($_options = array()) {
 				$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
 				$_options = array('title'=>'Erreur', 'description'=> '⚠️ Configuration des résumés non initialisée. Veuillez vérifier votre configuration Jeedom.', 'colors'=> '#ff0000');
 				$cmd->execCmd($_options);
-				return 'truesendwithembed';
+				return 'requestHandledInternally';
 			}
 			$message='';
 			foreach ($def as $key => $value) {
@@ -1130,42 +1130,42 @@ public function buildDependencyInfo($_options = array()) {
 				$_options = array('title'=>'Résumé : '.$object->getname(), 'description'=> $message, 'colors'=> '#0033ff', 'footer'=> 'By DiscordLink');
 				$cmd->execCmd($_options);
 
-			return 'truesendwithembed';
+			return 'requestHandledInternally';
 		}
 
 	public function buildMessageCenter($_options = array()) {
 		// Parcours de tous les Updates
-		$listUpdate = "";
+		$updateList = "";
 		$updateCount = 0;
-		$msgBloq = "";
+		$blockedMsg = "";
 		$blockedUpdateCount = 0;
 		foreach (update::all() as $update) {
-			$monUpdate = $update->getName();
+			$updateName = $update->getName();
 			$statusUpdate = strtolower($update->getStatus());
-			$configUpdate = $update->getConfiguration('doNotUpdate');
+			$updateConfig = $update->getConfiguration('doNotUpdate');
 			
-			if ($configUpdate == 1) {
-				$configUpdate = " **(MaJ bloquée)**";
+			if ($updateConfig == 1) {
+				$updateConfig = " **(MaJ bloquée)**";
 				$blockedUpdateCount++;
 			} else {
-				$configUpdate = "";
+				$updateConfig = "";
 			}
 			
 			if ($statusUpdate == "update") {
 				$updateCount++;
-				$listUpdate .= ($listUpdate == "" ? "" : "\n") . $updateCount . "- " . $monUpdate . $configUpdate;
+				$updateList .= ($updateList == "" ? "" : "\n") . $updateCount . "- " . $updateName . $updateConfig;
 			}
 		}
 		
 		// Message de blocage
-		$msgBloq = $blockedUpdateCount == 0 ? "" : " (dont **" . $blockedUpdateCount . "** bloquée" . ($blockedUpdateCount > 1 ? "s" : "") . ")";
+		$blockedMsg = $blockedUpdateCount == 0 ? "" : " (dont **" . $blockedUpdateCount . "** bloquée" . ($blockedUpdateCount > 1 ? "s" : "") . ")";
 
 		// Message selon le nombre de mises à jour
 		if ($updateCount == 0) {
 			$msg = "*Vous n'avez pas de mises à jour en attente !*";
 		} else {
 			$pluriel = $updateCount > 1 ? "s" : "";
-			$msg = "*Vous avez **" . $updateCount . "** mise" . $pluriel . " à jour en attente" . $msgBloq . " :*\n" . $listUpdate;
+			$msg = "*Vous avez **" . $updateCount . "** mise" . $pluriel . " à jour en attente" . $blockedMsg . " :*\n" . $updateList;
 		}
 
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
@@ -1206,17 +1206,17 @@ public function buildDependencyInfo($_options = array()) {
 			}
 		}
 
-		return 'truesendwithembed';
+		return 'requestHandledInternally';
 	}
 
 	public function buildLastUser($_options = array()) {
 		$result = discordlink::getLastUserConnections();
-		if (isset($_options['cron']) && !$result['cronOk']) return 'truesendwithembed';
+		if (isset($_options['cron']) && !$result['cronOk']) return 'requestHandledInternally';
 		
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
 		$_options = array('title'=>$result['title'], 'description'=> str_replace("|","\n", $result['message']), 'colors'=> '#ff00ff', 'footer'=> 'By DiscordLink');
 		$cmd->execCmd($_options);
-		return 'truesendwithembed';
+		return 'requestHandledInternally';
 	}
 
 	public function getWidgetTemplateCode($_version = 'dashboard', $_clean = true, $_widgetName = '') {

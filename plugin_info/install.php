@@ -25,7 +25,7 @@ function discordlink_install() {
     
     message::add('discordlink', 'Merci d\'avoir installé le plugin DiscordLink version ' . $version);
     
-    discordlink::CreateCmd();
+    discordlink::createCmd();
     discordlink::setEmoji();
     discordlink::updateObject();
 }
