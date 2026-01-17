@@ -33,6 +33,12 @@ if (!isConnect()) {
                 <input class="configKey form-control" data-l1key="pluginVersion" readonly />
             </div>
         </div>
+        <div class="form-group">
+            <label class="col-lg-3 control-label">{{Ne pas afficher le message de mise à jour}}</label>
+            <div class="col-lg-1">
+                <input type="checkbox" class="configKey" data-l1key="disableUpdateMessage" />
+            </div>
+        </div>
         
         <legend><i class="fas fa-cogs"></i> {{Général}}</legend>
         <div class="form-group">

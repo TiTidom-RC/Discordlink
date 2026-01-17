@@ -23,6 +23,8 @@ function discordlink_install() {
     $version = $info['pluginVersion'];
     config::save('pluginVersion', $version, 'discordlink');
     
+    message::add('discordlink', 'Merci d\'avoir installé le plugin DiscordLink version ' . $version);
+    
     discordlink::CreateCmd();
     discordlink::setEmoji();
     discordlink::updateObject();
@@ -32,6 +34,10 @@ function discordlink_update() {
     $info = discordlink::getInfo();
     $version = $info['pluginVersion'];
     config::save('pluginVersion', $version, 'discordlink');
+
+    if (config::byKey('disableUpdateMessage', 'discordlink', 0) == 0) {
+        message::add('discordlink', 'Le plugin DiscordLink a été mis à jour en version ' . $version);
+    }
     
     // Suppression de l'ancien fichier quickreply.json dans resources/
     // Le nouveau fichier est automatiquement copié dans data/ lors de la mise à jour
