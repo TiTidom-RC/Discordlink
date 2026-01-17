@@ -31,7 +31,7 @@ const client = new Client({
 });
 
 const token = process.argv[3];
-const jeedomIP = process.argv[2];
+const jeedomURL = process.argv[2];
 const logLevelLimit = parseInt(process.argv[4]) || 2000; // Par défaut : Aucun log si non défini
 const pluginKey = process.argv[6];
 const activityStatus = decodeURI(process.argv[7]);
@@ -47,7 +47,7 @@ const config = {
 // Debug: Afficher les arguments reçus (masquer le token pour la sécurité)
 if (logLevelLimit <= 100) {
     console.log('[DEBUG] Arguments reçus:');
-    console.log('[DEBUG] - argv[2] (jeedomIP):', jeedomIP);
+    console.log('[DEBUG] - argv[2] (jeedomURL):', jeedomURL);
     console.log('[DEBUG] - argv[3] (token):', token ? `[PRESENT - ${token.length} caractères]` : '[ABSENT]');
     console.log('[DEBUG] - argv[4] (logLevel):', logLevelLimit);
     console.log('[DEBUG] - argv[6] (pluginKey):', pluginKey);
@@ -712,7 +712,7 @@ function startServer() {
 }
 
 function httpPost(name, jsonData) {
-    let url = jeedomIP + "/plugins/discordlink/core/php/jeediscordlink.php?apikey=" + pluginKey + "&name=" + name;
+    let url = jeedomURL + "/plugins/discordlink/core/php/jeediscordlink.php?apikey=" + pluginKey + "&name=" + name;
 
     config.logger && config.logger('URL envoyée: ' + url, "DEBUG");
     console.log("jsonData : " + JSON.stringify(jsonData));
