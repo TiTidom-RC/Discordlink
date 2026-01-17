@@ -25,6 +25,10 @@ class discordlink extends eqLogic {
 	const DEFAULT_COLOR = '#ff0000';
 	const SOCKET_PORT = 3466;
 
+	public static function getInfo() {
+		return plugin::byId('discordlink')->getInfo();
+	}
+	
 	public static function templateWidget() {
 		$return['action']['message']['message'] =    array(
 				'template' => 'message',

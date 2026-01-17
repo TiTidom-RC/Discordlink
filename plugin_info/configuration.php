@@ -23,7 +23,16 @@ if (!isConnect()) {
 }
 ?>
 <form class="form-horizontal">
+    <legend>{{Général}}</legend>
     <fieldset>
+        <div class="form-group">
+            <label class="col-lg-4 control-label">{{Version Plugin}}
+                <sup><i class="fas fa-question-circle tooltips" title="{{Version du Plugin (A indiquer sur Community)}}"></i></sup>
+            </label>
+            <div class="col-lg-6">
+                <input class="configKey form-control" data-l1key="pluginVersion" readonly />
+            </div>
+        </div>
         <div class="form-group">
             <label class="col-lg-4 control-label">{{Token : }}</label>
             <div class="col-lg-6">
