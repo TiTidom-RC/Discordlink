@@ -22,6 +22,7 @@ function discordlink_install() {
     $info = discordlink::getInfo();
     $version = $info['pluginVersion'];
     config::save('pluginVersion', $version, 'discordlink');
+    config::save('socketport', discordlink::SOCKET_PORT, 'discordlink');
     
     message::add('discordlink', 'Merci d\'avoir installé le plugin DiscordLink version ' . $version);
     
@@ -34,6 +35,11 @@ function discordlink_update() {
     $info = discordlink::getInfo();
     $version = $info['pluginVersion'];
     config::save('pluginVersion', $version, 'discordlink');
+
+    // Initialisation du port socket s'il n'est pas défini (mise à jour)
+    if (config::byKey('socketport', 'discordlink', '') === '') {
+        config::save('socketport', discordlink::SOCKET_PORT, 'discordlink');
+    }
 
     // MIGRATION V2.0 : Correction des commandes existantes sans LogicalId
     // Pour éviter l'erreur SQL 1062 Duplicate Entry lors de la recréation des commandes

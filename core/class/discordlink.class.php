@@ -24,6 +24,7 @@ class discordlink extends eqLogic {
 
 	const DEFAULT_COLOR = '#ff0000';
 	const SOCKET_PORT = 3466;
+	private static $_daemonBaseURL = null;
 
 	public static function getInfo() {
 		$file = __DIR__ . '/../../plugin_info/info.json';
@@ -56,9 +57,23 @@ class discordlink extends eqLogic {
 		return (is_object($plugin) && $plugin->isActive());
 	}
 
+	public static function getDaemonBaseURL() {
+		if (self::$_daemonBaseURL === null) {
+			$host = '127.0.0.1';
+			if (jeedom::getHardwareName() == 'docker') {
+				$internalAddr = config::byKey('internalAddr');
+				if (!empty($internalAddr)) {
+					$host = $internalAddr;
+				}
+			}
+			self::$_daemonBaseURL = 'http://' . $host . ':' . config::byKey('socketport', 'discordlink', self::SOCKET_PORT);
+		}
+		return self::$_daemonBaseURL;
+	}
+
 	public static function getChannel() {
 		try {
-			$requestHttp = new com_http('http://127.0.0.1:' . self::SOCKET_PORT . '/getchannel');
+			$requestHttp = new com_http(self::getDaemonBaseURL() . '/getchannel');
 			$response = $requestHttp->exec(10, 2);
 			if ($response === false || empty($response)) {
 				log::add('discordlink', 'error', 'Impossible de récupérer les channels depuis le daemon');
@@ -231,9 +246,9 @@ class discordlink extends eqLogic {
 			'launchable' => 'nok'
 		);
 
-		// Vérifier si le serveur HTTP répond sur le port 3466
+		// Vérifier si le serveur HTTP répond sur le port configuré
 		try {
-			$requestHttp = new com_http('http://127.0.0.1:' . self::SOCKET_PORT . '/heartbeat');
+			$requestHttp = new com_http(self::getDaemonBaseURL() . '/heartbeat');
 			$requestHttp->setNoReportError(true);
 			$response = $requestHttp->exec(2, 1); // Timeout rapide: 2s
 			if ($response !== false) {
@@ -279,7 +294,7 @@ class discordlink extends eqLogic {
 			escapeshellarg(network::getNetworkAccess('internal', 'proto:127.0.0.1:port:comp') . '/plugins/discordlink/core/api/jeeDiscordlink.php?apikey=' . $apiKey),
 			escapeshellarg($apiKey),
 			escapeshellarg(config::byKey('joueA', 'discordlink', 'Travailler main dans la main avec votre Jeedom')),
-			escapeshellarg(self::SOCKET_PORT)
+			escapeshellarg(config::byKey('socketport', 'discordlink', self::SOCKET_PORT))
 		);
 		
 		log::add('discordlink', 'debug', 'Lancement démon discordlink : ' . $cmd);
@@ -317,7 +332,7 @@ class discordlink extends eqLogic {
 		
 		// Arrêt gracieux via API HTTP
 		try {
-			$requestHttp = new com_http('http://127.0.0.1:' . self::SOCKET_PORT . '/stop');
+			$requestHttp = new com_http(self::getDaemonBaseURL() . '/stop');
 			$requestHttp->setNoReportError(true);
 			$requestHttp->setAllowEmptyReponse(true);
 			$requestHttp->exec(1, 1);
@@ -431,7 +446,7 @@ class discordlink extends eqLogic {
 					$cmd->setLogicalId($cmdKey);
 					if ($cmdConfig['type'] == "action" && $cmdKey != "daemonInfo") {
 						$cmd->setConfiguration('request', $cmdConfig['request']);
-						$cmd->setConfiguration('value', 'http://127.0.0.1:' . discordlink::SOCKET_PORT . '/' . $cmdConfig['request'] . "&channelID=" . $eqLogic->getConfiguration('channelId'));
+						$cmd->setConfiguration('value', discordlink::getDaemonBaseURL() . '/' . $cmdConfig['request'] . "&channelID=" . $eqLogic->getConfiguration('channelId'));
 					}
 					if ($cmdConfig['type'] == "action" && $cmdKey == "daemonInfo") {
 						$cmd->setConfiguration('request', $cmdConfig['request']);
@@ -812,7 +827,7 @@ class discordlinkCmd extends cmd {
 		}
 		
 		$channelID = str_replace('_player', '', $this->getEqLogic()->getConfiguration('channelId'));
-		return 'http://127.0.0.1:' . discordlink::SOCKET_PORT . '/' . $request . '&channelID=' . $channelID;
+		return discordlink::getDaemonBaseURL() . '/' . $request . '&channelID=' . $channelID;
 	}
 
 	private function buildMessageRequest($_options = array(), $default = "Une erreur est survenue") {
