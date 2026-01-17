@@ -311,7 +311,7 @@ class discordlink extends eqLogic {
 		
 		// Arrêt gracieux via API HTTP
 		try {
-			$requestHttp = new com_http('http://' . config::byKey('internalAddr') . ':' . self::SOCKET_PORT . '/stop');
+			$requestHttp = new com_http('http://127.0.0.1:' . self::SOCKET_PORT . '/stop');
 			$requestHttp->setNoReportError(true);
 			$requestHttp->setAllowEmptyReponse(true);
 			$requestHttp->exec(1, 1);

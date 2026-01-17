@@ -109,12 +109,44 @@ let server = null;
 
 /***** Stop the server *****/
 app.get('/stop', (req, res) => {
-    config.logger('DiscordLink: Shutting down', 'INFO');
-    res.status(200).json({});
-    server.close(() => {
-        process.exit(0);
-    });
+    config.logger('DiscordLink: Received stop request via HTTP', 'INFO');
+    res.status(200).json({ success: true });
+    setTimeout(() => {
+        gracefulShutdown('HTTP-API');
+    }, 100);
 });
+
+const gracefulShutdown = (signal) => {
+    config.logger(`Received ${signal}, shutting down...`, 'INFO');
+    
+    // Cleanly destroy the Discord client
+    if (client) {
+        try {
+            client.destroy();
+            config.logger('Discord Client destroyed', 'DEBUG');
+        } catch (e) {
+            config.logger('Error destroying Discord Client: ' + e, 'ERROR');
+        }
+    }
+
+    if (server) {
+        server.close(() => {
+            config.logger('Server closed', 'DEBUG');
+            process.exit(0);
+        });
+        
+        // Force exit if server.close() hangs (e.g. keep-alive connections)
+        setTimeout(() => {
+            config.logger('Forcing shutdown after timeout', 'WARNING');
+            process.exit(0);
+        }, 2000);
+    } else {
+        process.exit(0);
+    }
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 /***** Restart server *****/
 app.get('/restart', (req, res) => {
