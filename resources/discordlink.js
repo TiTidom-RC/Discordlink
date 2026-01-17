@@ -32,6 +32,7 @@ const client = new Client({
 
 const token = process.argv[3];
 const jeedomIP = process.argv[2];
+const logLevelLimit = parseInt(process.argv[4]) || 2000; // Par défaut : Aucun log si non défini
 const pluginKey = process.argv[6];
 const activityStatus = decodeURI(process.argv[7]);
 const listeningPort = process.argv[8] || 3466;
@@ -44,12 +45,15 @@ const config = {
 };
 
 // Debug: Afficher les arguments reçus (masquer le token pour la sécurité)
-console.log('[DEBUG] Arguments reçus:');
-console.log('[DEBUG] - argv[2] (jeedomIP):', jeedomIP);
-console.log('[DEBUG] - argv[3] (token):', token ? `[PRESENT - ${token.length} caractères]` : '[ABSENT]');
-console.log('[DEBUG] - argv[6] (pluginKey):', pluginKey);
-console.log('[DEBUG] - argv[7] (activityStatus):', activityStatus);
-console.log('[DEBUG] - argv[8] (listeningPort):', listeningPort);
+if (logLevelLimit <= 100) {
+    console.log('[DEBUG] Arguments reçus:');
+    console.log('[DEBUG] - argv[2] (jeedomIP):', jeedomIP);
+    console.log('[DEBUG] - argv[3] (token):', token ? `[PRESENT - ${token.length} caractères]` : '[ABSENT]');
+    console.log('[DEBUG] - argv[4] (logLevel):', logLevelLimit);
+    console.log('[DEBUG] - argv[6] (pluginKey):', pluginKey);
+    console.log('[DEBUG] - argv[7] (activityStatus):', activityStatus);
+    console.log('[DEBUG] - argv[8] (listeningPort):', listeningPort);
+}
 
 // Charger la configuration quickreply depuis le répertoire data du plugin
 const path = require('path');
@@ -69,12 +73,23 @@ if (!token) {
 }
 
 function logger(text, logLevel = 'LOG') {
+    // Mapping des niveaux de log textuels vers numériques pour comparaison
+    const levels = {
+        'DEBUG': 100,
+        'INFO': 200,
+        'WARNING': 300,
+        'ERROR': 400,
+        'NONE': 1000,
+        'LOG': 200 // Default to INFO
+    };
+
     try {
-        let levelLabel;
-        
-        // Conversion niveau numérique PHP → texte JavaScript
-        // PHP: 100=debug | 200=info | 300=warning | 400=error | 1000=none
+        let levelLabel = logLevel;
+        let numericLevel = 200;
+
+        // Si le niveau est fourni sous forme numérique
         if (typeof logLevel === 'number') {
+            numericLevel = logLevel;
             switch (logLevel) {
                 case 100: levelLabel = 'DEBUG'; break;
                 case 200: levelLabel = 'INFO'; break;
@@ -83,8 +98,18 @@ function logger(text, logLevel = 'LOG') {
                 case 1000: levelLabel = 'NONE'; break;
                 default: levelLabel = 'LOG'; break;
             }
-        } else {
-            levelLabel = logLevel;
+        } 
+        // Si le niveau est fourni sous forme de chaîne (ex: 'DEBUG')
+        else if (typeof logLevel === 'string') {
+            const upperLevel = logLevel.toUpperCase();
+            if (levels.hasOwnProperty(upperLevel)) {
+                numericLevel = levels[upperLevel];
+            }
+        }
+
+        // FILTRE : Si le niveau du message est inférieur au niveau configuré, on ne l'affiche pas
+        if (numericLevel < logLevelLimit) {
+            return;
         }
         
         // Formater la date/heure au format Jeedom : YYYY-MM-DD HH:MM:SS
@@ -156,6 +181,11 @@ app.get('/restart', (req, res) => {
     config.logger('DiscordLink: *****************************Relance forcée du Serveur*************', 'INFO');
     config.logger('DiscordLink: ******************************************************************', 'INFO');
     startServer();
+});
+
+/***** Heartbeat *****/
+app.get('/heartbeat', (req, res) => {
+    res.status(200).json({ status: 'ok', uptime: process.uptime() });
 });
 
 /***** Get channels *****/

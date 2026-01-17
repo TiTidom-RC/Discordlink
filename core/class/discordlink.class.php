@@ -233,11 +233,17 @@ class discordlink extends eqLogic {
 
 		// Vérifier si le serveur HTTP répond sur le port 3466
 		try {
-			$requestHttp = new com_http('http://127.0.0.1:' . self::SOCKET_PORT . '/getchannel');
+			$requestHttp = new com_http('http://127.0.0.1:' . self::SOCKET_PORT . '/heartbeat');
 			$requestHttp->setNoReportError(true);
 			$response = $requestHttp->exec(2, 1); // Timeout rapide: 2s
 			if ($response !== false) {
 				$return['state'] = 'ok';
+				$json = json_decode($response, true);
+				if (is_array($json) && isset($json['status']) && $json['status'] == 'ok') {
+					log::add('discordlink', 'debug', 'Heartbeat OK (Uptime: ' . round($json['uptime'], 2) . 's)');
+				} else {
+					log::add('discordlink', 'warning', 'Heartbeat réponse inattendue : ' . $response);
+				}
 			}
 		} catch (Exception $e) {
 			// Le serveur ne répond pas, daemon non actif
