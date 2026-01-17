@@ -1,7 +1,7 @@
 {
 	"id" : "discordlink",
 	"name" : "Discord Link",
-	"pluginVersion" : "2.0",
+	"pluginVersion" : "2.0.1",
 	"description" : {"fr_FR" : "Le plugin DiscordLink permet d'envoyer des messages sur son serveur Discord : messages standards, évolués, TTS - Gestion des Channels (Salons) - Fonction ASK - Envoi de Fichiers - Compatible avec les interactions de Jeedom - Fonction état des Démons de Jeedom - Fonction état des Dépendances des plugins Jeedom - Fonction état du résumé global."},
 	"utilization": "Ce plugin nécessite la création d'une 'Application' Discord et d'un 'Bot' associé depuis le portail développeur Discord.",
 	"licence" : "AGPL",
