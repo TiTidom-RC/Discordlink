@@ -30,7 +30,7 @@ class discordMsg {
         $cronInterval = 65;
         $timeNow = date("Y-m-d H:i:s");
         $maxLine = log::getConfig('maxLineLog');
-        // Récupération du niveau de log du log Connection (//100=debug | 200=info | 300=warning | 400=erreur=defaut | 1000=none)
+        // Récupération du niveau de log du log Connection :: 100 = debug | 200 = info | 300 = warning | 400 = error (default) | 1000 = none
         $level = log::getLogLevel('connection');
         $levelName = log::convertLogLevel($level);
 
