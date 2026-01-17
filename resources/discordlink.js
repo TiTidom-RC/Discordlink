@@ -69,7 +69,7 @@ try {
 let lastServerStart = 0;
 
 if (!token) {
-    config.logger('DiscordLink-Config: *********************TOKEN NON DEFINI*********************', 'ERROR');
+    config.logger('Config: ********************* TOKEN NON DEFINI *********************', 'ERROR');
 }
 
 function logger(text, logLevel = 'LOG') {
@@ -134,7 +134,7 @@ let server = null;
 
 /***** Stop the server *****/
 app.get('/stop', (req, res) => {
-    config.logger('DiscordLink: Received stop request via HTTP', 'INFO');
+    config.logger('Received stop request via HTTP', 'INFO');
     res.status(200).json({ success: true });
     setTimeout(() => {
         gracefulShutdown('HTTP-API');
@@ -175,11 +175,11 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 /***** Restart server *****/
 app.get('/restart', (req, res) => {
-    config.logger('DiscordLink: Restart', 'INFO');
+    config.logger('Restart', 'INFO');
     res.status(200).json({});
-    config.logger('DiscordLink: ******************************************************************', 'INFO');
-    config.logger('DiscordLink: *****************************Relance forcée du Serveur*************', 'INFO');
-    config.logger('DiscordLink: ******************************************************************', 'INFO');
+    config.logger('******************************************************************', 'INFO');
+    config.logger('***************************** Relance forcée du Serveur **********', 'INFO');
+    config.logger('******************************************************************', 'INFO');
     startServer();
 });
 
@@ -194,12 +194,12 @@ app.get('/getchannel', async (req, res) => {
         res.type('json');
         let toReturn = [];
 
-        config.logger('DiscordLink: GetChannel', 'DEBUG');
+        config.logger('GetChannel', 'DEBUG');
         
         // Discord.js v14: .cache.array() n'existe plus
-        const channelsall = Array.from(client.channels.cache.values());
+        const allChannels = Array.from(client.channels.cache.values());
         
-        for (let channel of channelsall) {
+        for (let channel of allChannels) {
             // ChannelType.GuildText remplace "text"
             if (channel.type === ChannelType.GuildText) {
                 toReturn.push({
@@ -242,7 +242,7 @@ app.get('/sendMsg', async (req, res) => {
         res.status(200).json(toReturn);
         
     } catch (error) {
-        config.logger('DiscordLink ERROR sendMsg: ' + error.message, 'ERROR');
+        config.logger('ERROR sendMsg :: ' + error.message, 'ERROR');
         res.status(500).json({ error: error.message });
     }
 });
@@ -253,7 +253,7 @@ app.get('/sendFile', async (req, res) => {
         res.type('json');
         let toReturn = [];
 
-        config.logger('DiscordLink: sendFile', 'INFO');
+        config.logger('sendFile', 'INFO');
 
         const channel = client.channels.cache.get(req.query.channelID);
         
@@ -277,7 +277,7 @@ app.get('/sendFile', async (req, res) => {
         res.status(200).json(toReturn);
         
     } catch (error) {
-        config.logger('DiscordLink ERROR sendFile: ' + error.message, 'ERROR');
+        config.logger('ERROR sendFile :: ' + error.message, 'ERROR');
         res.status(500).json({ error: error.message });
     }
 });
@@ -288,7 +288,7 @@ app.get('/sendMsgTTS', async (req, res) => {
         res.type('json');
         let toReturn = [];
 
-        config.logger('DiscordLink: sendMsgTTS', 'INFO');
+        config.logger('sendMsgTTS', 'INFO');
 
         const channel = client.channels.cache.get(req.query.channelID);
         
@@ -308,7 +308,7 @@ app.get('/sendMsgTTS', async (req, res) => {
         res.status(200).json(toReturn);
         
     } catch (error) {
-        config.logger('DiscordLink ERROR sendMsgTTS: ' + error.message, 'ERROR');
+        config.logger('ERROR sendMsgTTS :: ' + error.message, 'ERROR');
         res.status(500).json({ error: error.message });
     }
 });
@@ -319,7 +319,7 @@ app.get('/sendEmbed', async (req, res) => {
         res.type('json');
         let toReturn = [];
 
-        config.logger('DiscordLink: sendEmbed', 'INFO');
+        config.logger('sendEmbed', 'INFO');
 
         let color = req.query.color;
         let title = req.query.title;
@@ -654,7 +654,7 @@ async function deleteOldChannelMessages(channel) {
 
 /* Gestionnaires d'événements Discord - À définir AVANT client.login() */
 client.on("clientReady", async () => {
-    config.logger(`DiscordLink: Bot connecté: ${client.user.tag}`, 'INFO');
+    config.logger(`Bot connecté :: ${client.user.tag}`, 'INFO');
     
     // Discord.js v14: setActivity prend un objet options
     await client.user.setActivity(activityStatus, { type: 0 }); // 0 = Playing
@@ -674,7 +674,7 @@ client.on('messageCreate', (receivedMessage) => {
 
 // Gestion des erreurs
 client.on('error', error => {
-    config.logger('DiscordLink Client ERROR: ' + error.message, 'ERROR');
+    config.logger('Client ERROR :: ' + error.message, 'ERROR');
     console.error(error);
 });
 
@@ -689,16 +689,16 @@ startServer();
 function startServer() {
     lastServerStart = Date.now();
 
-    config.logger('DiscordLink:    ******************** Lancement BOT Discord.js v14 ***********************', 'INFO');
+    config.logger('******************** Lancement BOT Discord.js v14 ***********************', 'INFO');
 
     client.login(config.token).catch(err => {
-        config.logger('DiscordLink FATAL ERROR Login: ' + err.message, 'ERROR');
+        config.logger('FATAL ERROR Login :: ' + err.message, 'ERROR');
     });
 
     server = app.listen(config.listeningPort, () => {
-        config.logger('DiscordLink:    **************************************************************', 'INFO');
-        config.logger('DiscordLink:    ************** Server OK listening on port ' + server.address().port + ' **************', 'INFO');
-        config.logger('DiscordLink:    **************************************************************', 'INFO');
+        config.logger('**************************************************************', 'INFO');
+        config.logger('************** Server OK listening on port ' + server.address().port + ' **************', 'INFO');
+        config.logger('**************************************************************', 'INFO');
     });
 
     server.on('error', (e) => {
