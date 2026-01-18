@@ -41,6 +41,43 @@ function discordlink_update() {
         config::save('socketport', discordlink::SOCKET_PORT, 'discordlink');
     }
 
+    // Nettoyage des anciens fichiers et dossiers (Migration 2026)
+    $pathsToRemove = array(
+        '/core/class/discordlinkCovid.class.php',
+        '/core/php/discordlink.inc.php',
+        '/core/template/mobile/cmd.action.other.templeteTemplate.html',
+        '/core/template/scenario/cmd.covidSend.html',
+        '/desktop/js/configuration.js',
+        '/desktop/js/discordlinkuser.js',
+        '/desktop/php/discordlinkuser.php',
+        '/plugin_info/_icon.png',
+        '/resources/post_install.sh',
+        '/resources/pre_install.sh',
+        '/resources/install.sh',
+        '/resources/install_nodejs.sh',
+        '/resources/yarn.lock',
+        '/resources/dependance.lib',
+        '/resources/i18n'
+    );
+    
+    foreach ($pathsToRemove as $resource) {
+        $path = dirname(__FILE__) . '/..' . $resource;
+        if (file_exists($path)) {
+            // Utilisation de exec pour récupérer le code de retour (0 = OK)
+            try {
+                $output = array();
+                $return_var = 0;
+                exec('rm -rf ' . escapeshellarg($path) . ' 2>&1', $output, $return_var);
+                
+                if ($return_var !== 0) {
+                    log::add('discordlink', 'warning', 'Echec suppression "' . $path . '" (Code: ' . $return_var . ') : ' . implode(' ', $output));
+                }
+            } catch (Exception $e) {
+                log::add('discordlink', 'warning', 'Erreur PHP lors de la suppression de ' . $path . ' : ' . $e->getMessage());
+            }
+        }
+    }
+
     // MIGRATION V2.0 : Correction des commandes existantes sans LogicalId
     // Pour éviter l'erreur SQL 1062 Duplicate Entry lors de la recréation des commandes
     try {
