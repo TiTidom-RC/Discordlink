@@ -1,0 +1,6 @@
+Order allow,deny
+Deny from all
+<Files jeediscordlink.php>
+	Order allow,deny
+	Allow from all
+</Files>
