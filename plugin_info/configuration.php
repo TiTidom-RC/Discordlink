@@ -39,11 +39,11 @@ if (!isConnect()) {
                 <input type="checkbox" class="configKey" data-l1key="disableUpdateMessage" />
             </div>
         </div>
-        
+
         <legend><i class="fas fa-university"></i> {{Démon}}</legend>
         <div class="form-group">
             <label class="col-lg-3 control-label">{{Port Socket Interne}}
-                <sup><i class="fas fa-exclamation-triangle tooltips" style="color:var(--al-warning-color)!important;" title="{{Le démon devra être redémarré après la modification de ce paramètre}}"></i></sup>    
+                <sup><i class="fas fa-exclamation-triangle tooltips" style="color:var(--al-warning-color)!important;" title="{{Le démon devra être redémarré après la modification de ce paramètre}}"></i></sup>
                 <sup><i class="fas fa-question-circle tooltips" title="{{[ATTENTION] Ne changez ce paramètre qu'en cas de nécessité. (Défaut = 3466)}}"></i></sup>
             </label>
             <div class="col-lg-1">
@@ -59,11 +59,11 @@ if (!isConnect()) {
             </div>
         </div>
         </br>
-      <div class="form-group">
-          <label class="col-lg-3 control-label">{{Joue à : }}</label>
-          <div class="col-lg-6">
-              <input class="configKey form-control" data-l1key="joueA" placeholder="Travailler main dans la main avec votre Jeedom"/>
-          </div>
-      </div>
+        <div class="form-group">
+            <label class="col-lg-3 control-label">{{Joue à : }}</label>
+            <div class="col-lg-6">
+                <input class="configKey form-control" data-l1key="joueA" placeholder="Travailler main dans la main avec votre Jeedom" />
+            </div>
+        </div>
     </fieldset>
 </form>

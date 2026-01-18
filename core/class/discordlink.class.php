@@ -19,16 +19,14 @@
 /* * *************************** Includes ********************************* */
 require_once __DIR__ . '/../../../../core/php/core.inc.php';
 
-class discordlink extends eqLogic
-{
+class discordlink extends eqLogic {
 	/*     * ************************* Attributes ****************************** */
 
 	const DEFAULT_COLOR = '#ff0000';
 	const SOCKET_PORT = 3466;
 	private static $_daemonBaseURL = null;
 
-	public static function getInfo()
-	{
+	public static function getInfo() {
 		$file = __DIR__ . '/../../plugin_info/info.json';
 		if (file_exists($file)) {
 			try {
@@ -42,8 +40,7 @@ class discordlink extends eqLogic
 		return array();
 	}
 
-	public static function templateWidget()
-	{
+	public static function templateWidget() {
 		$return['action']['message']['message'] =    array(
 			'template' => 'message',
 			'replace' => array("#_desktop_width_#" => "100", "#_mobile_width_#" => "50", "#title_disable#" => "1", "#message_disable#" => "0")
@@ -55,14 +52,12 @@ class discordlink extends eqLogic
 		return $return;
 	}
 
-	public static function testPlugin($_pluginId)
-	{
+	public static function testPlugin($_pluginId) {
 		$plugin = plugin::byId($_pluginId);
 		return (is_object($plugin) && $plugin->isActive());
 	}
 
-	public static function getDaemonBaseURL()
-	{
+	public static function getDaemonBaseURL() {
 		if (self::$_daemonBaseURL === null) {
 			$host = '127.0.0.1';
 			if (jeedom::getHardwareName() == 'docker') {
@@ -76,8 +71,7 @@ class discordlink extends eqLogic
 		return self::$_daemonBaseURL;
 	}
 
-	public static function getChannel()
-	{
+	public static function getChannel() {
 		try {
 			$requestHttp = new com_http(self::getDaemonBaseURL() . '/getchannel');
 			$response = $requestHttp->exec(10, 2);
@@ -93,8 +87,7 @@ class discordlink extends eqLogic
 		}
 	}
 
-	public static function setChannel()
-	{
+	public static function setChannel() {
 		$channels = static::getChannel();
 		if (empty($channels)) return;
 
@@ -105,15 +98,13 @@ class discordlink extends eqLogic
 		config::save('channels', $channels, 'discordlink');
 	}
 
-	private static function removeEmoji($text)
-	{
+	private static function removeEmoji($text) {
 		// Supprime tous les emoji Unicode (PHP 7.4+) - Property Emoji couvre tous les emoji modernes
 		// Inclut: emoticons, symboles, drapeaux, ZWJ sequences, variations, skin tones
 		return preg_replace('/\p{Emoji}/u', '', $text);
 	}
 
-	public static function setEmoji($reset = 0)
-	{
+	public static function setEmoji($reset = 0) {
 		$default = array(
 			'motion' => ':person_walking:',
 			'door' => ':door:',
@@ -140,15 +131,13 @@ class discordlink extends eqLogic
 		config::save('emoji', $emojiArray, 'discordlink');
 	}
 
-	public static function updateInfo()
-	{
+	public static function updateInfo() {
 		sleep(2);
 		static::updateObject();
 		static::setChannel();
 	}
 
-	public static function emojiConvert($_text): string
-	{
+	public static function emojiConvert($_text): string {
 		$_returnText = '';
 		$textParts = explode(" ", $_text);
 		foreach ($textParts as $value) {
@@ -163,8 +152,7 @@ class discordlink extends eqLogic
 		return $_returnText;
 	}
 
-	private static function executeCronIfDue($eqLogic, $cronExpr, $cmdLogicId, $debugLabel, $dateRun, $_options)
-	{
+	private static function executeCronIfDue($eqLogic, $cronExpr, $cmdLogicId, $debugLabel, $dateRun, $_options) {
 		if (empty($cronExpr)) return;
 
 		try {
@@ -181,8 +169,7 @@ class discordlink extends eqLogic
 		}
 	}
 
-	public static function checkAll()
-	{
+	public static function checkAll() {
 		$eqLogics = eqLogic::byType('discordlink');
 		if (empty($eqLogics)) {
 			return;
@@ -217,22 +204,19 @@ class discordlink extends eqLogic
 	/*
      * Fonction exécutée automatiquement toutes les minutes par Jeedom
 	 */
-	public static function cron()
-	{
+	public static function cron() {
 		static::checkAll();
 	}
 
 	/*
      * Fonction exécutée automatiquement toutes les heures par Jeedom*/
-	public static function cronHourly()
-	{
+	public static function cronHourly() {
 		static::updateInfo();
 	}
 
 	/*
      * Fonction exécutée automatiquement tous les jours par Jeedom*/
-	public static function cronDaily()
-	{
+	public static function cronDaily() {
 		$eqLogics = eqLogic::byType('discordlink');
 		foreach ($eqLogics as $eqLogic) {
 			if ($eqLogic->getConfiguration('clearChannel', 0) != 1) continue;
@@ -254,8 +238,7 @@ class discordlink extends eqLogic
 	// Dépendances gérées nativement via packages.json (Node.js géré par Jeedom Core)
 
 
-	public static function deamon_info()
-	{
+	public static function deamon_info() {
 		$return = array(
 			'log' => 'discordlink_node',
 			'state' => 'nok',
@@ -291,8 +274,7 @@ class discordlink extends eqLogic
 		return $return;
 	}
 
-	public static function deamon_start($_debug = false)
-	{
+	public static function deamon_start($_debug = false) {
 		static::deamon_stop();
 
 		if (static::deamon_info()['launchable'] != 'ok') {
@@ -344,8 +326,7 @@ class discordlink extends eqLogic
 		return false;
 	}
 
-	public static function deamon_stop()
-	{
+	public static function deamon_stop() {
 		log::add('discordlink', 'info', 'Arrêt du démon discordlink');
 
 		// Arrêt gracieux via API HTTP
@@ -394,16 +375,15 @@ class discordlink extends eqLogic
 		}
 	}
 
-	public function preInsert()
-	{
+	public function preInsert() {
 		$this->setConfiguration('defaultColor', self::DEFAULT_COLOR);
 		$this->setIsEnable(1);
 	}
 
-	public function postInsert() {}
+	public function postInsert() {
+	}
 
-	public function preSave()
-	{
+	public function preSave() {
 		$channel = $this->getConfiguration('channelId');
 		if (!empty($channel) && $channel != 'null') {
 			$this->setLogicalId($channel);
@@ -413,23 +393,20 @@ class discordlink extends eqLogic
 		}
 	}
 
-	public static function getIcon($_icon)
-	{
+	public static function getIcon($_icon) {
 		$emojiArray = config::byKey('emoji', 'discordlink', array());
 		$icon = isset($emojiArray[$_icon]) && !empty($emojiArray[$_icon]) ? $emojiArray[$_icon] : static::addEmoji($_icon);
 		return $icon . ' ';
 	}
 
-	public static function addEmoji($_icon, $_emoji = null)
-	{
+	public static function addEmoji($_icon, $_emoji = null) {
 		$emojiArray = config::byKey('emoji', 'discordlink', array());
 		$emojiArray[$_icon] = $_emoji ?? ':interrobang:';
 		config::save('emoji', $emojiArray, 'discordlink');
 		return $emojiArray[$_icon];
 	}
 
-	public static function createCmd()
-	{
+	public static function createCmd() {
 
 		$eqLogics = eqLogic::byType('discordlink');
 		foreach ($eqLogics as $eqLogic) {
@@ -489,30 +466,29 @@ class discordlink extends eqLogic
 		}
 	}
 
-	public function getDefaultColor()
-	{
+	public function getDefaultColor() {
 		return $this->getConfiguration('defaultColor', self::DEFAULT_COLOR);
 	}
 
-	public function postSave()
-	{
+	public function postSave() {
 		static::createCmd();
 		static::updateObject();
 	}
 
-	public function preUpdate() {}
+	public function preUpdate() {
+	}
 
-	public function postUpdate()
-	{
+	public function postUpdate() {
 		discordlink::createCmd();
 	}
 
-	public function preRemove() {}
+	public function preRemove() {
+	}
 
-	public function postRemove() {}
+	public function postRemove() {
+	}
 
-	public static function updateObject()
-	{
+	public static function updateObject() {
 		$objects = jeeObject::all();
 		if (empty($objects)) return;
 
@@ -549,8 +525,7 @@ class discordlink extends eqLogic
     }
      */
 
-	public static function getLastUserConnections()
-	{
+	public static function getLastUserConnections() {
 		$message = "";
 		$connectedUserListNew = '';
 		$connectedUserList = '';
@@ -763,8 +738,7 @@ class discordlink extends eqLogic
 
 	/*     * ********************** Getter Setter *************************** */
 }
-class discordlinkCmd extends cmd
-{
+class discordlinkCmd extends cmd {
 
 	/*     * ************************* Attributes ****************************** */
 
@@ -780,8 +754,7 @@ class discordlinkCmd extends cmd
 		  }
 		 */
 
-	public function execute($_options = null)
-	{
+	public function execute($_options = null) {
 		if ($this->getLogicalId() == 'refresh') {
 			$this->getEqLogic()->refresh();
 			return;
@@ -811,8 +784,7 @@ class discordlinkCmd extends cmd
 		return false;
 	}
 
-	private function buildRequest($_options = array())
-	{
+	private function buildRequest($_options = array()) {
 		if ($this->getType() != 'action') return $this->getConfiguration('request');
 
 		$cmdAndArg = explode('?', $this->getConfiguration('request'), 2);
@@ -852,8 +824,7 @@ class discordlinkCmd extends cmd
 		return discordlink::getDaemonBaseURL() . '/' . $request . '&channelID=' . $channelID;
 	}
 
-	private function buildMessageRequest($_options = array(), $default = "Une erreur est survenue")
-	{
+	private function buildMessageRequest($_options = array(), $default = "Une erreur est survenue") {
 		$message = isset($_options['message']) && $_options['message'] != '' ? $_options['message'] : $default;
 		$message = str_replace('|', "\n", $message);
 		$request = str_replace('#message#', urlencode(self::decodeRandomText($message)), $this->getConfiguration('request'));
@@ -861,8 +832,7 @@ class discordlinkCmd extends cmd
 		return $request;
 	}
 
-	private function buildFileRequest($_options = array(), $default = "Une erreur est survenu")
-	{
+	private function buildFileRequest($_options = array(), $default = "Une erreur est survenu") {
 		$patch = "null";
 		$fileName = "null";
 		$message = "null";
@@ -907,8 +877,7 @@ class discordlinkCmd extends cmd
 		return $request;
 	}
 
-	private function buildEmbedRequest($_options = array(), $default = "Une erreur est survenue")
-	{
+	private function buildEmbedRequest($_options = array(), $default = "Une erreur est survenue") {
 
 		$request = $this->getConfiguration('request');
 
@@ -997,8 +966,7 @@ class discordlinkCmd extends cmd
 		return $request;
 	}
 
-	public static function decodeRandomText($_text)
-	{
+	public static function decodeRandomText($_text) {
 		$return = $_text;
 		if (strpos($_text, '|') !== false && strpos($_text, '[') !== false && strpos($_text, ']') !== false) {
 			$replies = interactDef::generateTextVariant($_text);
@@ -1018,8 +986,7 @@ class discordlinkCmd extends cmd
 		return str_replace(array_keys($replace), $replace, $return);
 	}
 
-	public function buildDaemonInfo($_options = array())
-	{
+	public function buildDaemonInfo($_options = array()) {
 		$message = '';
 		$colors = '#00ff08';
 
@@ -1043,8 +1010,7 @@ class discordlinkCmd extends cmd
 		return 'requestHandledInternally';
 	}
 
-	public function buildDependencyInfo($_options = array())
-	{
+	public function buildDependencyInfo($_options = array()) {
 		$message = '';
 		$colors = '#00ff08';
 
@@ -1071,8 +1037,7 @@ class discordlinkCmd extends cmd
 		return 'requestHandledInternally';
 	}
 
-	public function buildGlobalSummary($_options = array())
-	{
+	public function buildGlobalSummary($_options = array()) {
 
 		$objects = jeeObject::all();
 		$def = config::byKey('object:summary');
@@ -1099,8 +1064,7 @@ class discordlinkCmd extends cmd
 		return 'requestHandledInternally';
 	}
 
-	public function buildGlobalBattery($_options = array())
-	{
+	public function buildGlobalBattery($_options = array()) {
 		$message = 'null';
 		$colors = '#00ff08';
 		$alertThreshold = 30;
@@ -1156,8 +1120,7 @@ class discordlinkCmd extends cmd
 		return 'requestHandledInternally';
 	}
 
-	public function buildObjectSummary($_options = array())
-	{
+	public function buildObjectSummary($_options = array()) {
 		$objectId = $_options['select'];
 		log::add('discordlink', 'debug', 'objectId : ' . $objectId);
 		$object = jeeObject::byId($objectId);
@@ -1184,8 +1147,7 @@ class discordlinkCmd extends cmd
 		return 'requestHandledInternally';
 	}
 
-	public function buildMessageCenter($_options = array())
-	{
+	public function buildMessageCenter($_options = array()) {
 		// Parcours de tous les Updates
 		$updateList = "";
 		$updateCount = 0;
@@ -1261,8 +1223,7 @@ class discordlinkCmd extends cmd
 		return 'requestHandledInternally';
 	}
 
-	public function buildLastUser($_options = array())
-	{
+	public function buildLastUser($_options = array()) {
 		$result = discordlink::getLastUserConnections();
 		if (isset($_options['cron']) && !$result['cronOk']) return 'requestHandledInternally';
 
@@ -1272,8 +1233,7 @@ class discordlinkCmd extends cmd
 		return 'requestHandledInternally';
 	}
 
-	public function getWidgetTemplateCode($_version = 'dashboard', $_clean = true, $_widgetName = '')
-	{
+	public function getWidgetTemplateCode($_version = 'dashboard', $_clean = true, $_widgetName = '') {
 		if ($_version != 'scenario') return parent::getWidgetTemplateCode($_version, $_clean, $_widgetName);
 
 		list($command,) = explode('?', $this->getConfiguration('request'), 2);

@@ -68,8 +68,7 @@ switch ($name) {
 		}
 }
 
-function getDeviceAndUpdate($name, $value, $jeedomCommand, $_channelId, $_userId)
-{
+function getDeviceAndUpdate($name, $value, $jeedomCommand, $_channelId, $_userId) {
 	$discordEquipment = eqLogic::byLogicalId($_channelId, 'discordlink');
 
 	if (!is_object($discordEquipment)) return;
@@ -91,18 +90,17 @@ function getDeviceAndUpdate($name, $value, $jeedomCommand, $_channelId, $_userId
 		$reply = interactQuery::tryToReply(trim($value), $parameters);
 		log::add('discordlink', 'debug', 'Interaction ' . print_r($reply, true));
 		if ($reply['reply'] != "Désolé je n'ai pas compris" && $reply['reply'] != "Désolé je n'ai pas compris la demande" && $reply['reply'] != "Désolé je ne comprends pas la demande" && $reply['reply'] != "Je ne comprends pas" && $reply['reply'] != "ceci est un message de test" && $reply['reply'] != "" && $reply['reply'] != " ") {
-			log::add('discordlink', 'debug',  "La reponse : " . $reply['reply'] . " est valide je vous l'ai donc renvoyée");
+			log::add('discordlink', 'debug',  "La réponse : " . $reply['reply'] . " est valide je vous l'ai donc renvoyée");
 			$cmd = $discordEquipment->getCmd('action', 'sendMsg');
 			$option = array('message' => $reply['reply']);
 			$cmd->execute($option);
 		} else {
-			log::add('discordlink', 'debug',  "La reponse : " . $reply['reply'] . " est une reponse générique je vous l'ai donc pas renvoyée");
+			log::add('discordlink', 'debug',  "La réponse : " . $reply['reply'] . " est une réponse générique je vous l'ai donc pas renvoyée");
 		}
 	}
 }
 
-function updateCommand($name, $_value, $_logicalId, $_discordEquipment, $_updateTime = null)
-{
+function updateCommand($name, $_value, $_logicalId, $_discordEquipment, $_updateTime = null) {
 	try {
 		if (isset($_value)) {
 			if ($_discordEquipment->getIsEnable() == 1) {
@@ -125,8 +123,7 @@ function updateCommand($name, $_value, $_logicalId, $_discordEquipment, $_update
 	}
 }
 
-function getASK($_value, $_channelId, $_request)
-{
+function getASK($_value, $_channelId, $_request) {
 	$discordEquipment = eqLogic::byLogicalId($_channelId, 'discordlink');
 	$cmd = $discordEquipment->getCmd('action', "sendEmbed");
 	if ($_request === "text") {

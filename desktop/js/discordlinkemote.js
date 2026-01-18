@@ -1,4 +1,3 @@
-
 /* This file is part of Jeedom.
  *
  * Jeedom is free software: you can redistribute it and/or modify
@@ -20,110 +19,116 @@
  */
 initEmoji();
 function initEmoji() {
-  
   $.ajax({
-    type: 'POST',
-    url: 'plugins/discordlink/core/ajax/discordlink.ajax.php',
+    type: "POST",
+    url: "plugins/discordlink/core/ajax/discordlink.ajax.php",
     data: {
-      action: 'getEmoji'
+      action: "getEmoji",
     },
-    dataType: 'json',
+    dataType: "json",
     error: function (request, status, error) {
-      handleAjaxError(request, status, error, $('#div_AboAlert'));
+      handleAjaxError(request, status, error, $("#div_AboAlert"));
     },
     success: function (data) {
-      if (data.state != 'ok') {
-        $('#div_AboAlert').showAlert({message: 'ERROR', level: 'danger'});
+      if (data.state != "ok") {
+        $("#div_AboAlert").showAlert({ message: "ERROR", level: "danger" });
         return;
       }
       for (var i in data.result) {
         addEmojiToTable(data.result[i]);
       }
-    }
+    },
   });
 }
 
 function addEmojiToTable(_cmd) {
+  if (!isset(_cmd.configuration)) {
+    _cmd.configuration = {};
+  }
 
-    if (!isset(_cmd.configuration)) {
-        _cmd.configuration = {};
-    }
+  const tr =
+    ' <tr class="emoji">' +
+    "<td>" +
+    '<div class="row">' +
+    '<div class="col-lg-8">' +
+    '<input class="emojiAttr form-control input-sm" data-l1key="keyEmoji">' +
+    "</div>" +
+    "</td>" +
+    "<td>" +
+    '<div class="row">' +
+    '<div class="col-lg-8">' +
+    '<input class="emojiAttr form-control input-sm" data-l1key="codeEmoji">' +
+    "</div>" +
+    "</div>" +
+    "<td>" +
+    '<i class="fas fa-minus-circle pull-right emojiAction cursor" data-action="remove"></i>' +
+    "</td>" +
+    "</tr>";
 
-    const tr =  ' <tr class="emoji">'
-      +   '<td>'
-      +     '<div class="row">'
-      +       '<div class="col-lg-8">'
-      +         '<input class="emojiAttr form-control input-sm" data-l1key="keyEmoji">'
-      +       '</div>'
-      +   '</td>'
-      +   '<td>'
-      +     '<div class="row">'
-      +        '<div class="col-lg-8">'
-      +          '<input class="emojiAttr form-control input-sm" data-l1key="codeEmoji">'
-      +        '</div>'
-      +     '</div>'
-      + '<td>'
-      + '<i class="fas fa-minus-circle pull-right emojiAction cursor" data-action="remove"></i>'
-      +   '</td>'
-      + '</tr>';
-
-    $('#table_cmd tbody').append(tr);
-    $('#table_cmd tbody tr:last').setValues(_cmd, '.emojiAttr');
+  $("#table_cmd tbody").append(tr);
+  $("#table_cmd tbody tr:last").setValues(_cmd, ".emojiAttr");
 }
 
-$('.eqLogicAction[data-action=saveEmoji]').off('click').on('click', function () {
-  
-  emojiArray = $('#commandtab').find('.emoji').getValues('.emojiAttr');
+$(".eqLogicAction[data-action=saveEmoji]")
+  .off("click")
+  .on("click", function () {
+    emojiArray = $("#commandtab").find(".emoji").getValues(".emojiAttr");
 
-  $.ajax({
-    type: 'POST',
-    url: 'plugins/discordlink/core/ajax/discordlink.ajax.php',
-    data: {
-      action: 'saveEmoji',
-      arrayEmoji: emojiArray
-    },
-    dataType: 'json',
-    error: function (request, status, error) {
-      handleAjaxError(request, status, error, $('#div_AboAlert'));
-    },
-    success: function (data) {
-      if (data.state != 'ok') {
-        $('#div_AboAlert').showAlert({message: 'ERROR', level: 'danger'});
-        return;
-      }
-    }
+    $.ajax({
+      type: "POST",
+      url: "plugins/discordlink/core/ajax/discordlink.ajax.php",
+      data: {
+        action: "saveEmoji",
+        arrayEmoji: emojiArray,
+      },
+      dataType: "json",
+      error: function (request, status, error) {
+        handleAjaxError(request, status, error, $("#div_AboAlert"));
+      },
+      success: function (data) {
+        if (data.state != "ok") {
+          $("#div_AboAlert").showAlert({ message: "ERROR", level: "danger" });
+          return;
+        }
+      },
+    });
   });
-});
 
-$("#bt_addEmoji").off('click').on('click', function(event)
-{
-  let _cmd = {};
-  addEmojiToTable(_cmd);
-});
-
-$("#bt_reset").off('click').on('click', function(event)
-{
-  $.ajax({
-    type: 'POST',
-    url: 'plugins/discordlink/core/ajax/discordlink.ajax.php',
-    data: {
-      action: 'resetEmoji'
-    },
-    dataType: 'json',
-    error: function (request, status, error) {
-      handleAjaxError(request, status, error, $('#div_AboAlert'));
-    },
-    success: function (data) {
-      if (data.state != 'ok') {
-        $('#div_AboAlert').showAlert({message: 'ERROR', level: 'danger'});
-        return;
-      }
-      location.reload();
-    }
+$("#bt_addEmoji")
+  .off("click")
+  .on("click", function (event) {
+    let _cmd = {};
+    addEmojiToTable(_cmd);
   });
-});
 
-$('#div_pageContainer').on( 'click', '.emoji .emojiAction[data-action=remove]',function () {
-  modifyWithoutSave = true;
-  $(this).closest('tr').remove();
-});
+$("#bt_reset")
+  .off("click")
+  .on("click", function (event) {
+    $.ajax({
+      type: "POST",
+      url: "plugins/discordlink/core/ajax/discordlink.ajax.php",
+      data: {
+        action: "resetEmoji",
+      },
+      dataType: "json",
+      error: function (request, status, error) {
+        handleAjaxError(request, status, error, $("#div_AboAlert"));
+      },
+      success: function (data) {
+        if (data.state != "ok") {
+          $("#div_AboAlert").showAlert({ message: "ERROR", level: "danger" });
+          return;
+        }
+        location.reload();
+      },
+    });
+  });
+
+$("#div_pageContainer").on(
+  "click",
+  ".emoji .emojiAction[data-action=remove]",
+  function () {
+    modifyWithoutSave = true;
+    $(this).closest("tr").remove();
+  },
+);
