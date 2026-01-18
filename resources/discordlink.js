@@ -61,7 +61,7 @@ const quickreplyPath = path.join(__dirname, '..', 'data', 'quickreply.json');
 try {
     quickreplyConf = JSON.parse(fs.readFileSync(quickreplyPath, 'utf8'));
 } catch (e) {
-    console.log("[WARNING] Erreur chargement quickreply.json:", e.message);
+    config.logger("Erreur chargement quickreply.json: " + e.message, 'WARNING');
 }
 
 let lastServerStart = 0;
@@ -385,8 +385,8 @@ app.get('/sendEmbed', async (req, res) => {
 
                 inline = inline === 1;
 
-                console.log(fields[field]);
-                console.log("Name : " + name + " | Value : " + value);
+                config.logger(JSON.stringify(fields[field]), 'DEBUG');
+                config.logger("Name : " + name + " | Value : " + value, 'DEBUG');
 
                 // Discord.js v14: addField → addFields
                 Embed.addFields({ name: name, value: value, inline: inline });
@@ -730,9 +730,8 @@ function startServer() {
 function httpPost(name, jsonData) {
     let url = jeedomURL + "/plugins/discordlink/core/php/jeediscordlink.php?apikey=" + pluginKey + "&name=" + name;
 
-    config.logger && config.logger('URL envoyée: ' + url, "DEBUG");
-    console.log("jsonData : " + JSON.stringify(jsonData));
-    config.logger && config.logger('DATA envoyé:' + JSON.stringify(jsonData), 'DEBUG');
+    config.logger('URL envoyée :: ' + url, "DEBUG");
+    config.logger('DATA envoyées :: ' + JSON.stringify(jsonData), 'DEBUG');
 
     fetch(url, {
         method: 'post', 
@@ -741,10 +740,10 @@ function httpPost(name, jsonData) {
     })
         .then(res => {
             if (!res.ok) {
-                console.log("[ERROR] Erreur lors du contact de votre Jeedom");
+                config.logger("Erreur lors du contact de votre Jeedom", 'ERROR');
             }
         })
         .catch(error => {
-            console.log("[ERROR] Erreur fetch Jeedom:", error.message);
+            config.logger("Erreur fetch Jeedom: " + error.message, 'ERROR');
         });
 }
