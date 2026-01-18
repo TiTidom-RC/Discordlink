@@ -70,6 +70,11 @@ if (!token) {
     config.logger('Config: ********************* TOKEN NON DEFINI *********************', 'ERROR');
 }
 
+/**
+ * Log a message with a specific level to stdout
+ * @param {string} text - The message to log
+ * @param {string|number} [logLevel='LOG'] - The log level (DEBUG, INFO, WARNING, ERROR, NONE or number)
+ */
 function logger(text, logLevel = 'LOG') {
     // Mapping des niveaux de log textuels vers numériques pour comparaison
     const levels = {
@@ -111,14 +116,7 @@ function logger(text, logLevel = 'LOG') {
         }
         
         // Formater la date/heure au format Jeedom : YYYY-MM-DD HH:MM:SS
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        const seconds = String(now.getSeconds()).padStart(2, '0');
-        const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        const timestamp = new Date().toLocaleString('sv-SE');
         
         console.log(`[${timestamp}][${levelLabel}] ${text}`);
     } catch (e) {
@@ -139,6 +137,10 @@ app.get('/stop', (req, res) => {
     }, 100);
 });
 
+/**
+ * Gracefully stop the server and destroy the Discord client
+ * @param {string} signal - The signal received (SIGTERM, SIGINT, etc.)
+ */
 const gracefulShutdown = (signal) => {
     config.logger(`Received ${signal}, shutting down...`, 'INFO');
     
@@ -546,9 +548,9 @@ app.get('/clearChannel', async (req, res) => {
         // Effectuer le nettoyage en arrière-plan
         try {
             await deleteOldChannelMessages(channel);
-            console.log('[INFO] Nettoyage du channel ' + channelID + ' terminé avec succès');
+            config.logger('Nettoyage du channel ' + channelID + ' terminé avec succès', 'INFO');
         } catch (error) {
-            console.log('[ERROR] Erreur lors du nettoyage du channel ' + channelID + ': ' + error.message);
+            config.logger('Erreur lors du nettoyage du channel ' + channelID + ': ' + error.message, 'ERROR');
         }
         
     } catch (error) {
@@ -557,7 +559,12 @@ app.get('/clearChannel', async (req, res) => {
     }
 });
 
-/***** Delete old messages in channel *****/
+/**
+ * Delete messages older than 24 hours in a channel
+ * Keeps messages from today and yesterday
+ * @param {Object} channel - The Discord channel object
+ * @returns {Promise<void>}
+ */
 async function deleteOldChannelMessages(channel) {
     try {
         // Constantes de durée
@@ -573,9 +580,12 @@ async function deleteOldChannelMessages(channel) {
         let totalBulkDeleted = 0;
         let totalIndividualDeleted = 0;
         
-        console.log('[INFO] Début du nettoyage du channel ' + channel.id);
-        console.log('[INFO] Suppression des messages avant ' + new Date(yesterdayTimestamp).toISOString());
-        console.log('[INFO] Conservation : messages d\'aujourd\'hui + d\'hier (jours calendaires)');
+        // Format simple YYYY-MM-DD HH:MM:SS local (l'astuce sv-SE donne ce format ISO)
+        const formattedDate = new Date(yesterdayTimestamp).toLocaleString('sv-SE');
+
+        config.logger('Début du nettoyage du channel ' + channel.id, 'INFO');
+        config.logger('Suppression des messages avant ' + formattedDate, 'INFO');
+        config.logger('Conservation : messages d\'aujourd\'hui + d\'hier (jours calendaires)', 'INFO');
         
         while (true) {
             // Récupérer les 100 derniers messages
@@ -613,7 +623,7 @@ async function deleteOldChannelMessages(channel) {
                 await channel.bulkDelete(recentMessages);
                 totalBulkDeleted += recentMessages.length;
                 totalDeleted += recentMessages.length;
-                console.log('[DEBUG] ' + recentMessages.length + ' messages supprimés en masse');
+                config.logger(recentMessages.length + ' messages supprimés en masse', 'DEBUG');
             }
             
             // Suppression individuelle (messages > 14 jours)
@@ -629,23 +639,23 @@ async function deleteOldChannelMessages(channel) {
                         // Petit délai pour éviter le rate limiting Discord
                         await new Promise(resolve => setTimeout(resolve, 100));
                     } catch (e) {
-                        console.log('[WARNING] Impossible de supprimer le message ' + message.id + ': ' + e.message);
+                        config.logger('Impossible de supprimer le message ' + message.id + ': ' + e.message, 'WARNING');
                     }
                 }
-                console.log('[DEBUG] ' + deletedInThisBatch + ' vieux messages (>14j) supprimés individuellement');
+                config.logger(deletedInThisBatch + ' vieux messages (>14j) supprimés individuellement', 'DEBUG');
             }
         }
         
-        console.log('[INFO] ========================================');
-        console.log('[INFO] Nettoyage terminé - Récapitulatif :');
-        console.log('[INFO] - Messages supprimés en masse : ' + totalBulkDeleted);
-        console.log('[INFO] - Messages supprimés individuellement (>14j) : ' + totalIndividualDeleted);
-        console.log('[INFO] - TOTAL supprimé : ' + totalDeleted);
-        console.log('[INFO] - Conservés : aujourd\'hui + hier (jours calendaires)');
-        console.log('[INFO] ========================================');
+        config.logger('========================================', 'INFO');
+        config.logger('Nettoyage terminé - Récapitulatif :', 'INFO');
+        config.logger('- Messages supprimés en masse : ' + totalBulkDeleted, 'INFO');
+        config.logger('- Messages supprimés individuellement (>14j) : ' + totalIndividualDeleted, 'INFO');
+        config.logger('- TOTAL supprimés : ' + totalDeleted, 'INFO');
+        config.logger('- Conservés : aujourd\'hui + hier (jours calendaires)', 'INFO');
+        config.logger('========================================', 'INFO');
         
     } catch (error) {
-        console.log('[ERROR] Erreur lors de la suppression des messages: ' + error.message);
+        config.logger('Erreur lors de la suppression des messages: ' + error.message, 'ERROR');
         throw error;
     }
 }
@@ -684,6 +694,9 @@ process.on('unhandledRejection', error => {
 /* Main */
 startServer();
 
+/**
+ * Initialize the Discord client and start the Express server
+ */
 function startServer() {
     lastServerStart = Date.now();
 
@@ -709,6 +722,11 @@ function startServer() {
     });
 }
 
+/**
+ * Send data to Jeedom via HTTP POST
+ * @param {string} name - The name of the event/action
+ * @param {Object} jsonData - The data to send
+ */
 function httpPost(name, jsonData) {
     let url = jeedomURL + "/plugins/discordlink/core/php/jeediscordlink.php?apikey=" + pluginKey + "&name=" + name;
 
