@@ -41,45 +41,19 @@ const pluginKey = process.argv[6];
 const activityStatus = decodeURI(process.argv[7]);
 const listeningPort = process.argv[8] || 3466;
 
-/* Configuration */
-const config = {
-    logger: logger,
-    token: token,
-    listeningPort: listeningPort
-};
-
-// Debug: Afficher les arguments reçus (masquer le token pour la sécurité)
-config.logger('Arguments reçus:', 'DEBUG');
-config.logger(' - argv[2] (jeedomURL): ' + jeedomURL, 'DEBUG');
-config.logger(' - argv[3] (token): ' + (token ? `[PRESENT - ${token.length} caractères]` : '[ABSENT]'), 'DEBUG');
-config.logger(' - argv[4] (logLevel): ' + logLevelLimit, 'DEBUG');
-config.logger(' - argv[6] (pluginKey): ' + pluginKey, 'DEBUG');
-config.logger(' - argv[7] (activityStatus): ' + activityStatus, 'DEBUG');
-config.logger(' - argv[8] (listeningPort): ' + listeningPort, 'DEBUG');
-
-// Charger la configuration quickreply depuis le répertoire data du plugin
-const path = require('path');
-let quickreplyConf = {};
-const quickreplyPath = path.join(__dirname, '..', 'data', 'quickreply.json');
-
-try {
-    quickreplyConf = JSON.parse(fs.readFileSync(quickreplyPath, 'utf8'));
-} catch (e) {
-    config.logger("Erreur chargement quickreply.json: " + e.message, 'WARNING');
-}
-
-let lastServerStart = 0;
-
-if (!token) {
-    config.logger('Config: ********************* TOKEN NON DEFINI *********************', 'ERROR');
-}
+/**
+ * Helper to get current timestamp in Jeedom format (YYYY-MM-DD HH:MM:SS)
+ * Using 'sv-SE' locale hack to get ISO 8601 like format
+ * @returns {string}
+ */
+const getTimestamp = (date = new Date()) => date.toLocaleString('sv-SE');
 
 /**
  * Log a message with a specific level to stdout
  * @param {string} text - The message to log
  * @param {string|number} [logLevel='LOG'] - The log level (DEBUG, INFO, WARNING, ERROR, NONE or number)
  */
-function logger(text, logLevel = 'LOG') {
+const logger = (text, logLevel = 'LOG') => {
     // Mapping des niveaux de log textuels vers numériques pour comparaison
     const levels = {
         'DEBUG': 100,
@@ -119,17 +93,50 @@ function logger(text, logLevel = 'LOG') {
             return;
         }
         
-        // Formater la date/heure au format Jeedom : YYYY-MM-DD HH:MM:SS
-        const timestamp = new Date().toLocaleString('sv-SE');
-        
-        console.log(`[${timestamp}][${levelLabel}] ${text}`);
+        console.log(`[${getTimestamp()}][${levelLabel}] ${text}`);
     } catch (e) {
         console.log(arguments[0]);
     }
+};
+
+/* Configuration */
+const config = {
+    logger: logger,
+    token: token,
+    listeningPort: listeningPort
+};
+
+// Debug: Afficher les arguments reçus (masquer le token pour la sécurité)
+config.logger('Arguments reçus:', 'DEBUG');
+config.logger(' - argv[2] (jeedomURL): ' + jeedomURL, 'DEBUG');
+config.logger(' - argv[3] (token): ' + (token ? `[PRESENT - ${token.length} caractères]` : '[ABSENT]'), 'DEBUG');
+config.logger(' - argv[4] (logLevel): ' + logLevelLimit, 'DEBUG');
+config.logger(' - argv[6] (pluginKey): ' + pluginKey, 'DEBUG');
+config.logger(' - argv[7] (activityStatus): ' + activityStatus, 'DEBUG');
+config.logger(' - argv[8] (listeningPort): ' + listeningPort, 'DEBUG');
+
+// Charger la configuration quickreply depuis le répertoire data du plugin
+const path = require('path');
+let quickreplyConf = {};
+const quickreplyPath = path.join(__dirname, '..', 'data', 'quickreply.json');
+
+try {
+    quickreplyConf = JSON.parse(fs.readFileSync(quickreplyPath, 'utf8'));
+} catch (e) {
+    config.logger("Erreur chargement quickreply.json: " + e.message, 'WARNING');
+}
+
+let lastServerStart = 0;
+
+if (!token) {
+    config.logger('Config: ********************* TOKEN NON DEFINI *********************', 'ERROR');
 }
 
 /* Routing */
 const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 let server = null;
 
 /***** Stop the server *****/
@@ -231,16 +238,17 @@ app.get('/sendMsg', async (req, res) => {
 
         config.logger('DiscordLink: sendMsg', 'INFO');
 
-        const channel = client.channels.cache.get(req.query.channelID);
+        const { channelID, message } = req.query;
+        const channel = client.channels.cache.get(channelID);
         
         if (!channel) {
             return res.status(404).json({ 
                 error: 'Channel non trouvé',
-                channelID: req.query.channelID 
+                channelID 
             });
         }
         
-        await channel.send(req.query.message);
+        await channel.send(message);
         
         toReturn.push({ id: req.query });
         res.status(200).json(toReturn);
@@ -259,21 +267,22 @@ app.get('/sendFile', async (req, res) => {
 
         config.logger('sendFile', 'INFO');
 
-        const channel = client.channels.cache.get(req.query.channelID);
+        const { channelID, message, patch, name } = req.query;
+        const channel = client.channels.cache.get(channelID);
         
         if (!channel) {
             return res.status(404).json({ 
                 error: 'Channel non trouvé',
-                channelID: req.query.channelID 
+                channelID 
             });
         }
         
         // Discord.js v14: syntaxe identique pour les fichiers
         await channel.send({
-            content: req.query.message,
+            content: message,
             files: [{
-                attachment: req.query.patch,
-                name: req.query.name
+                attachment: patch,
+                name: name
             }]
         });
 
@@ -294,17 +303,18 @@ app.get('/sendMsgTTS', async (req, res) => {
 
         config.logger('sendMsgTTS', 'INFO');
 
-        const channel = client.channels.cache.get(req.query.channelID);
+        const { channelID, message } = req.query;
+        const channel = client.channels.cache.get(channelID);
         
         if (!channel) {
             return res.status(404).json({ 
                 error: 'Channel non trouvé',
-                channelID: req.query.channelID 
+                channelID 
             });
         }
         
         await channel.send({
-            content: req.query.message,
+            content: message,
             tts: true
         });
 
@@ -325,18 +335,21 @@ app.get('/sendEmbed', async (req, res) => {
 
         config.logger('sendEmbed', 'INFO');
 
-        let color = req.query.color;
-        let title = req.query.title;
-        let url = req.query.url;
-        let description = req.query.description;
-        let answerCount = req.query.countanswer;
-        let fields = req.query.field;
-        let footer = req.query.footer;
-        let defaultColor = req.query.defaultColor;
+        let { 
+            color, 
+            title, 
+            url, 
+            description, 
+            countanswer: answerCount, 
+            field: fields, 
+            footer, 
+            defaultColor, 
+            quickreply 
+        } = req.query;
+
         let userResponse = "null";
 
         // Ajout QuickReply
-        let quickreply = req.query.quickreply;
         let quickEmoji = null;
         let quickText = null;
         let quickTimeout = 120;
@@ -569,7 +582,7 @@ app.get('/clearChannel', async (req, res) => {
  * @param {Object} channel - The Discord channel object
  * @returns {Promise<void>}
  */
-async function deleteOldChannelMessages(channel) {
+const deleteOldChannelMessages = async (channel) => {
     try {
         // Constantes de durée
         const ONE_DAY_MS = 86400000;
@@ -584,8 +597,7 @@ async function deleteOldChannelMessages(channel) {
         let totalBulkDeleted = 0;
         let totalIndividualDeleted = 0;
         
-        // Format simple YYYY-MM-DD HH:MM:SS local (l'astuce sv-SE donne ce format ISO)
-        const formattedDate = new Date(yesterdayTimestamp).toLocaleString('sv-SE');
+        const formattedDate = getTimestamp(new Date(yesterdayTimestamp));
 
         config.logger('Début du nettoyage du channel ' + channel.id, 'INFO');
         config.logger('Suppression des messages avant ' + formattedDate, 'INFO');
@@ -635,13 +647,11 @@ async function deleteOldChannelMessages(channel) {
                 let deletedInThisBatch = 0;
                 for (const message of ancientMessages) {
                     try {
+                        // Discord.js gère automatiquement le Rate Limit (429) en mettant en pause les requêtes
                         await message.delete();
                         deletedInThisBatch++;
                         totalIndividualDeleted++;
                         totalDeleted++;
-                        
-                        // Petit délai pour éviter le rate limiting Discord
-                        await new Promise(resolve => setTimeout(resolve, 100));
                     } catch (e) {
                         config.logger('Impossible de supprimer le message ' + message.id + ': ' + e.message, 'WARNING');
                     }
@@ -695,13 +705,18 @@ process.on('unhandledRejection', error => {
     console.error(error);
 });
 
+process.on('uncaughtException', error => {
+    config.logger('Uncaught Exception: ' + error.message, 'ERROR');
+    console.error(error);
+    process.exit(1);
+});
+
 /* Main */
-startServer();
 
 /**
  * Initialize the Discord client and start the Express server
  */
-function startServer() {
+const startServer = () => {
     lastServerStart = Date.now();
 
     config.logger('******************** Lancement BOT Discord.js v14 ***********************', 'INFO');
@@ -731,23 +746,26 @@ function startServer() {
  * @param {string} name - The name of the event/action
  * @param {Object} jsonData - The data to send
  */
-function httpPost(name, jsonData) {
+const httpPost = async (name, jsonData) => {
     let url = jeedomURL + "/plugins/discordlink/core/php/jeediscordlink.php?apikey=" + pluginKey + "&name=" + name;
 
     config.logger('URL envoyée :: ' + url, "DEBUG");
     config.logger('DATA envoyées :: ' + JSON.stringify(jsonData), 'DEBUG');
 
-    fetch(url, {
-        method: 'post', 
-        body: JSON.stringify(jsonData),
-        headers: { 'Content-Type': 'application/json' }
-    })
-        .then(res => {
-            if (!res.ok) {
-                config.logger("Erreur lors du contact de votre Jeedom", 'ERROR');
-            }
-        })
-        .catch(error => {
-            config.logger("Erreur fetch Jeedom: " + error.message, 'ERROR');
+    try {
+        const res = await fetch(url, {
+            method: 'post', 
+            body: JSON.stringify(jsonData),
+            headers: { 'Content-Type': 'application/json' }
         });
-}
+
+        if (!res.ok) {
+            config.logger("Erreur lors du contact de votre Jeedom: " + res.status + " " + res.statusText, 'ERROR');
+        }
+    } catch (error) {
+        config.logger("Erreur fetch Jeedom: " + error.message, 'ERROR');
+    }
+};
+
+/* Lancement effectif du serveur */
+startServer();
