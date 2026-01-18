@@ -129,7 +129,7 @@ try {
 let lastServerStart = 0;
 
 if (!token) {
-    config.logger('Config: ********************* TOKEN NON DEFINI *********************', 'ERROR');
+    config.logger('Config: ***** TOKEN NON DEFINI *****', 'ERROR');
 }
 
 /* Routing */
@@ -188,9 +188,7 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 app.get('/restart', (req, res) => {
     config.logger('Restart', 'INFO');
     res.status(200).json({});
-    config.logger('******************************************************************', 'INFO');
-    config.logger('***************************** Relance forcée du Serveur **********', 'INFO');
-    config.logger('******************************************************************', 'INFO');
+    config.logger('***** Relance forcée du Serveur *****', 'INFO');
     startServer();
 });
 
@@ -719,16 +717,14 @@ process.on('uncaughtException', error => {
 const startServer = () => {
     lastServerStart = Date.now();
 
-    config.logger('******************** Lancement BOT Discord.js v14 ***********************', 'INFO');
+    config.logger('***** Lancement BOT Discord.js v14 *****', 'INFO');
 
     client.login(config.token).catch(err => {
         config.logger('FATAL ERROR Login :: ' + err.message, 'ERROR');
     });
 
     server = app.listen(config.listeningPort, () => {
-        config.logger('**************************************************************', 'INFO');
-        config.logger('************** Server OK listening on port ' + server.address().port + ' **************', 'INFO');
-        config.logger('**************************************************************', 'INFO');
+        config.logger('***** Démon :: OK - Listening on port :: ' + server.address().port + ' *****', 'INFO');
     });
 
     server.on('error', (e) => {
