@@ -1,6 +1,10 @@
-/*jshint esversion: 8,node: true,-W041: false */
-// Discord Link Bot pour Jeedom - Version Discord.js v14
-// Migration effectuée : Janvier 2026
+/* jshint esversion: 9, node: true, -W041: false */
+
+/**
+ * Discord Link Bot pour Jeedom
+ * Version Discord.js v14
+ * Migration effectuée : Janvier 2026
+ */
 
 const express = require('express');
 const fs = require('fs');
