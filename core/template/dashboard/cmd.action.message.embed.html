@@ -1,23 +1,30 @@
-<div class="cmd cmd-widget reportModeHidden" data-type="action" data-subtype="message" data-template="default" data-cmd_id="#id#" data-cmd_uid="#uid#" data-version="#version#" data-eqLogic_id="#eqLogic_id#">
+<div class="cmd cmd-widget reportModeHidden" data-type="action" data-subtype="message" data-template="default"
+    data-cmd_id="#id#" data-cmd_uid="#uid#" data-version="#version#" data-eqLogic_id="#eqLogic_id#">
     <div class="title #hide_name#">
         <div class="cmdName">#name_display#</div>
     </div>
     <div class="content-sm" style="padding: 5px;">
         <div style="margin-bottom: 5px;">
-            <input type="text" class="form-control input-sm embedTitle" placeholder="Titre" data-cmd_uid="#uid#" data-cmd_id="#id#" style="margin-bottom: 3px;">
+            <input type="text" class="form-control input-sm embedTitle" placeholder="Titre" data-cmd_uid="#uid#"
+                data-cmd_id="#id#" style="margin-bottom: 3px;">
         </div>
         <div style="margin-bottom: 5px;">
-            <textarea class="form-control input-sm embedDescription" rows="2" placeholder="Description (message)" data-cmd_uid="#uid#" data-cmd_id="#id#" style="margin-bottom: 3px;"></textarea>
+            <textarea class="form-control input-sm embedDescription" rows="2" placeholder="Description (message)"
+                data-cmd_uid="#uid#" data-cmd_id="#id#" style="margin-bottom: 3px;"></textarea>
         </div>
         <div style="margin-bottom: 5px;">
-            <input type="text" class="form-control input-sm embedUrl" placeholder="URL (optionnel)" data-cmd_uid="#uid#" data-cmd_id="#id#" style="margin-bottom: 3px;">
+            <input type="text" class="form-control input-sm embedUrl" placeholder="URL (optionnel)" data-cmd_uid="#uid#"
+                data-cmd_id="#id#" style="margin-bottom: 3px;">
         </div>
         <div style="margin-bottom: 5px;">
-            <input type="text" class="form-control input-sm embedFooter" placeholder="Footer (optionnel)" data-cmd_uid="#uid#" data-cmd_id="#id#" style="margin-bottom: 3px;">
+            <input type="text" class="form-control input-sm embedFooter" placeholder="Footer (optionnel)"
+                data-cmd_uid="#uid#" data-cmd_id="#id#" style="margin-bottom: 3px;">
         </div>
         <div style="margin-bottom: 5px; display: flex; gap: 5px;">
-            <input type="color" class="form-control input-sm embedColorPicker" data-cmd_uid="#uid#" style="width: 50px; padding: 2px;">
-            <input type="text" class="form-control input-sm embedColor" placeholder="Couleur (hexa)" data-cmd_uid="#uid#" data-cmd_id="#id#" style="flex: 1;">
+            <input type="color" class="form-control input-sm embedColorPicker" data-cmd_uid="#uid#"
+                style="width: 50px; padding: 2px;">
+            <input type="text" class="form-control input-sm embedColor" placeholder="Couleur (hexa)"
+                data-cmd_uid="#uid#" data-cmd_id="#id#" style="flex: 1;">
         </div>
         <div style="text-align: center;">
             <a class="btn btn-sm btn-success executeEmbed" style="width: 100%;">
@@ -25,42 +32,42 @@
             </a>
         </div>
     </div>
-    
+
     <script>
         // Charger la couleur par défaut depuis la configuration de l'équipement
-        (function() {
+        (function () {
             jeedom.eqLogic.byId({
                 id: '#eqLogic_id#',
-                error: function(error) {
+                error: function (error) {
                     console.error('Erreur chargement équipement:', error);
                 },
-                success: function(data) {
+                success: function (data) {
                     let defaultColor = data.configuration.defaultColor || '#0099ff';
                     $('.cmd[data-cmd_uid=#uid#] .embedColorPicker').val(defaultColor);
                     $('.cmd[data-cmd_uid=#uid#] .embedColor').val(defaultColor);
                 }
             });
         })();
-        
+
         // Synchroniser le color picker avec le champ texte
-        $('.cmd[data-cmd_uid=#uid#] .embedColorPicker').off('change').on('change', function() {
+        $('.cmd[data-cmd_uid=#uid#] .embedColorPicker').off('change').on('change', function () {
             $('.cmd[data-cmd_uid=#uid#] .embedColor').val($(this).val());
         });
-        
-        $('.cmd[data-cmd_uid=#uid#] .embedColor').off('input').on('input', function() {
+
+        $('.cmd[data-cmd_uid=#uid#] .embedColor').off('input').on('input', function () {
             let color = $(this).val();
             if (color.match(/^#[0-9A-Fa-f]{6}$/)) {
                 $('.cmd[data-cmd_uid=#uid#] .embedColorPicker').val(color);
             }
         });
-        
+
         // Gérer le masquage du titre
-        if('#title_disable#' == '1'){
+        if ('#title_disable#' == '1') {
             $('.cmd[data-cmd_uid=#uid#] .title').hide();
         }
-        
+
         // Exécuter la commande
-        $('.cmd[data-cmd_uid=#uid#] .executeEmbed').off('click').on('click', function() {
+        $('.cmd[data-cmd_uid=#uid#] .executeEmbed').off('click').on('click', function () {
             let options = {
                 title: $('.cmd[data-cmd_uid=#uid#] .embedTitle').val(),
                 description: $('.cmd[data-cmd_uid=#uid#] .embedDescription').val(),
@@ -68,7 +75,7 @@
                 footer: $('.cmd[data-cmd_uid=#uid#] .embedFooter').val(),
                 colors: $('.cmd[data-cmd_uid=#uid#] .embedColor').val()
             };
-            
+
             jeedom.cmd.execute({
                 id: '#id#',
                 value: options

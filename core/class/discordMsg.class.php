@@ -15,7 +15,7 @@
  * along with Jeedom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* * ***************************Includes********************************* */
+/* * *************************** Includes ********************************* */
 require_once __DIR__  . '/../../../../core/php/core.inc.php';
 
 class discordMsg {
@@ -35,18 +35,18 @@ class discordMsg {
         $levelName = log::convertLogLevel($level);
 
         //Add Emoji
-        $emojiWarning = discordlink::addEmoji("lastUser_warning",":warning:");
-        $emojiMagRight = discordlink::addEmoji("lastUser_mag_right",":mag_right:");
-        $emojiMag = discordlink::addEmoji("lastUser_mag",":mag:");
-        $emojiCheck = discordlink::addEmoji("lastUser_check",":white_check_mark:");
-        $emojiInternet = discordlink::addEmoji("lastUser_internet",":globe_with_meridians:");
-        $emojiConnected = discordlink::addEmoji("lastUser_connecter",":green_circle:");
-        $emojiDisconnected = discordlink::addEmoji("lastUser_deconnecter",":red_circle:");
-        $emojiSilhouette = discordlink::addEmoji("lastUser_silhouette",":busts_in_silhouette:");
+        $emojiWarning = discordlink::addEmoji("lastUser_warning", ":warning:");
+        $emojiMagRight = discordlink::addEmoji("lastUser_mag_right", ":mag_right:");
+        $emojiMag = discordlink::addEmoji("lastUser_mag", ":mag:");
+        $emojiCheck = discordlink::addEmoji("lastUser_check", ":white_check_mark:");
+        $emojiInternet = discordlink::addEmoji("lastUser_internet", ":globe_with_meridians:");
+        $emojiConnected = discordlink::addEmoji("lastUser_connecter", ":green_circle:");
+        $emojiDisconnected = discordlink::addEmoji("lastUser_deconnecter", ":red_circle:");
+        $emojiSilhouette = discordlink::addEmoji("lastUser_silhouette", ":busts_in_silhouette:");
 
 
-        if($level > 200){
-            $logLevelWarning = "\n"."\n".$emojiWarning."Plus d'informations ? ".$emojiWarning."\n"."veuillez mettre le log **connection** sur **info** dans *Configuration/Logs* (niveau actuel : **".$levelName."**)";
+        if ($level > 200) {
+            $logLevelWarning = "\n" . "\n" . $emojiWarning . "Plus d'informations ? " . $emojiWarning . "\n" . "veuillez mettre le log **connection** sur **info** dans *Configuration/Logs* (niveau actuel : **" . $levelName . "**)";
         } else {
             $logLevelWarning = "";
         }
@@ -54,22 +54,22 @@ class discordMsg {
         $userIndex = 0;
         foreach (user::all() as $user) {
             $userIndex++;
-                $connectedUserDates[$userIndex] = $user->getOptions('lastConnection');
-            if($connectedUserDates[$userIndex] == ""){
+            $connectedUserDates[$userIndex] = $user->getOptions('lastConnection');
+            if ($connectedUserDates[$userIndex] == "") {
                 $connectedUserDates[$userIndex] = "1970-01-01 00:00:00";
             }
-            if(strtotime($timeNow) - strtotime($connectedUserDates[$userIndex]) < $offlineDelay*60){
+            if (strtotime($timeNow) - strtotime($connectedUserDates[$userIndex]) < $offlineDelay * 60) {
                 $connectedUserStatuses[$userIndex] = 'en ligne';
-            }else{
+            } else {
                 $connectedUserStatuses[$userIndex] = 'hors ligne';
             }
             $connectedUserNames[$userIndex] = $user->getLogin();
-            if($connectedUserList != ''){
-                $connectedUserList = $connectedUserList.'|';
+            if ($connectedUserList != '') {
+                $connectedUserList = $connectedUserList . '|';
             }
-            $connectedUserList .= $connectedUserNames[$userIndex].';'.$connectedUserDates[$userIndex].';'.$connectedUserStatuses[$userIndex];
+            $connectedUserList .= $connectedUserNames[$userIndex] . ';' . $connectedUserDates[$userIndex] . ';' . $connectedUserStatuses[$userIndex];
         }
-        
+
         $connectedUserListNew = '';
         // Récupération des lignes du log Connection
         $logData = log::getDelta('connection', 0, '', false, false, 0, $maxLine);
@@ -137,71 +137,71 @@ class discordMsg {
                 }
             }
         }
-        
+
         $sessions = listSession();
-        $sessionCount=count($sessions);												//nombre d'utilisateur en session actuellement
-        
-        $message .= "\n"."\n".$emojiMagRight."__Récapitulatif des sessions actuelles :__ ".$emojiMag;
+        $sessionCount = count($sessions);                                                //nombre d'utilisateur en session actuellement
+
+        $message .= "\n" . "\n" . $emojiMagRight . "__Récapitulatif des sessions actuelles :__ " . $emojiMag;
         // Parcours des sessions pour vérifier le statut et le nombre de sessions
-        $userIndex=0;
+        $userIndex = 0;
         $connectedUserListNew = '';
-        foreach($connectedUserNames as $value){
+        foreach ($connectedUserNames as $value) {
             $userIndex++;
-            $sessionIndex=0;
+            $sessionIndex = 0;
             $foundCount = 0;
             $connectedUserStatuses[$userIndex] = 'hors ligne';
             $connectedUserIPs[$userIndex] = '';
 
-            foreach($sessions as $id => $session){
+            foreach ($sessions as $id => $session) {
                 $sessionIndex++;
-                
+
                 $userDelay = strtotime(date("Y-m-d H:i:s")) - strtotime($session['datetime']);
 
-                if($connectedUserNames[$userIndex] == $session['login']){
-                    if($userDelay < $offlineDelay*60){
+                if ($connectedUserNames[$userIndex] == $session['login']) {
+                    if ($userDelay < $offlineDelay * 60) {
                         $foundCount++;
                         $onlineCount++;
                         $connectedUserStatuses[$userIndex] = 'en ligne';
-                        $connectedUserIPs[$userIndex] .= "\n"."-> ".$emojiInternet." IP : ".$session['ip'];
-                    }else{
+                        $connectedUserIPs[$userIndex] .= "\n" . "-> " . $emojiInternet . " IP : " . $session['ip'];
+                    } else {
                     }
-                }			
-            }
-            if(date("Y-m-d",strtotime($connectedUserDates[$userIndex])) == date("Y-m-d",strtotime($timeNow))){
-                $hours = date("H",strtotime($connectedUserDates[$userIndex]));
-                $minutes = date("i",strtotime($connectedUserDates[$userIndex]));
-                $date = $hours."h".$minutes;
-            }else{
-                $dayName = date_fr(date("l", strtotime($connectedUserDates[$userIndex])));
-                $dayNumber = date("d",strtotime($connectedUserDates[$userIndex]));
-                $monthName = date_fr(date("F", strtotime($connectedUserDates[$userIndex])));
-                $yearNumber = date("Y",strtotime($connectedUserDates[$userIndex]));
-                $hours = date("H",strtotime($connectedUserDates[$userIndex]));
-                $minutes = date("i",strtotime($connectedUserDates[$userIndex]));
-                $date = $dayName." ".$dayNumber." ".$monthName." ".$yearNumber."** à **".$hours."h".$minutes;
-            }
-            if($foundCount > 0){
-                $message .= "\n".$emojiConnected." **".$connectedUserNames[$userIndex]."** est **en ligne** depuis **".$date."**";
-                $message .= $connectedUserIPs[$userIndex];
-            }else{
-                if(strtotime($timeNow) - strtotime($connectedUserDates[$userIndex]) < ($daysBeforeUserRemoval*24*60*60)){
-                    $message .= "\n".$emojiDisconnected." **".$connectedUserNames[$userIndex]."** est **hors ligne** (dernière connexion **".$date."**)";
                 }
             }
-            if($connectedUserListNew != ''){
-                $connectedUserListNew = $connectedUserListNew.'|';
+            if (date("Y-m-d", strtotime($connectedUserDates[$userIndex])) == date("Y-m-d", strtotime($timeNow))) {
+                $hours = date("H", strtotime($connectedUserDates[$userIndex]));
+                $minutes = date("i", strtotime($connectedUserDates[$userIndex]));
+                $date = $hours . "h" . $minutes;
+            } else {
+                $dayName = date_fr(date("l", strtotime($connectedUserDates[$userIndex])));
+                $dayNumber = date("d", strtotime($connectedUserDates[$userIndex]));
+                $monthName = date_fr(date("F", strtotime($connectedUserDates[$userIndex])));
+                $yearNumber = date("Y", strtotime($connectedUserDates[$userIndex]));
+                $hours = date("H", strtotime($connectedUserDates[$userIndex]));
+                $minutes = date("i", strtotime($connectedUserDates[$userIndex]));
+                $date = $dayName . " " . $dayNumber . " " . $monthName . " " . $yearNumber . "** à **" . $hours . "h" . $minutes;
             }
-            $connectedUserListNew .= $connectedUserNames[$userIndex].';'.$connectedUserDates[$userIndex].';'.$connectedUserStatuses[$userIndex];
-            $connectedUserList=$connectedUserListNew;
+            if ($foundCount > 0) {
+                $message .= "\n" . $emojiConnected . " **" . $connectedUserNames[$userIndex] . "** est **en ligne** depuis **" . $date . "**";
+                $message .= $connectedUserIPs[$userIndex];
+            } else {
+                if (strtotime($timeNow) - strtotime($connectedUserDates[$userIndex]) < ($daysBeforeUserRemoval * 24 * 60 * 60)) {
+                    $message .= "\n" . $emojiDisconnected . " **" . $connectedUserNames[$userIndex] . "** est **hors ligne** (dernière connexion **" . $date . "**)";
+                }
+            }
+            if ($connectedUserListNew != '') {
+                $connectedUserListNew = $connectedUserListNew . '|';
+            }
+            $connectedUserListNew .= $connectedUserNames[$userIndex] . ';' . $connectedUserDates[$userIndex] . ';' . $connectedUserStatuses[$userIndex];
+            $connectedUserList = $connectedUserListNew;
         }
-        
+
         // Préparation des tags de notification
-        $title = $emojiSilhouette.'CONNEXIONS '.$emojiSilhouette;
+        $title = $emojiSilhouette . 'CONNEXIONS ' . $emojiSilhouette;
         return array(
-            'title'=>$title,
-            'message'=>$message.$logLevelWarning,
-            'nbEnLigne'=>$onlineCount,
-            'cronOk'=>$hasCronActivity
+            'title' => $title,
+            'message' => $message . $logLevelWarning,
+            'nbEnLigne' => $onlineCount,
+            'cronOk' => $hasCronActivity
         );
     }
 }

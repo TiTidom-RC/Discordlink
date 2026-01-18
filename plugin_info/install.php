@@ -23,9 +23,9 @@ function discordlink_install() {
     $version = $info['pluginVersion'];
     config::save('pluginVersion', $version, 'discordlink');
     config::save('socketport', discordlink::SOCKET_PORT, 'discordlink');
-    
+
     message::add('discordlink', 'Merci d\'avoir installé le plugin DiscordLink version ' . $version);
-    
+
     discordlink::createCmd();
     discordlink::setEmoji();
     discordlink::updateObject();
@@ -41,6 +41,43 @@ function discordlink_update() {
         config::save('socketport', discordlink::SOCKET_PORT, 'discordlink');
     }
 
+    // Nettoyage des anciens fichiers et dossiers (Migration 2026)
+    $pathsToRemove = array(
+        '/core/class/discordlinkCovid.class.php',
+        '/core/php/discordlink.inc.php',
+        '/core/template/mobile/cmd.action.other.templeteTemplate.html',
+        '/core/template/scenario/cmd.covidSend.html',
+        '/desktop/js/configuration.js',
+        '/desktop/js/discordlinkuser.js',
+        '/desktop/php/discordlinkuser.php',
+        '/plugin_info/_icon.png',
+        '/resources/post_install.sh',
+        '/resources/pre_install.sh',
+        '/resources/install.sh',
+        '/resources/install_nodejs.sh',
+        '/resources/yarn.lock',
+        '/resources/dependance.lib',
+        '/resources/i18n'
+    );
+
+    foreach ($pathsToRemove as $resource) {
+        $path = dirname(__FILE__) . '/..' . $resource;
+        if (file_exists($path)) {
+            // Utilisation de exec pour récupérer le code de retour (0 = OK)
+            try {
+                $output = array();
+                $return_var = 0;
+                exec('rm -rf ' . escapeshellarg($path) . ' 2>&1', $output, $return_var);
+
+                if ($return_var !== 0) {
+                    log::add('discordlink', 'warning', 'Echec suppression "' . $path . '" (Code: ' . $return_var . ') : ' . implode(' ', $output));
+                }
+            } catch (Exception $e) {
+                log::add('discordlink', 'warning', 'Erreur PHP lors de la suppression de ' . $path . ' : ' . $e->getMessage());
+            }
+        }
+    }
+
     // MIGRATION V2.0 : Correction des commandes existantes sans LogicalId
     // Pour éviter l'erreur SQL 1062 Duplicate Entry lors de la recréation des commandes
     try {
@@ -48,8 +85,8 @@ function discordlink_update() {
         foreach ($eqLogics as $eqLogic) {
             // Liste des commandes critiques qui provoquaient des doublons
             $cmdsToFix = array(
-                'Etat des démons' => 'daemonInfo', 
-                'Etat des dépendances' => 'dependencyInfo', 
+                'Etat des démons' => 'daemonInfo',
+                'Etat des dépendances' => 'dependencyInfo',
                 'Résumé général' => 'globalSummary',
                 'Résumé par objet' => 'objectSummary',
                 'Résumé des batteries' => 'batteryInfo',
@@ -59,7 +96,7 @@ function discordlink_update() {
                 'Avant dernier message' => 'previousMessage1',
                 'Avant Avant dernier message' => 'previousMessage2'
             );
-            
+
             // On itère sur toutes les commandes de l'équipement pour être sûr de trouver celles qui ont le "bon nom" mais le "mauvais ID"
             foreach ($eqLogic->getCmd() as $cmd) {
                 if (array_key_exists($cmd->getName(), $cmdsToFix)) {
@@ -81,7 +118,7 @@ function discordlink_update() {
     if (config::byKey('disableUpdateMessage', 'discordlink', 0) == 0) {
         message::add('discordlink', 'Le plugin DiscordLink a été mis à jour en version ' . $version);
     }
-    
+
     // Suppression de l'ancien fichier quickreply.json dans resources/
     // Le nouveau fichier est automatiquement copié dans data/ lors de la mise à jour
     $oldQuickreplyPath = dirname(__FILE__) . '/../resources/quickreply.json';
@@ -89,7 +126,7 @@ function discordlink_update() {
         unlink($oldQuickreplyPath);
         log::add('discordlink', 'info', 'Suppression ancien fichier quickreply.json dans resources/');
     }
-    
+
     // Migration de la clé de configuration globale emojy → emoji
     $oldEmojiConfig = config::byKey('emojy', 'discordlink', null);
     if ($oldEmojiConfig !== null) {
@@ -100,12 +137,12 @@ function discordlink_update() {
         }
         config::remove('emojy', 'discordlink');
     }
-    
+
     // Migration des paramètres de configuration des équipements
     foreach (eqLogic::byType('discordlink') as $eqLogic) {
         $needSave = false;
         $configuration = $eqLogic->getConfiguration();
-        
+
         // Migration des noms de configuration (anciennes versions)
         $configMigrations = [
             'autorefreshDependances' => 'autoRefreshDependency',
@@ -120,7 +157,7 @@ function discordlink_update() {
             'clearchannel' => 'clearChannel',
             'interactionjeedom' => 'interactionJeedom'
         ];
-        
+
         foreach ($configMigrations as $oldKey => $newKey) {
             if (isset($configuration[$oldKey]) && $configuration[$oldKey] !== '') {
                 $eqLogic->setConfiguration($newKey, $configuration[$oldKey]);
@@ -129,7 +166,7 @@ function discordlink_update() {
                 log::add('discordlink', 'info', 'Migration configuration équipement ' . $eqLogic->getHumanName() . ': ' . $oldKey . ' → ' . $newKey);
             }
         }
-        
+
         // Appliquer les suppressions
         if ($needSave) {
             foreach (array_keys($configuration) as $key) {
@@ -140,11 +177,19 @@ function discordlink_update() {
             $eqLogic->save();
         }
     }
-    
+
     // Détection des commandes obsolètes ou avec mauvais logicalId
-    $obsoleteLogicalIds = ['1oldmsg', '2oldmsg', '3oldmsg', 'deamonInfo', 'dependanceInfo', 
-                           'batteryinfo', 'centreMsg', 'LastUser'];
-    
+    $obsoleteLogicalIds = [
+        '1oldmsg',
+        '2oldmsg',
+        '3oldmsg',
+        'deamonInfo',
+        'dependanceInfo',
+        'batteryinfo',
+        'centreMsg',
+        'LastUser'
+    ];
+
     $expectedCommands = [
         'sendMsg' => 'Envoi message',
         'sendMsgTTS' => 'Envoi message TTS',
@@ -162,23 +207,23 @@ function discordlink_update() {
         'previousMessage1' => 'Avant dernier message',
         'previousMessage2' => 'Avant Avant dernier message'
     ];
-    
+
     $hasProblematicCommands = false;
-    
+
     foreach (eqLogic::byType('discordlink') as $eqLogic) {
         $problematicCommands = [];
-        
+
         foreach ($eqLogic->getCmd() as $cmd) {
             $cmdName = $cmd->getName();
             $logicalId = $cmd->getLogicalId();
             $cmdId = $cmd->getId();
-            
+
             // Détecter les anciens logicalId obsolètes
             if (in_array($logicalId, $obsoleteLogicalIds)) {
                 $problematicCommands[] = "  - Commande obsolète : '$cmdName' (logicalId: $logicalId, ID: $cmdId)";
                 $hasProblematicCommands = true;
             }
-            
+
             // Détecter les commandes avec mauvais logicalId
             foreach ($expectedCommands as $expectedLogicalId => $expectedName) {
                 if ($cmdName === $expectedName && $logicalId !== $expectedLogicalId) {
@@ -188,7 +233,7 @@ function discordlink_update() {
                 }
             }
         }
-        
+
         if (!empty($problematicCommands)) {
             log::add('discordlink', 'warning', 'Équipement ' . $eqLogic->getHumanName() . ' - Commandes à corriger :');
             foreach ($problematicCommands as $message) {
@@ -196,7 +241,7 @@ function discordlink_update() {
             }
         }
     }
-    
+
     if ($hasProblematicCommands) {
         log::add('discordlink', 'warning', '==========================================================================');
         log::add('discordlink', 'warning', 'MISE À JOUR : Des commandes obsolètes ou incorrectes ont été détectées.');
@@ -210,7 +255,4 @@ function discordlink_update() {
 
 
 function discordlink_remove() {
-
 }
-
-?>
