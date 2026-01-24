@@ -1260,6 +1260,7 @@ class discordlinkCmd extends cmd {
 			'#defaultColor#' => $defaultColor,
 			'#defaultTitle#' => '',
 			'#defaultUrl#' => '',
+			'#defaultDescription#' => '',
 			'#defaultFooter#' => '',
 		];
 		$data = str_replace(array_keys($replace), array_values($replace), $data);
