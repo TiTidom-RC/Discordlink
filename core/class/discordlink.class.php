@@ -139,22 +139,9 @@ class discordlink extends eqLogic {
 			// Reset complet : on force les valeurs par défaut
 			$emojiArray = $default;
 		} else {
-			// Récupération des emojis existants
+			// Récupération des emojis existants et fusion avec les nouveaux
 			$existing = config::byKey('emoji', 'discordlink', array());
-			
-			// Fusion intelligente : on part des valeurs par défaut
-			$emojiArray = $default;
-			
-			// On écrase uniquement avec les personnalisations non vides
-			if (is_array($existing)) {
-				foreach ($existing as $key => $value) {
-					// On ne garde la personnalisation que si elle est non vide
-					if (!empty($value)) {
-						$emojiArray[$key] = $value;
-					}
-					// Si vide, on garde la valeur par défaut (ou on l'ajoute si nouvelle clé)
-				}
-			}
+			$emojiArray = array_merge($default, is_array($existing) ? $existing : array());
 		}
 		
 		config::save('emoji', $emojiArray, 'discordlink');

@@ -66,7 +66,7 @@
     </td>`;
 
     const newRow = document.createElement('tr');
-    newRow.className = 'emoji';
+    newRow.className = 'emoji-row';
     newRow.innerHTML = rowHtml;
 
     // Set values
@@ -85,11 +85,12 @@
   }
 
   function getAllEmojiValues() {
-    const rows = document.querySelectorAll('#table_cmd tbody .emoji');
+    const rows = document.querySelectorAll('#table_cmd tbody .emoji-row');
     const result = [];
     rows.forEach(row => {
       const item = {};
       const inputs = row.querySelectorAll('.emojiAttr');
+      
       inputs.forEach(input => {
         const key = input.getAttribute('data-l1key');
         if (key) {
@@ -116,7 +117,7 @@
         url: AJAX_URL,
         data: {
           action: "saveEmoji",
-          arrayEmoji: emojiArray,
+          arrayEmoji: JSON.stringify(emojiArray),
         },
         dataType: "json",
         error: function (request, status, error) {
@@ -160,7 +161,7 @@
     }
 
     // Remove Emoji
-    if (e.target.closest('.emoji .emojiAction[data-action=remove]')) {
+    if (e.target.closest('.emoji-row .emojiAction[data-action=remove]')) {
       if (typeof modifyWithoutSave !== 'undefined') modifyWithoutSave = true;
       const tr = e.target.closest('tr');
       if (tr) tr.remove();
