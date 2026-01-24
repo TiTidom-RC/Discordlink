@@ -111,8 +111,12 @@
     // Emoji Settings
     if (e.target.closest('[data-action="emojiSettings"]')) {
       jeeDialog.dialog({
-        title: "{{Emojis Settings}}",
+        id: 'md_emojiDiscordlink',
+        title: "{{Emojis}}",
         contentUrl: 'index.php?v=d&plugin=discordlink&modal=emoji.discordlink',
+        width: '90%',
+        height: '80%',
+        top: '10vh',
         onClose: function() {
           if (typeof cleanupEmoji === 'function') {
             cleanupEmoji();
@@ -200,12 +204,12 @@
   document.body.addEventListener('change', function (e) {
     // Daemon Checkbox Visibility
     if (e.target.id === 'daemonCheck') {
-      const els = document.querySelectorAll('.daemon');
+      const els = document.querySelectorAll('.daemon_freq');
       els.forEach(el => el.style.display = e.target.checked ? '' : 'none');
     }
     // Dependency Checkbox Visibility
     if (e.target.id === 'dependencyCheck') {
-      const els = document.querySelectorAll('.dependency');
+      const els = document.querySelectorAll('.dependency_freq');
       els.forEach(el => el.style.display = e.target.checked ? '' : 'none');
     }
   });

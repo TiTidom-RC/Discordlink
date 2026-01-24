@@ -71,20 +71,33 @@ class discordlink extends eqLogic {
 		return self::$_daemonBaseURL;
 	}
 
-	public static function getChannel() {
-		try {
-			$requestHttp = new com_http(self::getDaemonBaseURL() . '/getchannel');
-			$response = $requestHttp->exec(10, 2);
-			if ($response === false || empty($response)) {
-				log::add('discordlink', 'error', 'Impossible de récupérer les channels depuis le daemon');
-				return array();
+	public static function getChannel($maxRetries = 3, $delayMs = 500) {
+		$attempt = 0;
+		while ($attempt < $maxRetries) {
+			try {
+				$requestHttp = new com_http(self::getDaemonBaseURL() . '/getchannel');
+				$response = $requestHttp->exec(10, 2);
+				if ($response !== false && !empty($response)) {
+					$channels = json_decode($response, true);
+					if (is_array($channels)) {
+						if ($attempt > 0) {
+							log::add('discordlink', 'debug', 'Channels récupérés après ' . ($attempt + 1) . ' tentative(s)');
+						}
+						return $channels;
+					}
+				}
+			} catch (Exception $e) {
+				log::add('discordlink', 'debug', 'Tentative ' . ($attempt + 1) . '/' . $maxRetries . ' échouée: ' . $e->getMessage());
 			}
-			$channels = json_decode($response, true);
-			return is_array($channels) ? $channels : array();
-		} catch (Exception $e) {
-			log::add('discordlink', 'error', 'Erreur getchannel: ' . $e->getMessage());
-			return array();
+			
+			$attempt++;
+			if ($attempt < $maxRetries) {
+				usleep($delayMs * 1000); // Pause avant la prochaine tentative
+			}
 		}
+		
+		log::add('discordlink', 'error', 'Impossible de récupérer les channels depuis le daemon après ' . $maxRetries . ' tentatives');
+		return array();
 	}
 
 	public static function setChannel() {
@@ -148,7 +161,6 @@ class discordlink extends eqLogic {
 	}
 
 	public static function updateInfo() {
-		sleep(2);
 		static::updateObject();
 		static::setChannel();
 	}
@@ -169,49 +181,74 @@ class discordlink extends eqLogic {
 	}
 
 	private static function executeCronIfDue($eqLogic, $cronExpr, $cmdLogicId, $debugLabel, $dateRun, $_options) {
-		if (empty($cronExpr)) return;
+		if (empty($cronExpr)) {
+			log::add('discordlink', 'debug', $debugLabel . ' pour ' . $eqLogic->getName() . ' : aucun cron configuré');
+			return;
+		}
 
 		try {
 			$c = new Cron\CronExpression($cronExpr, new Cron\FieldFactory);
 			if ($c->isDue($dateRun)) {
-				log::add('discordlink', 'debug', $debugLabel);
+				log::add('discordlink', 'info', $debugLabel . ' pour ' . $eqLogic->getName() . ' (cron: ' . $cronExpr . ') - Exécution');
 				$cmd = $eqLogic->getCmd('action', $cmdLogicId);
 				if (is_object($cmd)) {
 					$cmd->execCmd($_options);
+				} else {
+					log::add('discordlink', 'warning', $debugLabel . ' pour ' . $eqLogic->getName() . ' : commande ' . $cmdLogicId . ' introuvable');
 				}
+			} else {
+				log::add('discordlink', 'debug', $debugLabel . ' pour ' . $eqLogic->getName() . ' (cron: ' . $cronExpr . ') - Non dû à cette date');
 			}
 		} catch (Exception $exc) {
 			log::add('discordlink', 'error', __('Expression cron non valide pour ', __FILE__) . $eqLogic->getHumanName() . ' : ' . $cronExpr);
 		}
 	}
 
-	public static function checkAll() {
+	/**
+	 * Exécute les vérifications planifiées pour tous les équipements
+	 * Vérifie les crons personnalisés (démons, dépendances, connexions)
+	 * et exécute les notifications Discord si les conditions sont remplies
+	 */
+	public static function runScheduledChecks() {
 		$eqLogics = eqLogic::byType('discordlink');
 		if (empty($eqLogics)) {
+			log::add('discordlink', 'debug', 'runScheduledChecks() : Aucun équipement discordlink trouvé');
 			return;
 		}
 
+		log::add('discordlink', 'debug', 'runScheduledChecks() : Début vérification de ' . count($eqLogics) . ' équipement(s)');
 		$dateRun = new DateTime();
 		$options = ['cron' => true];
 
 		foreach ($eqLogics as $eqLogic) {
 			// Vérification démon
-			if ($eqLogic->getConfiguration('daemonCheck', 0) === 1) {
+			if ((bool)$eqLogic->getConfiguration('daemonCheck', 0)) {
+				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - daemonCheck activé, cron configuré: ' . $eqLogic->getConfiguration('autoRefreshDaemon', 'non défini'));
 				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autoRefreshDaemon'), 'daemonInfo', 'DaemonCheck', $dateRun, $options);
+			} else {
+				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - daemonCheck désactivé (valeur: ' . var_export($eqLogic->getConfiguration('daemonCheck', 0), true) . ')');
 			}
 
 			// Vérification dépendances
-			if ($eqLogic->getConfiguration('dependencyCheck', 0) === 1) {
+			if ((bool)$eqLogic->getConfiguration('dependencyCheck', 0)) {
+				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - dependencyCheck activé, cron configuré: ' . $eqLogic->getConfiguration('autoRefreshDependency', 'non défini'));
 				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autoRefreshDependency'), 'dependencyInfo', 'DependencyCheck', $dateRun, $options);
+			} else {
+				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - dependencyCheck désactivé (valeur: ' . var_export($eqLogic->getConfiguration('dependencyCheck', 0), true) . ')');
 			}
 
 			// Vérification connexions utilisateurs
-			if ($eqLogic->getConfiguration('connectionCheck', 0) === 1) {
+			if ((bool)$eqLogic->getConfiguration('connectionCheck', 0)) {
+				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - connectionCheck activé');
 				$cmd = $eqLogic->getCmd('action', 'lastUser');
 				if (is_object($cmd)) {
 					log::add('discordlink', 'debug', 'Vérification connexion utilisateur pour ' . $eqLogic->getName());
 					$cmd->execCmd($options);
+				} else {
+					log::add('discordlink', 'warning', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - commande lastUser introuvable');
 				}
+			} else {
+				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - connectionCheck désactivé (valeur: ' . var_export($eqLogic->getConfiguration('connectionCheck', 0), true) . ')');
 			}
 		}
 	}
@@ -221,7 +258,7 @@ class discordlink extends eqLogic {
      * Fonction exécutée automatiquement toutes les minutes par Jeedom
 	 */
 	public static function cron() {
-		static::checkAll();
+		static::runScheduledChecks();
 	}
 
 	/*
@@ -235,7 +272,7 @@ class discordlink extends eqLogic {
 	public static function cronDaily() {
 		$eqLogics = eqLogic::byType('discordlink');
 		foreach ($eqLogics as $eqLogic) {
-			if ($eqLogic->getConfiguration('clearChannel', 0) != 1) continue;
+			if (!(bool)$eqLogic->getConfiguration('clearChannel', 0)) continue;
 
 			$cmd = $eqLogic->getCmd('action', 'deleteMessage');
 			if (!is_object($cmd)) continue;
@@ -1001,7 +1038,10 @@ class discordlinkCmd extends cmd {
 			}
 		}
 
-		if (isset($_options['cron']) and $colors == '#00ff08') return 'requestHandledInternally';
+		if (isset($_options['cron']) and $colors == '#00ff08') {
+			log::add('discordlink', 'debug', 'Vérification démons pour ' . $this->getEqLogic()->getName() . ' : Tous les démons sont OK, pas de notification Discord');
+			return 'requestHandledInternally';
+		}
 		$message = str_replace("|", "\n", $message);
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
 		$_options = array('title' => 'Etat des démons', 'description' => $message, 'colors' => $colors, 'footer' => 'By DiscordLink');
@@ -1028,7 +1068,10 @@ class discordlinkCmd extends cmd {
 			}
 		}
 
-		if (isset($_options['cron']) && $colors == '#00ff08') return 'requestHandledInternally';
+		if (isset($_options['cron']) && $colors == '#00ff08') {
+			log::add('discordlink', 'debug', 'Vérification dépendances pour ' . $this->getEqLogic()->getName() . ' : Toutes les dépendances sont OK, pas de notification Discord');
+			return 'requestHandledInternally';
+		}
 		$message = str_replace("|", "\n", $message);
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
 		$_options = array('title' => 'Etat des dépendances', 'description' => $message, 'colors' => $colors, 'footer' => 'By DiscordLink');

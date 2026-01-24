@@ -10,13 +10,13 @@ if (!isConnect('admin')) {
     <div class="col-lg-12">
         <div class="pull-right">
             <a class="btn btn-success btn-sm cmdAction" id="bt_addEmoji">
-                <i class="fas fa-plus-circle"></i> {{Ajouter un émoji}}
+                <i class="fas fa-plus-circle"></i> {{Ajouter Emoji}}
             </a>
             <a class="btn btn-success btn-sm eqLogicAction" data-action="saveEmoji">
                 <i class="fas fa-check-circle"></i> {{Sauvegarder}}
             </a>
             <a class="btn btn-danger btn-sm cmdAction" id="bt_reset">
-                <i class="fas fa-trash"></i> {{Reset émoji}}
+                <i class="fas fa-trash"></i> {{Reset Emoji}}
             </a>
         </div>
     </div>
@@ -27,9 +27,9 @@ if (!isConnect('admin')) {
     <table id="table_emoji" class="table table-bordered table-condensed ui-sortable">
         <thead>
             <tr class="emoji-head">
-                <th>{{Clé émoji}}</th>
-                <th>{{Code émoji}}</th>
-                <th style="width: 100px;"></th>
+                <th>{{Cle Emoji}}</th>
+                <th>{{Code Emoji}}</th>
+                <th style="width: 100px;">{{Actions}}</th>
             </tr>
         </thead>
         <tbody>
