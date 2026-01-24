@@ -28,14 +28,19 @@
 
     <script>
         if ('#title_disable#' == '1') {
-            $('.cmd[data-cmd_uid=#uid#] .title').hide();
+            document.querySelector('.cmd[data-cmd_uid="#uid#"] .title').style.display = 'none';
         }
         if ('#message_disable#' == '1') {
-            $('.cmd[data-cmd_uid=#uid#] .message').hide();
+            document.querySelector('.cmd[data-cmd_uid="#uid#"] .message').style.display = 'none';
         }
-        $('.cmd[data-cmd_uid=#uid#]:last .execute').on('click', function () {
-            jeedom.cmd.execute({ id: '#id#', value: { title: $('.cmd[data-cmd_uid=#uid#] .title').value(), message: $('.cmd[data-cmd_uid=#uid#] .message').value() } });
+        document.querySelector('.cmd[data-cmd_uid="#uid#"] .execute').addEventListener('click', function () {
+            jeedom.cmd.execute({
+                id: '#id#',
+                value: {
+                    title: '',
+                    message: document.querySelector('.cmd[data-cmd_uid="#uid#"] .message').value
+                }
+            });
         });
-
     </script>
 </div>

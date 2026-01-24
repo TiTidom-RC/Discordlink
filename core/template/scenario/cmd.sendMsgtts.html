@@ -9,15 +9,17 @@
 </div>
 
 <script>
-  $('.listDeviceInfoMessage[data-uid=#uid#]').on('click', function () {
-    if ('#message_cmd_subtype#' != '') {
-      jeedom.cmd.getSelectModal({ cmd: { type: '#message_cmd_type#', subType: '#message_cmd_subtype#' } }, function (result) {
-        $('.expressionAttr[data-l1key=options][data-l2key=message][data-uid=#uid#]').atCaret('insert', result.human);
-      });
-    } else {
-      jeedom.cmd.getSelectModal({ cmd: { type: '#message_cmd_type#' } }, function (result) {
-        $('.expressionAttr[data-l1key=options][data-l2key=message][data-uid=#uid#]').atCaret('insert', result.human);
-      });
+  document.querySelector('.listDeviceInfoMessage[data-uid="#uid#"]').addEventListener('click', function () {
+    var options = {
+      cmd: {
+        type: '#message_cmd_type#'
+      }
     }
-  });
+    if ('#message_cmd_subtype#' != '') {
+      options.cmd.subType = '#message_cmd_subtype#'
+    }
+    jeedom.cmd.getSelectModal(options, function (result) {
+      document.querySelector('.expressionAttr[data-l1key=options][data-l2key=message][data-uid="#uid#"]').insertAtCursor(result.human)
+    })
+  })
 </script>
