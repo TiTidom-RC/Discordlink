@@ -41,8 +41,7 @@ try {
 
     if (init('action') == 'getChannels') {
         if (discordlink::deamon_info()['state'] != 'ok') {
-            ajax::success(array('error' => 'Le démon n\'est pas démarré. Veuillez le démarrer avant de rafraîchir les channels.'));
-            return;
+            throw new Exception('Le démon n\'est pas démarré. Veuillez le démarrer avant de rafraîchir les channels.');
         }
 
         $channels = discordlink::getChannel();

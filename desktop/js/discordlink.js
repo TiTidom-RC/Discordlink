@@ -150,14 +150,6 @@
           success: function (data) {
             if (icon) icon.classList.remove('fa-spin');
 
-            if (data.result && data.result.error) {
-              jeedomUtils.showAlert({
-                message: data.result.error,
-                level: 'warning'
-              });
-              return;
-            }
-
             const select = document.querySelector('select[data-l2key=channelId]');
             if (data.result && data.result.channels && select) {
               const currentVal = select.value;
