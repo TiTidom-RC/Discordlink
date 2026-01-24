@@ -261,9 +261,9 @@ $('body').off('click', '#bt_refreshChannels').on('click', '#bt_refreshChannels',
           btn.find('i').removeClass('fa-spin');
 
           if (data.result && data.result.error) {
-              $.alert({
-                  title: 'Attention',
-                  content: data.result.error
+              jeedomUtils.showAlert({
+                  message: data.result.error,
+                  level: 'warning'
               });
               return;
           }
@@ -287,9 +287,9 @@ $('body').off('click', '#bt_refreshChannels').on('click', '#bt_refreshChannels',
                   select.val(currentVal);
               }
           } else {
-               $.alert({
-                  title: 'Erreur',
-                  content: 'Impossible de récupérer les channels.'
+               jeedomUtils.showAlert({
+                  message: 'Impossible de récupérer les channels.',
+                  level: 'danger'
               });
           }
       }
