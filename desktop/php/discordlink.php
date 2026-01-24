@@ -193,7 +193,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                     </sup>
                                 </label>
                                 <div class="col-sm-7">
-                                    <input type="color" class="eqLogicAttr form-control input-sm cursor" data-l1key="configuration" data-l2key="defaultColor" data-type="background-color" style="width: 80px; display: inline-block;">
+                                    <input type="color" class="eqLogicAttr form-control input-sm cursor" data-l1key="configuration" data-l2key="defaultColor" data-type="background-color" style="width: 80px; display: inline-block;" value="#ff0000">
                                 </div>
                             </div>
                         </div>
@@ -236,8 +236,3 @@ $eqLogics = eqLogic::byType($plugin->getId());
 
             <?php include_file('desktop', 'discordlink', 'js', 'discordlink'); ?>
             <?php include_file('core', 'plugin.template', 'js'); ?>
-            <script type="text/javascript">
-                setTimeout(() => {
-                    setupcase();
-                }, 500);
-            </script>
