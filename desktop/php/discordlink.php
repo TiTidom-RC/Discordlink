@@ -213,26 +213,26 @@ $eqLogics = eqLogic::byType($plugin->getId());
             <div role="tabpanel" class="tab-pane" id="commandtab">
                 <!-- <a class="btn btn-default btn-sm pull-right cmdAction" data-action="add" style="margin-top:5px;"><i class="fas fa-plus-circle"></i> {{Ajouter une commande}}</a> -->
                 <br /><br />
-                <div role="tabpanel" class="tab-pane active" id="commandtab">
-                    <table id="table_cmd" class="table table-bordered table-condensed ui-sortable">
+                <div class="table-responsive">
+                    <table id="table_cmd" class="table table-bordered table-condensed">
                         <thead>
                             <tr>
-                                <th style="width: 40px;">#</th>
-                                <th style="width: 200px;">{{Nom}}</th>
-                                <th style="width: 150px;">{{Type}}</th>
-                                <th style="width: 300px;">{{Commande & Variable}}</th>
-                                <th style="width: 40px;">{{Min}}</th>
-                                <th style="width: 40px;">{{Max}}</th>
-                                <th style="width: 150px;">{{Paramètres}}</th>
-                                <th style="width: 100px;"></th>
+                                <th class="hidden-xs" style="min-width:50px;width:70px;">ID</th>
+                                <th style="min-width:200px;width:350px;">{{Nom}}</th>
+                                <th style="min-width:100px;width:150px;">{{Type}}</th>
+                                <th style="min-width:100px;">{{Options}}</th>
+                                <th style="min-width:150px;">{{Etat}}</th>
+                                <th style="min-width:130px;width:150px;">{{Actions}}</th>
                             </tr>
                         </thead>
                         <tbody>
-
                         </tbody>
                     </table>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
 
             <?php include_file('desktop', 'discordlink', 'js', 'discordlink'); ?>
             <?php include_file('core', 'plugin.template', 'js'); ?>

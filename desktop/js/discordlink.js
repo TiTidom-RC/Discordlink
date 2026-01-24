@@ -25,149 +25,86 @@ function addCmdToTable(_cmd) {
     };
   }
 
-  let DefinitionDivPourCommandesPredefinies = 'style="display: none;"';
-  if (init(_cmd.logicalId) == "") DefinitionDivPourCommandesPredefinies = "";
-
   if (!isset(_cmd.configuration)) {
     _cmd.configuration = {};
   }
 
-  if (init(_cmd.type) == "info") {
-    let tr =
-      '<tr class="cmd" data-cmd_id="' +
-      init(_cmd.id) +
-      '">' +
-      "<td>" +
-      '<span class="cmdAttr" data-l1key="id"></span>' +
-      "</td>" +
-      "<td>" +
-      '<div class="row">' +
-      '<div class="col-lg-1">' +
-      '<span class="cmdAttr" data-l1key="display" data-l2key="icon" style="margin-left : 10px;"></span>' +
-      "</div>" +
-      '<div class="col-lg-8">' +
-      '<input class="cmdAttr form-control input-sm" data-l1key="name" placeholder="{{Nom du capteur}}"></td>' +
-      "<td>" +
-      '<input class="cmdAttr form-control type input-sm" data-l1key="type" value="info" disabled style="margin-bottom : 5px;" />' +
-      "</td>" +
-      "<td>" +
-      "</td>" +
-      "<td>" +
-      "</td>" +
-      "<td>" +
-      "</td>" +
-      "<td>" +
-      '<span><label class="checkbox-inline"><input type="checkbox" class="cmdAttr checkbox-inline" data-l1key="isVisible" checked/>{{Afficher}}</label></span> ' +
-      '<span><label class="checkbox-inline"><input type="checkbox" class="cmdAttr checkbox-inline" data-l1key="isHistorized" checked/>{{Historiser}}</label></span> ' +
-      "</td>" +
-      "<td>";
+  // Build test buttons
+  const testButtons = is_numeric(_cmd.id)
+    ? '<a class="btn btn-default btn-xs cmdAction" data-action="configure"><i class="fas fa-cogs"></i></a> <a class="btn btn-default btn-xs cmdAction" data-action="test"><i class="fas fa-rss"></i> {{Tester}}</a>'
+    : '';
 
-    if (is_numeric(_cmd.id)) {
-      tr +=
-        '<a class="btn btn-default btn-xs cmdAction expertModeVisible" data-action="configure"><i class="fas fa-cogs"></i></a> ' +
-        '<a class="btn btn-default btn-xs cmdAction" data-action="test"><i class="fas fa-rss"></i> {{Tester}}</a>';
-    }
-
-    tr +=
-      '<i class="fas fa-minus-circle pull-right cmdAction cursor" data-action="remove"></i>' +
-      "</td>" +
-      "</tr>";
-
-    $("#table_cmd tbody").append(tr);
-    $("#table_cmd tbody tr:last").setValues(_cmd, ".cmdAttr");
+  // Prepare specific inputs
+  let requestInput = '';
+  if (init(_cmd.type) === 'action') {
+     requestInput = '<div style="margin-top:5px;"><input class="cmdAttr form-control input-sm" data-l1key="configuration" data-l2key="request" style="width:100%;" ' + (init(_cmd.logicalId) !== '' ? 'readonly' : '') + '></div>';
+     if (init(_cmd.logicalId) == 'refresh') requestInput = ''; 
   }
 
-  if (init(_cmd.type) == "action") {
-    let tr =
-      '<tr class="cmd" data-cmd_id="' +
-      init(_cmd.id) +
-      '">' +
-      "<td>" +
-      '<span class="cmdAttr" data-l1key="id"></span>' +
-      "</td>" +
-      "<td>" +
-      '<div class="row">' +
-      '<div class="col-lg-1">' +
-      '<span class="cmdAttr" data-l1key="display" data-l2key="icon" style="margin-left : 10px;"></span>' +
-      "</div>" +
-      '<div class="col-lg-8">' +
-      '<input class="cmdAttr form-control input-sm" data-l1key="name">' +
-      "</div>" +
-      "</div>";
+  // Build row HTML
+  const rowHtml = `<td class="hidden-xs"><span class="cmdAttr" data-l1key="id"></span></td>
+    <td>
+      <div class="input-group">
+        <input class="cmdAttr form-control input-sm roundedLeft" data-l1key="name" placeholder="{{Nom de la commande}}">
+        <span class="input-group-btn"><a class="cmdAction btn btn-sm btn-default" data-l1key="chooseIcon" title="{{Choisir une icône}}"><i class="fas fa-icons"></i></a></span>
+        <span class="cmdAttr input-group-addon roundedRight" data-l1key="display" data-l2key="icon" style="font-size:19px;padding:0 5px 0 0!important;"></span>
+      </div>
+      ${requestInput}
+    </td>
+    <td>
+      <span class="type" type="${init(_cmd.type)}">${jeedom.cmd.availableType()}</span>
+      <span class="subType" subType="${init(_cmd.subType)}"></span>
+    </td>
+    <td>
+      <label class="checkbox-inline"><input type="checkbox" class="cmdAttr" data-l1key="isVisible"/>{{Afficher}}</label>
+      <label class="checkbox-inline"><input type="checkbox" class="cmdAttr" data-l1key="isHistorized"/>{{Historiser}}</label>
+      <label class="checkbox-inline"><input type="checkbox" class="cmdAttr" data-l1key="display" data-l2key="invertBinary"/>{{Inverser}}</label>
+      <div style="margin-top:7px;">
+        <input class="tooltips cmdAttr form-control input-sm" data-l1key="configuration" data-l2key="minValue" placeholder="{{Min}}" title="{{Min}}" style="width:30%;max-width:80px;display:inline-block;margin-right:2px;">
+        <input class="tooltips cmdAttr form-control input-sm" data-l1key="configuration" data-l2key="maxValue" placeholder="{{Max}}" title="{{Max}}" style="width:30%;max-width:80px;display:inline-block;margin-right:2px;">
+        <input class="tooltips cmdAttr form-control input-sm" data-l1key="unite" placeholder="Unité" title="{{Unité}}" style="width:30%;max-width:80px;display:inline-block;margin-right:2px;">
+      </div>
+    </td>
+    <td>
+        <span class="cmdAttr" data-l1key="htmlstate"></span>
+        <div class="content_cmd"></div> 
+    </td>
+    <td>
+      ${testButtons}
+      <i class="fas fa-minus-circle pull-right cmdAction cursor" data-action="remove" title="{{Supprimer la commande}}"></i>
+    </td>`;
 
-    tr += "</td>";
+  const newRow = document.createElement('tr');
+  newRow.className = 'cmd';
+  newRow.setAttribute('data-cmd_id', init(_cmd.id));
+  newRow.innerHTML = rowHtml;
 
-    tr += "<td>";
-    tr +=
-      '<input class="cmdAttr form-control type input-sm" data-l1key="type" value="action" disabled />';
-    tr += "<div " + DefinitionDivPourCommandesPredefinies + ">";
-    tr += '<span class="subType" subType="' + init(_cmd.subType) + '"></span>';
-    tr += "</div></td>";
-    tr += "<td>" + '<input class="cmdAttr form-control input-sm"';
-    if (init(_cmd.logicalId) != "") tr += "readonly";
-
-    if (init(_cmd.logicalId) == "refresh") tr += ' style="display:none;" ';
-
-    tr += ' data-l1key="configuration" data-l2key="request">';
-
-    tr += "</td>";
-    tr += "<td>";
-
-    if (init(_cmd.logicalId) == "" || init(_cmd.logicalId) == "volume") {
-      tr +=
-        '<input class="cmdAttr form-control input-sm" data-l1key="unite"  style="width : 100px;" placeholder="{{Unité}}" title="{{Unité}}" >';
-      tr +=
-        '<input class="tooltips cmdAttr form-control input-sm" data-l1key="configuration" data-l2key="minValue" placeholder="{{Min}}"  title="{{Min}} style="margin-top : 3px;"> ';
-      tr += "</td>";
-      tr += "<td>";
-      tr +=
-        '<input class="tooltips cmdAttr form-control input-sm" data-l1key="configuration" data-l2key="maxValue" placeholder="{{Max}}" title="{{Max}} style="margin-top : 3px;">';
-    } else {
-      tr += "</td>";
-      tr += "<td>";
+  const tableBody = document.querySelector('#table_cmd tbody');
+  if (tableBody) {
+    tableBody.appendChild(newRow);
+    const $newRow = $(newRow);
+    $newRow.setValues(_cmd, '.cmdAttr');
+    jeedom.cmd.changeType($newRow, init(_cmd.subType));
+    
+    // Logic from original code for specific subtypes
+    if (isset(_cmd.subType) && _cmd.subType == "message") {
+        let divCmd = $newRow.find(".content_cmd").empty();
+        divCmd.append(
+            $("<label>")
+            .text("{{Message}}")
+            .append(
+                $('<input class="cmdAttr form-control input-sm">')
+                .attr("data-l1key", "display")
+                .attr("data-l2key", "message_placeholder")
+            )
+        );
     }
-
-    tr +=
-      "</td>" +
-      "<td>" +
-      '<span><label class="checkbox-inline"><input type="checkbox" class="cmdAttr checkbox-inline" data-l1key="isVisible" checked/>{{Afficher}}</label></span> ' +
-      "</td>" +
-      "<td>";
-
-    if (is_numeric(_cmd.id)) {
-      tr +=
-        '<a class="btn btn-default btn-xs cmdAction expertModeVisible" data-action="configure"><i class="fas fa-cogs"></i></a> ';
-      if (!(init(_cmd.name) == "Routine" || init(_cmd.name) == "xxxxxxxx"))
-        //Masquer le bouton Tester
-        tr +=
-          '<a class="btn btn-default btn-xs cmdAction" data-action="test"><i class="fas fa-rss"></i> {{Tester}}</a>';
-    }
-    tr +=
-      '<i class="fas fa-minus-circle pull-right cmdAction cursor" data-action="remove"></i>' +
-      "  </td>" +
-      "</tr>";
-
-    $("#table_cmd tbody").append(tr);
-    const $tr = $("#table_cmd tbody tr:last");
-    jeedom.eqLogic.builSelectCmd({
-      id: $(".li_eqLogic.active").attr("data-eqLogic_id"),
-      filter: {
-        type: "i",
-      },
-      error: function (error) {
-        $("#div_alert").showAlert({
-          message: error.message,
-          level: "danger",
-        });
-      },
-      success: function (result) {
-        $tr.find(".cmdAttr[data-l1key=value]").append(result);
-        $tr.setValues(_cmd, ".cmdAttr");
-        jeedom.cmd.changeType($tr, init(_cmd.subType));
-      },
-    });
   }
 }
+
+// Expose functions globally for Jeedom core (plugin.template.js)
+window.addCmdToTable = addCmdToTable;
+
 
 $("#bt_cronGeneratordeamon").on("click", function () {
   jeedom.getCronSelectModal({}, function (result) {
