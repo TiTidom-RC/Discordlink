@@ -6,6 +6,7 @@ on:
       - beta
     paths-ignore:
       - 'core/i18n/**'
+      - 'plugin_info/info.json'
   workflow_dispatch:
     inputs:
       languages:
