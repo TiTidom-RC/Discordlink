@@ -1,25 +1,25 @@
 <div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
-  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">Patch</span>
-  <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="patch" rows="1"
-    style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#patch#</textarea>
+  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">Path</span>
+  <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="path" rows="1"
+    style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#path#</textarea>
   <span class="input-group-btn">
-    <button class="btn btn-default listDeviceInfoPatch roundedRight" type="button" title="{{Sélectionner la commande}}"
+    <button class="btn btn-default listDeviceInfoPath roundedRight" type="button" title="{{Sélectionner la commande}}"
       data-cmd_id="#id#" data-uid="#uid#"><i class="fas fa-list-alt"></i></button>
   </span>
 </div>
 
 <div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
-  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">Name File</span>
-  <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="Name_File" rows="1"
-    style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#Name_File#</textarea>
+  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">Display Name</span>
+  <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="displayName" rows="1"
+    style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#displayName#</textarea>
   <span class="input-group-btn">
-    <button class="btn btn-default listDeviceInfoNameFile roundedRight" type="button" title="{{Sélectionner la commande}}"
+    <button class="btn btn-default listDeviceInfoDisplayName roundedRight" type="button" title="{{Sélectionner la commande}}"
       data-cmd_id="#id#" data-uid="#uid#"><i class="fas fa-list-alt"></i></button>
   </span>
 </div>
 
 <script>
-  $('.listDeviceInfoPatch[data-uid=#uid#]').on('click', function () {
+  $('.listDeviceInfoPath[data-uid=#uid#]').on('click', function () {
     if ('#message_cmd_subtype#' != '') {
       jeedom.cmd.getSelectModal({
         cmd: {
@@ -27,7 +27,7 @@
           subType: '#message_cmd_subtype#'
         }
       }, function (result) {
-        $('.expressionAttr[data-l1key=options][data-l2key=patch][data-uid=#uid#]').atCaret('insert', result
+        $('.expressionAttr[data-l1key=options][data-l2key=path][data-uid=#uid#]').atCaret('insert', result
           .human);
       });
     } else {
@@ -36,13 +36,13 @@
           type: '#message_cmd_type#'
         }
       }, function (result) {
-        $('.expressionAttr[data-l1key=options][data-l2key=patch][data-uid=#uid#]').atCaret('insert', result
+        $('.expressionAttr[data-l1key=options][data-l2key=path][data-uid=#uid#]').atCaret('insert', result
           .human);
       });
     }
   });
 
-  $('.listDeviceInfoNameFile[data-uid=#uid#]').on('click', function () {
+  $('.listDeviceInfoDisplayName[data-uid=#uid#]').on('click', function () {
     if ('#message_cmd_subtype#' != '') {
       jeedom.cmd.getSelectModal({
         cmd: {
@@ -50,7 +50,7 @@
           subType: '#message_cmd_subtype#'
         }
       }, function (result) {
-        $('.expressionAttr[data-l1key=options][data-l2key=Name_File][data-uid=#uid#]').atCaret('insert', result
+        $('.expressionAttr[data-l1key=options][data-l2key=displayName][data-uid=#uid#]').atCaret('insert', result
           .human);
       });
     } else {
@@ -59,9 +59,12 @@
           type: '#message_cmd_type#'
         }
       }, function (result) {
-        $('.expressionAttr[data-l1key=options][data-l2key=Name_File][data-uid=#uid#]').atCaret('insert', result
+        $('.expressionAttr[data-l1key=options][data-l2key=displayName][data-uid=#uid#]').atCaret('insert', result
           .human);
       });
     }
   });
+
+  if ('#path#' == '#' + 'path#') document.querySelector('.expressionAttr[data-uid=#uid#][data-l1key=options][data-l2key=path]').value = '#defaultPath#'
+  if ('#displayName#' == '#' + 'displayName#') document.querySelector('.expressionAttr[data-uid=#uid#][data-l1key=options][data-l2key=displayName]').value = '#defaultDisplayName#'
 </script>

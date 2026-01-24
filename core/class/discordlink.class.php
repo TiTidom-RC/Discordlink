@@ -838,23 +838,23 @@ class discordlinkCmd extends cmd {
 		$message = "null";
 
 		$request = $this->getConfiguration('request');
-		if ((isset($_options['patch'])) && ($_options['patch'] == "")) $_options['patch'] = $default;
-		if (!(isset($_options['patch']))) $_options['patch'] = "";
+		if ((isset($_options['path'])) && ($_options['path'] == "")) $_options['path'] = $default;
+		if (!(isset($_options['path']))) $_options['path'] = "";
 
 		if (isset($_options['files']) && is_array($_options['files'])) {
 			foreach ($_options['files'] as $file) {
 				if (version_compare(phpversion(), '5.5.0', '>=')) {
-					$patch = $file;
+					$filePath = $file;
 					$files = new CurlFile($file);
 					$fileNameParts = explode('.', $files->getFilename());
 					log::add('discordlink', 'info', $_options['title'] . ' taille : ' . $fileNameParts[sizeof($fileNameParts) - 1]);
-					$fileName = (isset($_options['title']) ? $_options['title'] . '.' . $fileNameParts[sizeof($fileNameParts) - 1] : $files->getFilename());
+					$fileDisplay = (isset($_options['title']) ? $_options['title'] . '.' . $fileNameParts[sizeof($fileNameParts) - 1] : $files->getFilename());
 				}
 			}
 			$message = $_options['message'];
 		} else {
-			$patch = $_options['patch'];
-			$fileName = $_options['Name_File'];
+			$filePath = $_options['path'];
+			$fileDisplay = $_options['displayName'];
 		}
 
 		$request = str_replace(
@@ -864,12 +864,12 @@ class discordlinkCmd extends cmd {
 		);
 		$request = str_replace(
 			array('#name#'),
-			array(urlencode(self::decodeRandomText($fileName))),
+			array(urlencode(self::decodeRandomText($fileDisplay))),
 			$request
 		);
 		$request = str_replace(
 			array('#patch#'),
-			array(urlencode(self::decodeRandomText($patch))),
+			array(urlencode(self::decodeRandomText($filePath))),
 			$request
 		);
 
@@ -1262,6 +1262,8 @@ class discordlinkCmd extends cmd {
 			'#defaultUrl#' => '',
 			'#defaultDescription#' => '',
 			'#defaultFooter#' => '',
+			'#defaultPath#' => '',
+			'#defaultDisplayName#' => '',
 		];
 		$data = str_replace(array_keys($replace), array_values($replace), $data);
 
