@@ -1,10 +1,15 @@
 name: Build Translations
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - beta
+  workflow_dispatch:
+    inputs:
+      languages:
+        description: 'Langues cibles (séparées par des virgules)'
+        required: true
+        default: 'en_US,es_ES,de_DE,it_IT,pt_PT'
 
 jobs:
   auto-translate:
@@ -12,6 +17,6 @@ jobs:
     steps:
       - uses: Mips2648/plugins-translations@main
         with:
-          target_languages: "en_US,es_ES,de_DE,it_IT,pt_PT"
+          target_languages: ${{ inputs.languages || 'en_US,es_ES,de_DE,it_IT,pt_PT' }}
           use_core_translations: false
           deepl_api_key: ${{ secrets.DEEPL_API_KEY }}
