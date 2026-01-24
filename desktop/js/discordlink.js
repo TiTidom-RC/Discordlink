@@ -94,7 +94,7 @@ function addCmdToTable(_cmd) {
 window.addCmdToTable = addCmdToTable;
 
 
-$("#bt_cronGeneratordeamon").on("click", function () {
+$("#bt_cronDaemonGenerator").on("click", function () {
   jeedom.getCronSelectModal({}, function (result) {
     $(
       ".eqLogicAttr[data-l1key=configuration][data-l2key=autoRefreshDaemon]",
@@ -102,7 +102,7 @@ $("#bt_cronGeneratordeamon").on("click", function () {
   });
 });
 
-$("#bt_cronGeneratorDependance").on("click", function () {
+$("#bt_cronDependencyGenerator").on("click", function () {
   jeedom.getCronSelectModal({}, function (result) {
     $(
       ".eqLogicAttr[data-l1key=configuration][data-l2key=autoRefreshDependency]",
@@ -118,17 +118,17 @@ function printEqLogic(_json) {
 
 $("#daemonCheck").on("change", function () {
   if ($(this).is(':checked')) {
-    $('.deamon').show();
+    $('.daemon').show();
   } else {
-    $('.deamon').hide();
+    $('.daemon').hide();
   }
 });
 
 $("#dependencyCheck").on("change", function () {
   if ($(this).is(':checked')) {
-    $('.dependance').show();
+    $('.dependency').show();
   } else {
-    $('.dependance').hide();
+    $('.dependency').hide();
   }
 });
 

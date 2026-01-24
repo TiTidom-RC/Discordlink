@@ -108,7 +108,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                 <div class="col-sm-9">
                                     <label class="checkbox-inline"><input type="checkbox" class="eqLogicAttr" data-l1key="isEnable" title="Activer l'équipement" checked />{{Activer}}</label>
                                     <label class="checkbox-inline"><input type="checkbox" class="eqLogicAttr" data-l1key="isVisible" title="Rendre l'équipement visible" checked />{{Visible}}</label>
-                                    <label class="checkbox-inline"><input type="checkbox" class="eqLogicAttr" data-l1key="configuration" title="Activer les intéractions avec Jeedom" data-l2key="interactionJeedom" />{{Interactions avec Jeedom}}</label>
+                                    <label class="checkbox-inline"><input type="checkbox" class="eqLogicAttr" data-l1key="configuration" title="Activer les interactions avec Jeedom" data-l2key="interactionJeedom" />{{Interactions avec Jeedom}}</label>
                                 </div>
                             </div>
                             </br>
@@ -155,7 +155,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                 </div>
                             </div>
                             </br>
-                            <div class="form-group deamon">
+                            <div class="form-group daemon">
                                 <label class="col-sm-3 control-label">{{Auto-actualisation démon}}
                                     <sup><i class="fas fa-question-circle" title="{{Fréquence de rafraîchissement de la vérification des Démons}}"></i></sup>
                                 </label>
@@ -163,14 +163,14 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                     <div class="input-group">
                                         <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autoRefreshDaemon" placeholder="{{Auto-actualisation Daemon (cron)}}" />
                                         <span class="input-group-btn">
-                                            <a class="btn btn-default cursor jeeHelper roundedRight" id="bt_cronGeneratordeamon" data-helper="cron" title="Assistant cron">
+                                            <a class="btn btn-default cursor jeeHelper roundedRight" id="bt_cronDaemonGenerator" data-helper="cron" title="Assistant cron">
                                                 <i class="fas fa-question-circle"></i>
                                             </a>
                                         </span>
                                     </div>
                                 </div>
                             </div>
-                            <div class="form-group dependance">
+                            <div class="form-group dependency">
                                 <label class="col-sm-3 control-label">{{Auto-actualisation dépendances}}
                                     <sup><i class="fas fa-question-circle" title="{{Fréquence de rafraîchissement de la vérification des dépendances}}"></i></sup>
                                 </label>
@@ -178,7 +178,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                     <div class="input-group">
                                         <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autoRefreshDependency" placeholder="{{Auto-actualisation Dépendances (cron)}}" />
                                         <span class="input-group-btn">
-                                            <a class="btn btn-default cursor jeeHelper roundedRight" id="bt_cronGeneratorDependance" data-helper="cron" title="Assistant cron">
+                                            <a class="btn btn-default cursor jeeHelper roundedRight" id="bt_cronDependencyGenerator" data-helper="cron" title="Assistant cron">
                                                 <i class="fas fa-question-circle"></i>
                                             </a>
                                         </span>
