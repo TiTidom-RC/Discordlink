@@ -1,0 +1,101 @@
+{
+    "plugins\/discordlink\/core\/ajax\/discordlink.ajax.php": {
+        "401 - Accès non autorisé": "401 - Unauthorized access",
+        "Aucune méthode correspondante à : ": "No methods match: "
+    },
+    "plugins\/discordlink\/core\/class\/discordlink.class.php": {
+        "Commande inconnue ou requête vide : ": "Unknown command or empty request: ",
+        "Expression cron non valide pour ": "Invalid cron expression for ",
+        "Serveur injoignable": "Server unreachable",
+        "Veuillez vérifier la configuration": "Please check the configuration"
+    },
+    "plugins\/discordlink\/core\/php\/jeediscordlink.php": {
+        "Vous n\\'êtes pas autorisé à effectuer cette action": "You are not authorized to perform this action."
+    },
+    "plugins\/discordlink\/core\/template\/scenario\/cmd.sendEmbed.html": {
+        "Choisir la commande": "Choose the command"
+    },
+    "plugins\/discordlink\/core\/template\/scenario\/cmd.sendFile.html": {
+        "Choisir la commande": "Choose the command"
+    },
+    "plugins\/discordlink\/core\/template\/scenario\/cmd.sendMsg.html": {
+        "Choisir la commande": "Choose the command"
+    },
+    "plugins\/discordlink\/core\/template\/scenario\/cmd.sendMsgtts.html": {
+        "Choisir la commande": "Choose the command"
+    },
+    "plugins\/discordlink\/desktop\/js\/discordlink.js": {
+        "Afficher": "Display",
+        "Historiser": "Historize",
+        "Max": "Max",
+        "Min": "Min",
+        "Nom du capteur": "Sensor name",
+        "Tester": "Test",
+        "Unité": "Unit"
+    },
+    "plugins\/discordlink\/desktop\/php\/discordlink.php": {
+        "401 - Accès non autorisé": "401 - Unauthorized access",
+        "Activer": "Activate",
+        "Ajouter": "Add",
+        "Ajouter une commande": "Add a command",
+        "Annonce des connexions": "Connection notification",
+        "Auto-actualisation Daemon (cron)": "Auto-update Daemon (cron)",
+        "Auto-actualisation Dépendances (cron)": "Auto-refresh Dependencies (cron)",
+        "Auto-actualisation démon": "Auto-update demon",
+        "Auto-actualisation dépendances": "Auto-update dependencies",
+        "Catégorie": "Category",
+        "Channels": "Channels",
+        "Clear automatique des channels chaque jour": "Automatic channel clearing every day",
+        "Commande & Variable": "Command & Variable",
+        "Commandes": "Commands",
+        "Configuration": "Configuration",
+        "Configuration avancée": "Advanced configuration",
+        "Couleur par défaut": "Default color",
+        "Couleur que prendra un message enrichi par défaut": "Default color for rich messages",
+        "Dupliquer": "Duplicate",
+        "Equipement": "Equipment",
+        "Fréquence de rafraîchissement de la vérification des Démons": "Daemon verification refresh rate",
+        "Fréquence de rafraîchissement de la vérification des dépendances": "Dependency check refresh rate",
+        "Gestion": "Management",
+        "Général": "General",
+        "Informations": "Information",
+        "Interactions avec Jeedom": "Interactions with Jeedom",
+        "Max": "Max",
+        "Mes Channels": "My Channels",
+        "Min": "Min",
+        "Nom": "Name",
+        "Nom du channel": "Channel name",
+        "Objet parent": "Parent object",
+        "Options": "Options",
+        "Paramètres": "Settings",
+        "Rechercher": "Search",
+        "Sauvegarder": "Save",
+        "Supprimer": "Delete",
+        "Type": "Type",
+        "Visible": "Visible",
+        "Vérification Démons": "Daemon Check",
+        "Vérification Dépendances": "Verification Dependencies"
+    },
+    "plugins\/discordlink\/desktop\/php\/discordlinkemote.php": {
+        "401 - Accès non autorisé": "401 - Unauthorized access",
+        "Ajouter un émoji": "Add an emoji",
+        "Clé émoji": "Emoji key",
+        "Code émoji": "Emoji code",
+        "Reset émoji": "Reset emoji",
+        "Retour à ": "Back to ",
+        "Sauvegarder": "Save"
+    },
+    "plugins\/discordlink\/plugin_info\/configuration.php": {
+        "Discord": "Discord",
+        "Démon": "Demon",
+        "Joue à : ": "Play at: ",
+        "Le démon devra être redémarré après la modification de ce paramètre": "The daemon will need to be restarted after changing this setting.",
+        "Ne pas afficher le message de mise à jour": "Do not display the update message",
+        "Plugin": "Plugin",
+        "Port Socket Interne": "Internal Port Socket",
+        "Token : ": "Token: ",
+        "Version Plugin": "Plugin version",
+        "Version du Plugin (A indiquer sur Community)": "Plugin version (to be indicated on Community)",
+        "[ATTENTION] Ne changez ce paramètre qu'en cas de nécessité. (Défaut = 3466)": "[WARNING] Only change this setting if necessary. (Default = 3466)"
+    }
+}
