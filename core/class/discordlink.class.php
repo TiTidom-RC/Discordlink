@@ -106,15 +106,15 @@ class discordlink extends eqLogic {
 
 	public static function setEmoji($reset = 0) {
 		$default = array(
-			'motion' => ':person_walking:',
+			'motion' => ':walking:',
 			'door' => ':door:',
-			'windows' => ':frame_photo:',
+			'windows' => ':framed_picture:',
 			'light' => ':bulb:',
 			'outlet' => ':electric_plug:',
 			'temperature' => ':thermometer:',
 			'humidity' => ':droplet:',
 			'luminosity' => ':sunny:',
-			'power' => ':cloud_lightning:',
+			'power' => ':cloud_with_lightning:',
 			'security' => ':rotating_light:',
 			'shutter' => ':beginner:',
 			'deamon_ok' => ':green_circle:',
