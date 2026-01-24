@@ -71,20 +71,33 @@ class discordlink extends eqLogic {
 		return self::$_daemonBaseURL;
 	}
 
-	public static function getChannel() {
-		try {
-			$requestHttp = new com_http(self::getDaemonBaseURL() . '/getchannel');
-			$response = $requestHttp->exec(10, 2);
-			if ($response === false || empty($response)) {
-				log::add('discordlink', 'error', 'Impossible de récupérer les channels depuis le daemon');
-				return array();
+	public static function getChannel($maxRetries = 3, $delayMs = 500) {
+		$attempt = 0;
+		while ($attempt < $maxRetries) {
+			try {
+				$requestHttp = new com_http(self::getDaemonBaseURL() . '/getchannel');
+				$response = $requestHttp->exec(10, 2);
+				if ($response !== false && !empty($response)) {
+					$channels = json_decode($response, true);
+					if (is_array($channels)) {
+						if ($attempt > 0) {
+							log::add('discordlink', 'debug', 'Channels récupérés après ' . ($attempt + 1) . ' tentative(s)');
+						}
+						return $channels;
+					}
+				}
+			} catch (Exception $e) {
+				log::add('discordlink', 'debug', 'Tentative ' . ($attempt + 1) . '/' . $maxRetries . ' échouée: ' . $e->getMessage());
 			}
-			$channels = json_decode($response, true);
-			return is_array($channels) ? $channels : array();
-		} catch (Exception $e) {
-			log::add('discordlink', 'error', 'Erreur getchannel: ' . $e->getMessage());
-			return array();
+			
+			$attempt++;
+			if ($attempt < $maxRetries) {
+				usleep($delayMs * 1000); // Pause avant la prochaine tentative
+			}
 		}
+		
+		log::add('discordlink', 'error', 'Impossible de récupérer les channels depuis le daemon après ' . $maxRetries . ' tentatives');
+		return array();
 	}
 
 	public static function setChannel() {
@@ -106,15 +119,15 @@ class discordlink extends eqLogic {
 
 	public static function setEmoji($reset = 0) {
 		$default = array(
-			'motion' => ':person_walking:',
+			'motion' => ':walking:',
 			'door' => ':door:',
-			'windows' => ':frame_photo:',
+			'windows' => ':framed_picture:',
 			'light' => ':bulb:',
 			'outlet' => ':electric_plug:',
 			'temperature' => ':thermometer:',
 			'humidity' => ':droplet:',
 			'luminosity' => ':sunny:',
-			'power' => ':cloud_lightning:',
+			'power' => ':cloud_with_lightning:',
 			'security' => ':rotating_light:',
 			'shutter' => ':beginner:',
 			'deamon_ok' => ':green_circle:',
@@ -124,15 +137,30 @@ class discordlink extends eqLogic {
 			'dep_nok' => ':red_circle:',
 			'batterie_ok' => ':green_circle:',
 			'batterie_progress' => ':orange_circle:',
-			'batterie_nok' => ':red_circle:'
+			'batterie_nok' => ':red_circle:',
+			'lastUser_warning' => ':warning:',
+			'lastUser_mag_right' => ':mag_right:',
+			'lastUser_mag' => ':mag:',
+			'lastUser_check' => ':white_check_mark:',
+			'lastUser_internet' => ':globe_with_meridians:',
+			'lastUser_connected' => ':green_circle:',
+			'lastUser_disconnected' => ':red_circle:',
+			'lastUser_icon' => ':busts_in_silhouette:'
 		);
 
-		$emojiArray = ($reset == 1) ? $default : config::byKey('emoji', 'discordlink', $default);
+		if ($reset == 1) {
+			// Reset complet : on force les valeurs par défaut
+			$emojiArray = $default;
+		} else {
+			// Récupération des emojis existants et fusion avec les nouveaux
+			$existing = config::byKey('emoji', 'discordlink', array());
+			$emojiArray = array_merge($default, is_array($existing) ? $existing : array());
+		}
+		
 		config::save('emoji', $emojiArray, 'discordlink');
 	}
 
 	public static function updateInfo() {
-		sleep(2);
 		static::updateObject();
 		static::setChannel();
 	}
@@ -153,49 +181,74 @@ class discordlink extends eqLogic {
 	}
 
 	private static function executeCronIfDue($eqLogic, $cronExpr, $cmdLogicId, $debugLabel, $dateRun, $_options) {
-		if (empty($cronExpr)) return;
+		if (empty($cronExpr)) {
+			log::add('discordlink', 'debug', $debugLabel . ' pour ' . $eqLogic->getName() . ' : aucun cron configuré');
+			return;
+		}
 
 		try {
 			$c = new Cron\CronExpression($cronExpr, new Cron\FieldFactory);
 			if ($c->isDue($dateRun)) {
-				log::add('discordlink', 'debug', $debugLabel);
+				log::add('discordlink', 'info', $debugLabel . ' pour ' . $eqLogic->getName() . ' (cron: ' . $cronExpr . ') - Exécution');
 				$cmd = $eqLogic->getCmd('action', $cmdLogicId);
 				if (is_object($cmd)) {
 					$cmd->execCmd($_options);
+				} else {
+					log::add('discordlink', 'warning', $debugLabel . ' pour ' . $eqLogic->getName() . ' : commande ' . $cmdLogicId . ' introuvable');
 				}
+			} else {
+				log::add('discordlink', 'debug', $debugLabel . ' pour ' . $eqLogic->getName() . ' (cron: ' . $cronExpr . ') - Non dû à cette date');
 			}
 		} catch (Exception $exc) {
 			log::add('discordlink', 'error', __('Expression cron non valide pour ', __FILE__) . $eqLogic->getHumanName() . ' : ' . $cronExpr);
 		}
 	}
 
-	public static function checkAll() {
+	/**
+	 * Exécute les vérifications planifiées pour tous les équipements
+	 * Vérifie les crons personnalisés (démons, dépendances, connexions)
+	 * et exécute les notifications Discord si les conditions sont remplies
+	 */
+	public static function runScheduledChecks() {
 		$eqLogics = eqLogic::byType('discordlink');
 		if (empty($eqLogics)) {
+			log::add('discordlink', 'debug', 'runScheduledChecks() : Aucun équipement discordlink trouvé');
 			return;
 		}
 
+		log::add('discordlink', 'debug', 'runScheduledChecks() : Début vérification de ' . count($eqLogics) . ' équipement(s)');
 		$dateRun = new DateTime();
 		$options = ['cron' => true];
 
 		foreach ($eqLogics as $eqLogic) {
 			// Vérification démon
-			if ($eqLogic->getConfiguration('daemonCheck', 0) === 1) {
+			if ((bool)$eqLogic->getConfiguration('daemonCheck', 0)) {
+				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - daemonCheck activé, cron configuré: ' . $eqLogic->getConfiguration('autoRefreshDaemon', 'non défini'));
 				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autoRefreshDaemon'), 'daemonInfo', 'DaemonCheck', $dateRun, $options);
+			} else {
+				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - daemonCheck désactivé (valeur: ' . var_export($eqLogic->getConfiguration('daemonCheck', 0), true) . ')');
 			}
 
 			// Vérification dépendances
-			if ($eqLogic->getConfiguration('dependencyCheck', 0) === 1) {
+			if ((bool)$eqLogic->getConfiguration('dependencyCheck', 0)) {
+				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - dependencyCheck activé, cron configuré: ' . $eqLogic->getConfiguration('autoRefreshDependency', 'non défini'));
 				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autoRefreshDependency'), 'dependencyInfo', 'DependencyCheck', $dateRun, $options);
+			} else {
+				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - dependencyCheck désactivé (valeur: ' . var_export($eqLogic->getConfiguration('dependencyCheck', 0), true) . ')');
 			}
 
 			// Vérification connexions utilisateurs
-			if ($eqLogic->getConfiguration('connectionCheck', 0) === 1) {
+			if ((bool)$eqLogic->getConfiguration('connectionCheck', 0)) {
+				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - connectionCheck activé');
 				$cmd = $eqLogic->getCmd('action', 'lastUser');
 				if (is_object($cmd)) {
 					log::add('discordlink', 'debug', 'Vérification connexion utilisateur pour ' . $eqLogic->getName());
 					$cmd->execCmd($options);
+				} else {
+					log::add('discordlink', 'warning', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - commande lastUser introuvable');
 				}
+			} else {
+				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - connectionCheck désactivé (valeur: ' . var_export($eqLogic->getConfiguration('connectionCheck', 0), true) . ')');
 			}
 		}
 	}
@@ -205,7 +258,7 @@ class discordlink extends eqLogic {
      * Fonction exécutée automatiquement toutes les minutes par Jeedom
 	 */
 	public static function cron() {
-		static::checkAll();
+		static::runScheduledChecks();
 	}
 
 	/*
@@ -219,7 +272,7 @@ class discordlink extends eqLogic {
 	public static function cronDaily() {
 		$eqLogics = eqLogic::byType('discordlink');
 		foreach ($eqLogics as $eqLogic) {
-			if ($eqLogic->getConfiguration('clearChannel', 0) != 1) continue;
+			if (!(bool)$eqLogic->getConfiguration('clearChannel', 0)) continue;
 
 			$cmd = $eqLogic->getCmd('action', 'deleteMessage');
 			if (!is_object($cmd)) continue;
@@ -508,29 +561,8 @@ class discordlink extends eqLogic {
 		}
 	}
 
-	/*
-     * Non obligatoire mais permet de modifier l'affichage du widget si vous en avez besoin
-      public function toHtml($_version = 'dashboard') {
-
-      }
-     */
-
-	/*
-     * Non obligatoire mais ca permet de déclencher une action après modification de variable de configuration
-    public static function postConfig_<Variable>() {
-    }
-     */
-
-	/*
-     * Non obligatoire mais ca permet de déclencher une action avant modification de variable de configuration
-    public static function preConfig_<Variable>() {
-    }
-     */
-
 	public static function getLastUserConnections() {
 		$message = "";
-		$connectedUserListNew = '';
-		$connectedUserList = '';
 		$onlineCount = 0;
 		$daysBeforeUserRemoval = 61;
 		$hasCronActivity = false;
@@ -541,15 +573,15 @@ class discordlink extends eqLogic {
 		$level = log::getLogLevel('connection');
 		$levelName = log::convertLogLevel($level);
 
-		//Add Emoji
-		$emojiWarning = discordlink::addEmoji("lastUser_warning", ":warning:");
-		$emojiMagRight = discordlink::addEmoji("lastUser_mag_right", ":mag_right:");
-		$emojiMag = discordlink::addEmoji("lastUser_mag", ":mag:");
-		$emojiCheck = discordlink::addEmoji("lastUser_check", ":white_check_mark:");
-		$emojiInternet = discordlink::addEmoji("lastUser_internet", ":globe_with_meridians:");
-		$emojiConnected = discordlink::addEmoji("lastUser_connecter", ":green_circle:");
-		$emojiDisconnected = discordlink::addEmoji("lastUser_deconnecter", ":red_circle:");
-		$emojiSilhouette = discordlink::addEmoji("lastUser_silhouette", ":busts_in_silhouette:");
+		// Récupération des emojis
+		$emojiWarning = discordlink::getIcon("lastUser_warning");
+		$emojiMagRight = discordlink::getIcon("lastUser_mag_right");
+		$emojiMag = discordlink::getIcon("lastUser_mag");
+		$emojiCheck = discordlink::getIcon("lastUser_check");
+		$emojiInternet = discordlink::getIcon("lastUser_internet");
+		$emojiConnected = discordlink::getIcon("lastUser_connected");
+		$emojiDisconnected = discordlink::getIcon("lastUser_disconnected");
+		$emojiIcon = discordlink::getIcon("lastUser_icon");
 
 
 		if ($level > 200) {
@@ -562,7 +594,6 @@ class discordlink extends eqLogic {
 		$connectedUserNames = array();
 		$connectedUserDates = array();
 		$connectedUserStatuses = array();
-		$connectedUserListParts = array();
 
 		foreach (user::all() as $user) {
 			$lastDate = $user->getOptions('lastConnection');
@@ -579,13 +610,8 @@ class discordlink extends eqLogic {
 			$connectedUserNames[] = $user->getLogin();
 			$connectedUserDates[] = $lastDate;
 			$connectedUserStatuses[] = $status;
-
-			// Construction de la liste
-			$connectedUserListParts[] = $user->getLogin() . ';' . $lastDate . ';' . $status;
 		}
-		$connectedUserList = implode('|', $connectedUserListParts);
 
-		$connectedUserListNew = '';
 		// Récupération des lignes du log Connection
 		$delta = log::getDelta('connection', 0, '', false, false, 0, $maxLine);
 		$connectionLogs = array();
@@ -641,10 +667,8 @@ class discordlink extends eqLogic {
 					$lastLogConnectionName = $connectionLogNames[$logUserIndex];
 
 					// Mise à jour du statut des utilisateurs
-					$userIndex = 0;
 					$foundCount = 0;
 					foreach ($connectedUserNames as $key => $userName) {
-						$userIndex++;
 						if ($connectionLogNames[$logUserIndex] == $userName) {
 							$foundCount++;
 							if ($connectedUserStatuses[$key] == 'hors ligne') {
@@ -663,30 +687,13 @@ class discordlink extends eqLogic {
 					}
 				}
 			}
-
-			// Reconstruction propre de la liste finale une seule fois
-			$connectedUserListNew = '';
-			foreach ($connectedUserNames as $key => $name) {
-				if ($connectedUserListNew != '') {
-					$connectedUserListNew .= '|';
-				}
-				// Gérer les index qui peuvent être numériques ou string selon l'initialisation précédente
-				$date = isset($connectedUserDates[$key]) ? $connectedUserDates[$key] : '';
-				$status = isset($connectedUserStatuses[$key]) ? $connectedUserStatuses[$key] : 'hors ligne';
-				$connectedUserListNew .= $name . ';' . $date . ';' . $status;
-			}
-			$connectedUserList = $connectedUserListNew;
 		}
 
 		$sessions = listSession();
-		$sessionCount = count($sessions);												//nombre d'utilisateur en session actuellement
 
 		$message .= "\n" . "\n" . $emojiMagRight . "__Récapitulatif des sessions actuelles :__ " . $emojiMag;
 		// Parcours des sessions pour vérifier le statut et le nombre de sessions
-		$userIndex = 0;
-		$connectedUserListNew = '';
-		foreach ($connectedUserNames as $value) {
-			$userIndex++;
+		foreach ($connectedUserNames as $userIndex => $userName) {
 			$sessionIndex = 0;
 			$foundCount = 0;
 			$connectedUserStatuses[$userIndex] = 'hors ligne';
@@ -697,7 +704,7 @@ class discordlink extends eqLogic {
 
 				$userDelay = strtotime(date("Y-m-d H:i:s")) - strtotime($session['datetime']);
 
-				if ($connectedUserNames[$userIndex] == $session['login']) {
+				if ($userName == $session['login']) {
 					if ($userDelay < $offlineDelay * 60) {
 						$foundCount++;
 						$onlineCount++;
@@ -714,22 +721,17 @@ class discordlink extends eqLogic {
 				$date = date_fr(date("l d F Y", $connectTimestamp)) . "** à **" . date("H\hi", $connectTimestamp);
 			}
 			if ($foundCount > 0) {
-				$message .= "\n" . $emojiConnected . " **" . $connectedUserNames[$userIndex] . "** est **en ligne** depuis **" . $date . "**";
+				$message .= "\n" . $emojiConnected . " **" . $userName . "** est **en ligne** depuis **" . $date . "**";
 				$message .= $connectedUserIPs[$userIndex];
 			} else {
 				if (strtotime($timeNow) - strtotime($connectedUserDates[$userIndex]) < ($daysBeforeUserRemoval * 24 * 60 * 60)) {
-					$message .= "\n" . $emojiDisconnected . " **" . $connectedUserNames[$userIndex] . "** est **hors ligne** (dernière connexion **" . $date . "**)";
+					$message .= "\n" . $emojiDisconnected . " **" . $userName . "** est **hors ligne** (dernière connexion **" . $date . "**)";
 				}
 			}
-			if ($connectedUserListNew != '') {
-				$connectedUserListNew = $connectedUserListNew . '|';
-			}
-			$connectedUserListNew .= $connectedUserNames[$userIndex] . ';' . $connectedUserDates[$userIndex] . ';' . $connectedUserStatuses[$userIndex];
-			$connectedUserList = $connectedUserListNew;
 		}
 
 		// Préparation des tags de notification
-		$title = $emojiSilhouette . 'CONNEXIONS ' . $emojiSilhouette;
+		$title = $emojiIcon . 'CONNEXIONS ' . $emojiIcon;
 		return array(
 			'title' => $title,
 			'message' => $message . $logLevelWarning,
@@ -1004,7 +1006,10 @@ class discordlinkCmd extends cmd {
 			}
 		}
 
-		if (isset($_options['cron']) and $colors == '#00ff08') return 'requestHandledInternally';
+		if (isset($_options['cron']) and $colors == '#00ff08') {
+			log::add('discordlink', 'debug', 'Vérification démons pour ' . $this->getEqLogic()->getName() . ' : Tous les démons sont OK, pas de notification Discord');
+			return 'requestHandledInternally';
+		}
 		$message = str_replace("|", "\n", $message);
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
 		$_options = array('title' => 'Etat des démons', 'description' => $message, 'colors' => $colors, 'footer' => 'By DiscordLink');
@@ -1031,7 +1036,10 @@ class discordlinkCmd extends cmd {
 			}
 		}
 
-		if (isset($_options['cron']) && $colors == '#00ff08') return 'requestHandledInternally';
+		if (isset($_options['cron']) && $colors == '#00ff08') {
+			log::add('discordlink', 'debug', 'Vérification dépendances pour ' . $this->getEqLogic()->getName() . ' : Toutes les dépendances sont OK, pas de notification Discord');
+			return 'requestHandledInternally';
+		}
 		$message = str_replace("|", "\n", $message);
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
 		$_options = array('title' => 'Etat des dépendances', 'description' => $message, 'colors' => $colors, 'footer' => 'By DiscordLink');

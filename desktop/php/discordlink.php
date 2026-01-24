@@ -7,6 +7,13 @@ sendVarToJS('eqType', $plugin->getId());
 $eqLogics = eqLogic::byType($plugin->getId());
 ?>
 
+<style>
+    /* Décalage des options liées (fréquence) vers la droite */
+    .daemon_freq .form-group, .dependency_freq .form-group {
+        margin-left: 10px;
+    }
+</style>
+
 <div class="row row-overflow">
     <div class="col-xs-12 eqLogicThumbnailDisplay">
         <legend><i class="fas fa-cog"></i> {{Gestion}}</legend>
@@ -21,10 +28,10 @@ $eqLogics = eqLogic::byType($plugin->getId());
                 <br>
                 <span>{{Configuration}}</span>
             </div>
-            <div class="cursor eqLogicAction logoSecondary">
-                <a href="index.php?v=d&m=discordlink&p=discordlinkemote"><img style="margin-top:-32px;" src="plugins/discordlink/plugin_info/discordlink_icon.png" width="75" height="75">
-                    <br>
-                    <span>Emojis Settings</span></a>
+            <div class="cursor eqLogicAction logoSecondary" data-action="emojiSettings">
+                <i class="fab fa-discord icon_blue"></i>
+                <br>
+                <span>{{Emojis}}</span>
             </div>
         </div>
         <legend><i class="fas fa-table"></i> {{Mes Channels}}</legend>
@@ -61,26 +68,27 @@ $eqLogics = eqLogic::byType($plugin->getId());
         </div>
         <ul class="nav nav-tabs" role="tablist">
             <li role="presentation"><a href="#" class="eqLogicAction" aria-controls="home" role="tab" data-toggle="tab" data-action="returnToThumbnailDisplay"><i class="fas fa-arrow-circle-left"></i></a></li>
-            <li role="presentation" class="active"><a href="#eqlogictab" aria-controls="home" role="tab" data-toggle="tab"><i class="fas fa-tachometer-alt"></i><span class="hidden-xs"> {{Equipement}}</span></a></li>
-            <li role="presentation"><a href="#commandtab" aria-controls="profile" role="tab" data-toggle="tab"><i class="fas fa-list-alt"></i><span class="hidden-xs"> {{Commandes}}</span></a></li>
+            <li role="presentation" class="active"><a href="#eqlogictab" aria-controls="home" role="tab" data-toggle="tab"><i class="fab fa-discord"></i> {{Discord Channel}}</a></li>
+            <li role="presentation"><a href="#commandtab" aria-controls="profile" role="tab" data-toggle="tab"><i class="fas fa-list-alt"></i> {{Commandes}}</a></li>
         </ul>
         <div class="tab-content">
             <div role="tabpanel" class="tab-pane active" id="eqlogictab">
                 <form class="form-horizontal">
                     <fieldset>
-                        <div class="col-lg-7">
-                            <legend><i class="fas fa-wrench"></i> {{Général}}</legend>
+                        <div class="col-lg-6">
+                            <legend><i class="fas fa-wrench"></i> {{Paramètres généraux}}</legend>
                             <div class="form-group">
-                                <label class="col-sm-3 control-label">{{Nom du channel}}</label>
-                                <div class="col-sm-7">
+                                <label class="col-sm-4 control-label">{{Nom de l'équipement}}</label>
+                                <div class="col-sm-6">
                                     <input type="text" class="eqLogicAttr form-control" data-l1key="id" style="display : none;" />
                                     <input type="text" class="eqLogicAttr form-control" data-l1key="name" placeholder="{{Nom du channel}}" />
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label class="col-sm-3 control-label">{{Objet parent}}</label>
-                                <div class="col-sm-7">
+                                <label class="col-sm-4 control-label">{{Objet parent}}</label>
+                                <div class="col-sm-6">
                                     <select id="sel_object" class="eqLogicAttr form-control" data-l1key="object_id">
+                                        <option value="">{{Aucun}}</option>
                                         <?php
                                         $options = '';
                                         foreach ((jeeObject::buildTree(null, false)) as $object) {
@@ -92,8 +100,8 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label class="col-sm-3 control-label">{{Catégorie}}</label>
-                                <div class="col-sm-9">
+                                <label class="col-sm-4 control-label">{{Catégorie}}</label>
+                                <div class="col-sm-6">
                                     <?php
                                     foreach (jeedom::getConfiguration('eqLogic:category') as $key => $value) {
                                         echo '<label class="checkbox-inline">';
@@ -104,99 +112,146 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label class="col-sm-3 control-label">{{Options}}</label>
-                                <div class="col-sm-9">
+                                <label class="col-sm-4 control-label">{{Options}}</label>
+                                <div class="col-sm-6">
                                     <label class="checkbox-inline"><input type="checkbox" class="eqLogicAttr" data-l1key="isEnable" title="Activer l'équipement" checked />{{Activer}}</label>
                                     <label class="checkbox-inline"><input type="checkbox" class="eqLogicAttr" data-l1key="isVisible" title="Rendre l'équipement visible" checked />{{Visible}}</label>
-                                    <label class="checkbox-inline"><input type="checkbox" class="eqLogicAttr" data-l1key="configuration" title="Activer les intéractions avec Jeedom" data-l2key="interactionJeedom" />{{Interactions avec Jeedom}}</label>
+                                    <label class="checkbox-inline"><input type="checkbox" class="eqLogicAttr" data-l1key="configuration" title="Activer les interactions avec Jeedom" data-l2key="interactionJeedom" />{{Interactions avec Jeedom}}</label>
                                 </div>
                             </div>
-                            </br>
-                            <legend><i class="fas fa-cogs"></i> {{Paramètres}}</legend>
-                            <div class="form-group">
-                                <label class="col-sm-3 control-label">{{Channels}}</label>
-                                <div class="col-sm-7">
-                                    <select class="form-control eqLogicAttr" data-l1key="configuration" data-l2key="channelId">
-                                        <?php
-                                        $channels = config::byKey('channels', 'discordlink', 'null');
-                                        $deamon = discordlink::deamon_info();
-                                        $i = 0;
-                                        if ($deamon['state'] == 'ok') {
-                                            $channels = discordlink::getChannel();
-                                            foreach ($channels as $channel) {
-                                                echo '<option value="' . $channel['id'] . '">(' . $channel['guildName'] . ') ' . $channel['name'] . '</option>';
-                                                $i++;
-                                            }
-                                        }
 
-                                        if ($i == 0) {
-                                            echo '<option value="null">Pas de channel disponible</option>';
-                                        }
-                                        ?>
-                                    </select>
-                                </div>
-                            </div>
-                            </br>
-                            <div class="form-group">
-                                <label class="col-sm-3 control-label"></label>
-                                <div class="col-sm-9">
-                                    <label class="checkbox-inline"><input id="daemonCheck" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="daemonCheck" />{{Vérification Démons}}</label>
-                                    <label class="checkbox-inline"><input id="dependencyCheck" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="dependencyCheck" />{{Vérification Dépendances}}</label>
-                                    <label class="checkbox-inline"><input id="connectionCheck" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="connectionCheck" />{{Annonce des connexions}}</label>
-                                    </br>
-                                    <label class="checkbox-inline"><input id="clearChannel" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="clearChannel" />{{Clear automatique des channels chaque jour}}</label>
-                                </div>
-                            </div>
-                            </br>
-                            <div class="form-group deamon">
-                                <label class="col-sm-3 control-label">{{Auto-actualisation démon}}
-                                    <sup><i class="fas fa-question-circle" title="{{Fréquence de rafraîchissement de la vérification des Démons}}"></i></sup>
-                                </label>
-                                <div class="col-sm-7">
+                            <fieldset>
+                                <legend><i class="fab fa-discord"></i> {{Configuration Discord}}</legend>
+                                <div class="form-group">
+                                    <label class="col-sm-4 control-label">{{Channel}}</label>
+                                    <div class="col-sm-6">
                                     <div class="input-group">
-                                        <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autoRefreshDaemon" placeholder="{{Auto-actualisation Daemon (cron)}}" />
+                                        <select class="form-control eqLogicAttr roundedLeft" data-l1key="configuration" data-l2key="channelId">
+                                            <?php
+                                            $channels = config::byKey('channels', 'discordlink', 'null');
+                                            $deamon = discordlink::deamon_info();
+                                            $i = 0;
+                                            if ($deamon['state'] == 'ok') {
+                                                $channels = discordlink::getChannel();
+                                                foreach ($channels as $channel) {
+                                                    echo '<option value="' . $channel['id'] . '">(' . $channel['guildName'] . ') ' . $channel['name'] . '</option>';
+                                                    $i++;
+                                                }
+                                            }
+
+                                            if ($i == 0) {
+                                                echo '<option value="null">Pas de channel disponible</option>';
+                                            }
+                                            ?>
+                                        </select>
                                         <span class="input-group-btn">
-                                            <a class="btn btn-default cursor jeeHelper roundedRight" id="bt_cronGeneratordeamon" data-helper="cron" title="Assistant cron">
-                                                <i class="fas fa-question-circle"></i>
+                                            <a class="btn btn-default cursor roundedRight" id="bt_refreshChannels" title="{{Rafraîchir les channels}}">
+                                                <i class="fas fa-sync"></i>
                                             </a>
                                         </span>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="form-group dependance">
-                                <label class="col-sm-3 control-label">{{Auto-actualisation dépendances}}
-                                    <sup><i class="fas fa-question-circle" title="{{Fréquence de rafraîchissement de la vérification des dépendances}}"></i></sup>
-                                </label>
-                                <div class="col-sm-7">
-                                    <div class="input-group">
-                                        <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autoRefreshDependency" placeholder="{{Auto-actualisation Dépendances (cron)}}" />
-                                        <span class="input-group-btn">
-                                            <a class="btn btn-default cursor jeeHelper roundedRight" id="bt_cronGeneratorDependance" data-helper="cron" title="Assistant cron">
-                                                <i class="fas fa-question-circle"></i>
-                                            </a>
-                                        </span>
+                            </fieldset>
+
+                            <fieldset>
+                                <legend><i class="fas fa-heartbeat"></i> {{Notifications}}</legend>
+                                <div class="form-group">
+                                    <label class="col-sm-4 control-label">{{Démons}}
+                                        <sup><i class="fas fa-question-circle" title="{{Surveille l'état de tous les démons Jeedom et envoie un état des lieux}}"></i></sup>
+                                    </label>
+                                    <div class="col-sm-6">
+                                        <label class="checkbox-inline"><input id="daemonCheck" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="daemonCheck" />{{Activer la Vérification}}</label>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="form-group customColor">
-                                <label class="col-sm-3 control-label">
-                                    {{Couleur par défaut}}
-                                    <sup>
-                                        <i class="fas fa-question-circle floatright" style="color: var(--al-info-color) !important;" title="{{Couleur que prendra un message enrichi par défaut}}"></i>
-                                    </sup>
-                                </label>
-                                <div class="col-sm-7">
-                                    <input type="color" class="eqLogicAttr form-control input-sm cursor" data-l1key="configuration" data-l2key="defaultColor" data-type="background-color" style="width: 80px; display: inline-block;">
+                                <div class="daemon_freq" style="display:none;">
+                                    <div class="form-group">
+                                        <label class="col-sm-4 control-label">{{Cron}}
+                                            <sup><i class="fas fa-question-circle" title="{{Fréquence de vérification des démons (format cron)}}"></i></sup>
+                                        </label>
+                                        <div class="col-sm-6">
+                                            <div class="input-group">
+                                                <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autoRefreshDaemon" placeholder="{{Cron de vérification}}" />
+                                                <span class="input-group-btn">
+                                                    <a class="btn btn-default cursor jeeHelper roundedRight" id="bt_cronDaemonGenerator" data-helper="cron" title="Assistant cron">
+                                                        <i class="fas fa-question-circle"></i>
+                                                    </a>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="col-sm-4 control-label">{{Dépendances}}
+                                        <sup><i class="fas fa-question-circle" title="{{Surveille l'installation des dépendances de tous les plugins Jeedom et envoie un état des lieux}}"></i></sup>
+                                    </label>
+                                    <div class="col-sm-6">
+                                        <label class="checkbox-inline"><input id="dependencyCheck" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="dependencyCheck" />{{Activer la Vérification}}</label>
+                                    </div>
+                                </div>
+                                <div class="dependency_freq" style="display:none;">
+                                    <div class="form-group">
+                                        <label class="col-sm-4 control-label">{{Cron}}
+                                            <sup><i class="fas fa-question-circle" title="{{Fréquence de vérification des dépendances (format cron)}}"></i></sup>
+                                        </label>
+                                        <div class="col-sm-6">
+                                            <div class="input-group">
+                                                <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autoRefreshDependency" placeholder="{{Cron de vérification}}" />
+                                                <span class="input-group-btn">
+                                                    <a class="btn btn-default cursor jeeHelper roundedRight" id="bt_cronDependencyGenerator" data-helper="cron" title="Assistant cron">
+                                                        <i class="fas fa-question-circle"></i>
+                                                    </a>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="col-sm-4 control-label">{{Connexions}}
+                                        <sup><i class="fas fa-question-circle" title="{{Annonce sur Discord les connexions des utilisateurs Jeedom}}"></i></sup>
+                                    </label>
+                                    <div class="col-sm-6">
+                                        <label class="checkbox-inline"><input id="connectionCheck" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="connectionCheck" />{{Annoncer les connexions}}</label>
+                                    </div>
+                                </div>
+                            </fieldset>
+
+                            <fieldset>
+                                <legend><i class="fas fa-broom"></i> {{Nettoyage}}</legend>
+                                <div class="form-group">
+                                    <label class="col-sm-4 control-label">{{Nettoyage automatique}}
+                                        <sup><i class="fas fa-question-circle" title="{{Conserve les messages des 2 derniers jours et efface automatiquement les plus anciens}}"></i></sup>
+                                    </label>
+                                    <div class="col-sm-6">
+                                        <label class="checkbox-inline"><input id="clearChannel" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="clearChannel" />{{Activer}}</label>
+                                    </div>
+                                </div>
+                            </fieldset>
+
+                            <fieldset>
+                                <legend><i class="fas fa-palette"></i> {{Personnalisation}}</legend>
+                                <div class="form-group">
+                                    <label class="col-sm-4 control-label">
+                                        {{Couleur par défaut}}
+                                        <sup>
+                                            <i class="fas fa-question-circle" title="{{Couleur que prendra un message enrichi par défaut}}"></i>
+                                        </sup>
+                                    </label>
+                                <div class="col-sm-6">
+                                    <input type="color" class="eqLogicAttr form-control input-sm cursor" data-l1key="configuration" data-l2key="defaultColor" data-type="background-color" style="width: 80px; display: inline-block;" value="#ff0000">
                                 </div>
                             </div>
+                            </fieldset>
                         </div>
+
                         <!-- Partie droite de l'onglet "Équipement" -->
-                        <!-- Affiche l'icône du plugin par défaut mais vous pouvez y afficher les informations de votre choix -->
-                        <div class="col-lg-5">
+                        <div class="col-lg-6">
                             <legend><i class="fas fa-info"></i> {{Informations}}</legend>
                             <div class="form-group">
-                                <div class="text-center">
-                                    <img name="icon_visu" src="<?= $plugin->getPathImgIcon(); ?>" style="max-width:160px;" />
+                                <label class="col-sm-4 control-label">{{Description}}</label>
+                                <div class="col-sm-6">
+                                    <textarea class="form-control eqLogicAttr autogrow" data-l1key="comment"></textarea>
                                 </div>
                             </div>
                         </div>
@@ -206,31 +261,26 @@ $eqLogics = eqLogic::byType($plugin->getId());
             <div role="tabpanel" class="tab-pane" id="commandtab">
                 <!-- <a class="btn btn-default btn-sm pull-right cmdAction" data-action="add" style="margin-top:5px;"><i class="fas fa-plus-circle"></i> {{Ajouter une commande}}</a> -->
                 <br /><br />
-                <div role="tabpanel" class="tab-pane active" id="commandtab">
-                    <table id="table_cmd" class="table table-bordered table-condensed ui-sortable">
+                <div class="table-responsive">
+                    <table id="table_cmd" class="table table-bordered table-condensed">
                         <thead>
                             <tr>
-                                <th style="width: 40px;">#</th>
-                                <th style="width: 200px;">{{Nom}}</th>
-                                <th style="width: 150px;">{{Type}}</th>
-                                <th style="width: 300px;">{{Commande & Variable}}</th>
-                                <th style="width: 40px;">{{Min}}</th>
-                                <th style="width: 40px;">{{Max}}</th>
-                                <th style="width: 150px;">{{Paramètres}}</th>
-                                <th style="width: 100px;"></th>
+                                <th class="hidden-xs" style="min-width:50px;width:70px;">ID</th>
+                                <th style="min-width:150px;width:250px;">{{Nom}}</th>
+                                <th style="min-width:300px;">{{Commandes}}</th>
+                                <th style="min-width:150px;width:200px;">{{Options}}</th>
+                                <th style="min-width:80px;width:150px;">{{Etat}}</th>
+                                <th style="min-width:130px;width:150px;">{{Actions}}</th>
                             </tr>
                         </thead>
                         <tbody>
-
                         </tbody>
                     </table>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
 
             <?php include_file('desktop', 'discordlink', 'js', 'discordlink'); ?>
             <?php include_file('core', 'plugin.template', 'js'); ?>
-            <script type="text/javascript">
-                setTimeout(() => {
-                    setupcase();
-                }, 500);
-            </script>

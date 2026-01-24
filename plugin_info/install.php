@@ -44,6 +44,7 @@ function discordlink_update() {
     // Nettoyage des anciens fichiers et dossiers (Migration 2026)
     $pathsToRemove = array(
         '/core/class/discordlinkCovid.class.php',
+        '/core/class/discordMsg.class.php',
         '/core/php/discordlink.inc.php',
         '/core/template/mobile/cmd.action.other.templeteTemplate.html',
         '/core/template/scenario/cmd.covidSend.html',
@@ -251,6 +252,9 @@ function discordlink_update() {
     } else {
         log::add('discordlink', 'info', 'Mise à jour terminée - Aucune commande problématique détectée.');
     }
+
+    // Mise à jour des emojis (ajoute les nouveaux emojis par défaut s'ils n'existent pas)
+    discordlink::setEmoji();
 }
 
 

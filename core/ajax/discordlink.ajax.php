@@ -26,17 +26,57 @@ try {
     ajax::init();
 
     if (init('action') == 'saveEmoji') {
+        
+        // Handle JSON string input 
+        $rawEmoji = init('arrayEmoji');
+        if (is_string($rawEmoji)) {
+             $arrayEmoji = json_decode($rawEmoji, true);
+        } else {
+             $arrayEmoji = $rawEmoji;
+        }
 
-        $arrayEmoji = init('arrayEmoji');
+        if (!is_array($arrayEmoji)) {
+             log::add('discordlink', 'error', 'AJAX saveEmoji: Data is not an array.');
+             ajax::error('Data format error');
+        }
+
+        /* DEBUG LOG */
+        // log::add('discordlink', 'debug', 'AJAX saveEmoji config size: ' . count($arrayEmoji));
+        
         $emojiConfig = array();
 
         foreach ($arrayEmoji as $emoji) {
             $key = $emoji['keyEmoji'];
             $emojiConfig[$key] = $emoji['codeEmoji'];
         }
-        //$emoji = json_encode($emojiConfig);
+        
         config::save('emoji', $emojiConfig, 'discordlink');
         ajax::success();
+    }
+
+    if (init('action') == 'getChannels') {
+        if (discordlink::deamon_info()['state'] != 'ok') {
+            throw new Exception('Le démon n\'est pas démarré. Veuillez le démarrer avant de rafraîchir les channels.');
+        }
+
+        $channels = discordlink::getChannel();
+        // Force IDs to string to avoid snowflake precision issues in JSON/JS
+        foreach ($channels as &$channel) {
+            $channel['id'] = (string)$channel['id'];
+        }
+        unset($channel); // Break reference
+
+        $result = array('channels' => $channels);
+        
+        $id = init('id');
+        if (!empty($id) && is_numeric($id)) {
+            $eqLogic = eqLogic::byId($id);
+            if (is_object($eqLogic)) {
+                $result['current'] = (string)$eqLogic->getConfiguration('channelId');
+            }
+        }
+        
+        ajax::success($result);
     }
 
     if (init('action') == 'getEmoji') {
