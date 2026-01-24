@@ -51,21 +51,25 @@ function addCmdToTable(_cmd) {
       </div>
     </td>
     <td>
+        ${requestInput}
+    </td>
+    <td>
       <label class="checkbox-inline"><input type="checkbox" class="cmdAttr" data-l1key="isVisible"/>{{Afficher}}</label>
-      <label class="checkbox-inline"><input type="checkbox" class="cmdAttr" data-l1key="isHistorized"/>{{Historiser}}</label>
-      <label class="checkbox-inline"><input type="checkbox" class="cmdAttr" data-l1key="display" data-l2key="invertBinary"/>{{Inverser}}</label>
+      ${init(_cmd.type) == 'info' ? '<label class="checkbox-inline"><input type="checkbox" class="cmdAttr" data-l1key="isHistorized"/>{{Historiser}}</label>' : ''}
+      ${init(_cmd.subType) == 'binary' ? '<label class="checkbox-inline"><input type="checkbox" class="cmdAttr" data-l1key="display" data-l2key="invertBinary"/>{{Inverser}}</label>' : ''}
+      ${init(_cmd.subType) == 'numeric' ? `
       <div style="margin-top:7px;">
         <input class="tooltips cmdAttr form-control input-sm" data-l1key="configuration" data-l2key="minValue" placeholder="{{Min}}" title="{{Min}}" style="width:30%;max-width:80px;display:inline-block;margin-right:2px;">
         <input class="tooltips cmdAttr form-control input-sm" data-l1key="configuration" data-l2key="maxValue" placeholder="{{Max}}" title="{{Max}}" style="width:30%;max-width:80px;display:inline-block;margin-right:2px;">
         <input class="tooltips cmdAttr form-control input-sm" data-l1key="unite" placeholder="Unité" title="{{Unité}}" style="width:30%;max-width:80px;display:inline-block;margin-right:2px;">
-      </div>
+      </div>` : ''}
       <div style="display:none;">
         <span class="type" type="${init(_cmd.type)}"></span>
         <span class="subType" subType="${init(_cmd.subType)}"></span>
       </div>
     </td>
     <td>
-        ${requestInput}
+      <span class="cmdAttr" data-l1key="htmlstate"></span>
     </td>
     <td>
       ${testButtons}
