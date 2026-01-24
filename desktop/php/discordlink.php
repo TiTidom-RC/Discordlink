@@ -117,7 +117,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                 <label class="col-sm-3 control-label">{{Channels}}</label>
                                 <div class="col-sm-7">
                                     <div class="input-group">
-                                        <select class="form-control eqLogicAttr" data-l1key="configuration" data-l2key="channelId">
+                                        <select class="form-control eqLogicAttr roundedLeft" data-l1key="configuration" data-l2key="channelId">
                                             <?php
                                             $channels = config::byKey('channels', 'discordlink', 'null');
                                             $deamon = discordlink::deamon_info();
@@ -136,7 +136,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                             ?>
                                         </select>
                                         <span class="input-group-btn">
-                                            <a class="btn btn-default cursor" id="bt_refreshChannels" title="{{Rafraîchir les channels}}">
+                                            <a class="btn btn-default cursor roundedRight" id="bt_refreshChannels" title="{{Rafraîchir les channels}}">
                                                 <i class="fas fa-sync"></i>
                                             </a>
                                         </span>
