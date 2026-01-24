@@ -39,9 +39,6 @@ try {
              log::add('discordlink', 'error', 'AJAX saveEmoji: Data is not an array.');
              ajax::error('Data format error');
         }
-
-        /* DEBUG LOG */
-        // log::add('discordlink', 'debug', 'AJAX saveEmoji config size: ' . count($arrayEmoji));
         
         $emojiConfig = array();
 
