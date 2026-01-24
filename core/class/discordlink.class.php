@@ -563,8 +563,6 @@ class discordlink extends eqLogic {
 
 	public static function getLastUserConnections() {
 		$message = "";
-		$connectedUserListNew = '';
-		$connectedUserList = '';
 		$onlineCount = 0;
 		$daysBeforeUserRemoval = 61;
 		$hasCronActivity = false;
@@ -596,7 +594,6 @@ class discordlink extends eqLogic {
 		$connectedUserNames = array();
 		$connectedUserDates = array();
 		$connectedUserStatuses = array();
-		$connectedUserListParts = array();
 
 		foreach (user::all() as $user) {
 			$lastDate = $user->getOptions('lastConnection');
@@ -613,13 +610,8 @@ class discordlink extends eqLogic {
 			$connectedUserNames[] = $user->getLogin();
 			$connectedUserDates[] = $lastDate;
 			$connectedUserStatuses[] = $status;
-
-			// Construction de la liste
-			$connectedUserListParts[] = $user->getLogin() . ';' . $lastDate . ';' . $status;
 		}
-		$connectedUserList = implode('|', $connectedUserListParts);
 
-		$connectedUserListNew = '';
 		// Récupération des lignes du log Connection
 		$delta = log::getDelta('connection', 0, '', false, false, 0, $maxLine);
 		$connectionLogs = array();
@@ -675,10 +667,8 @@ class discordlink extends eqLogic {
 					$lastLogConnectionName = $connectionLogNames[$logUserIndex];
 
 					// Mise à jour du statut des utilisateurs
-					$userIndex = 0;
 					$foundCount = 0;
 					foreach ($connectedUserNames as $key => $userName) {
-						$userIndex++;
 						if ($connectionLogNames[$logUserIndex] == $userName) {
 							$foundCount++;
 							if ($connectedUserStatuses[$key] == 'hors ligne') {
@@ -697,30 +687,13 @@ class discordlink extends eqLogic {
 					}
 				}
 			}
-
-			// Reconstruction propre de la liste finale une seule fois
-			$connectedUserListNew = '';
-			foreach ($connectedUserNames as $key => $name) {
-				if ($connectedUserListNew != '') {
-					$connectedUserListNew .= '|';
-				}
-				// Gérer les index qui peuvent être numériques ou string selon l'initialisation précédente
-				$date = isset($connectedUserDates[$key]) ? $connectedUserDates[$key] : '';
-				$status = isset($connectedUserStatuses[$key]) ? $connectedUserStatuses[$key] : 'hors ligne';
-				$connectedUserListNew .= $name . ';' . $date . ';' . $status;
-			}
-			$connectedUserList = $connectedUserListNew;
 		}
 
 		$sessions = listSession();
-		$sessionCount = count($sessions);												//nombre d'utilisateur en session actuellement
 
 		$message .= "\n" . "\n" . $emojiMagRight . "__Récapitulatif des sessions actuelles :__ " . $emojiMag;
 		// Parcours des sessions pour vérifier le statut et le nombre de sessions
-		$userIndex = 0;
-		$connectedUserListNew = '';
-		foreach ($connectedUserNames as $value) {
-			$userIndex++;
+		foreach ($connectedUserNames as $userIndex => $userName) {
 			$sessionIndex = 0;
 			$foundCount = 0;
 			$connectedUserStatuses[$userIndex] = 'hors ligne';
@@ -731,7 +704,7 @@ class discordlink extends eqLogic {
 
 				$userDelay = strtotime(date("Y-m-d H:i:s")) - strtotime($session['datetime']);
 
-				if ($connectedUserNames[$userIndex] == $session['login']) {
+				if ($userName == $session['login']) {
 					if ($userDelay < $offlineDelay * 60) {
 						$foundCount++;
 						$onlineCount++;
@@ -748,18 +721,13 @@ class discordlink extends eqLogic {
 				$date = date_fr(date("l d F Y", $connectTimestamp)) . "** à **" . date("H\hi", $connectTimestamp);
 			}
 			if ($foundCount > 0) {
-				$message .= "\n" . $emojiConnected . " **" . $connectedUserNames[$userIndex] . "** est **en ligne** depuis **" . $date . "**";
+				$message .= "\n" . $emojiConnected . " **" . $userName . "** est **en ligne** depuis **" . $date . "**";
 				$message .= $connectedUserIPs[$userIndex];
 			} else {
 				if (strtotime($timeNow) - strtotime($connectedUserDates[$userIndex]) < ($daysBeforeUserRemoval * 24 * 60 * 60)) {
-					$message .= "\n" . $emojiDisconnected . " **" . $connectedUserNames[$userIndex] . "** est **hors ligne** (dernière connexion **" . $date . "**)";
+					$message .= "\n" . $emojiDisconnected . " **" . $userName . "** est **hors ligne** (dernière connexion **" . $date . "**)";
 				}
 			}
-			if ($connectedUserListNew != '') {
-				$connectedUserListNew = $connectedUserListNew . '|';
-			}
-			$connectedUserListNew .= $connectedUserNames[$userIndex] . ';' . $connectedUserDates[$userIndex] . ';' . $connectedUserStatuses[$userIndex];
-			$connectedUserList = $connectedUserListNew;
 		}
 
 		// Préparation des tags de notification
