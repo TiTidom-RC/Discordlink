@@ -89,9 +89,8 @@
     const tableBody = document.querySelector('#table_cmd tbody');
     if (tableBody) {
       tableBody.appendChild(newRow);
-      // Compatibility with Jeedom jQuery plugins
-      $(newRow).setValues(_cmd, '.cmdAttr');
-      jeedom.cmd.changeType($(newRow), init(_cmd.subType));
+      newRow.setJeeValues(_cmd, '.cmdAttr');
+      jeedom.cmd.changeType(newRow, init(_cmd.subType));
     }
   };
 
@@ -109,6 +108,19 @@
    * Event Delegation pour l'ensemble du plugin
    */
   document.body.addEventListener('click', function (e) {
+    // Emoji Settings
+    if (e.target.closest('[data-action="emojiSettings"]')) {
+      jeeDialog.dialog({
+        title: "{{Emojis Settings}}",
+        contentUrl: 'index.php?v=d&plugin=discordlink&modal=emoji.discordlink',
+        onClose: function() {
+          if (typeof cleanupEmoji === 'function') {
+            cleanupEmoji();
+          }
+        }
+      });
+    }
+
     // Cron Daemon Generator
     if (e.target.closest('#bt_cronDaemonGenerator')) {
       jeedom.getCronSelectModal({}, function (result) {

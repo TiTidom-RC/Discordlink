@@ -21,10 +21,10 @@ $eqLogics = eqLogic::byType($plugin->getId());
                 <br>
                 <span>{{Configuration}}</span>
             </div>
-            <div class="cursor eqLogicAction logoSecondary">
-                <a href="index.php?v=d&m=discordlink&p=discordlink_emoji"><img style="margin-top:-32px;" src="plugins/discordlink/plugin_info/discordlink_icon.png" width="75" height="75">
-                    <br>
-                    <span>Emojis Settings</span></a>
+            <div class="cursor eqLogicAction logoSecondary" data-action="emojiSettings">
+                <img style="margin-top:-32px;" src="plugins/discordlink/plugin_info/discordlink_icon.png" width="75" height="75">
+                <br>
+                <span>Emojis Settings</span>
             </div>
         </div>
         <legend><i class="fas fa-table"></i> {{Mes Channels}}</legend>
