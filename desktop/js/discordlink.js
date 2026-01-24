@@ -14,7 +14,6 @@
  * along with Jeedom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-setupcase();
 
 /*
  * Fonction pour l'ajout de commande, appelé automatiquement par plugin.template
@@ -186,61 +185,31 @@ $("#bt_cronGeneratorDependance").on("click", function () {
   });
 });
 
-function setupcase() {
-  HideAll();
-  if (
-    $(
-      ".eqLogicAttr[data-l1key=configuration][data-l2key=daemonCheck]",
-    ).value() == 1
-  ) {
-    let divsToShow = document.getElementsByClassName("deamon");
-    Array.from(divsToShow).forEach((div) => {
-      div.style.visibility = "visible";
-      div.style.display = "initial";
-    });
-  }
-  if (
-    $(
-      ".eqLogicAttr[data-l1key=configuration][data-l2key=dependencyCheck]",
-    ).value() == 1
-  ) {
-    let divsToShow = document.getElementsByClassName("dependance");
-    Array.from(divsToShow).forEach((div) => {
-      div.style.visibility = "visible";
-      div.style.display = "initial";
-    });
-  }
+
+function printEqLogic(_json) {
+  $('#daemonCheck').trigger('change');
+  $('#dependencyCheck').trigger('change');
 }
 
-function HideAll() {
-  let divsToHide = document.getElementsByClassName("deamon");
-  Array.from(divsToHide).forEach((div) => {
-    div.style.visibility = "hidden";
-    div.style.display = "none";
-  });
-
-  let divsToHide2 = document.getElementsByClassName("dependance");
-  Array.from(divsToHide2).forEach((div) => {
-    div.style.visibility = "hidden";
-    div.style.display = "none";
-  });
-}
-
-$("#daemonCheck").click(function () {
-  setupcase();
+$("#daemonCheck").on("change", function () {
+  if ($(this).is(':checked')) {
+    $('.deamon').show();
+  } else {
+    $('.deamon').hide();
+  }
 });
 
-$("#dependencyCheck").click(function () {
-  setupcase();
+$("#dependencyCheck").on("change", function () {
+  if ($(this).is(':checked')) {
+    $('.dependance').show();
+  } else {
+    $('.dependance').hide();
+  }
 });
 
-$(".eqLogicDisplayCard").on("click", function (event) {
-  setTimeout(function () {
-    setupcase();
-  }, 800);
-});
 
-$('body').off('click', '#bt_refreshChannels').on('click', '#bt_refreshChannels', function () {
+$('body').off('click', '#bt_refreshChannels').on('click', '#bt_refreshChannels', function (event) {
+  event.preventDefault();
   let btn = $(this);
   let eqId = $('.eqLogicAttr[data-l1key=id]').val();
   
