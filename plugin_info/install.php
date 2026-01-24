@@ -44,6 +44,7 @@ function discordlink_update() {
     // Nettoyage des anciens fichiers et dossiers (Migration 2026)
     $pathsToRemove = array(
         '/core/class/discordlinkCovid.class.php',
+        '/core/class/discordMsg.class.php',
         '/core/php/discordlink.inc.php',
         '/core/template/mobile/cmd.action.other.templeteTemplate.html',
         '/core/template/scenario/cmd.covidSend.html',
