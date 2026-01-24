@@ -36,5 +36,5 @@ $eqLogics = eqLogic::byType($plugin->getId());
     </table>
 </div>
 
-<?php include_file('desktop', 'discordlinkemote', 'js', 'discordlink'); ?>
+<?php include_file('desktop', 'discordlink_emoji', 'js', 'discordlink'); ?>
 <?php include_file('core', 'plugin.template', 'js'); ?>

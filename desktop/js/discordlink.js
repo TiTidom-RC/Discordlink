@@ -15,177 +15,195 @@
  */
 
 
-/*
- * Fonction pour l'ajout de commande, appelé automatiquement par plugin.template
- */
-function addCmdToTable(_cmd) {
-  if (!isset(_cmd)) {
-    _cmd = {
-      configuration: {},
-    };
-  }
+(function () {
+  'use strict';
 
-  if (!isset(_cmd.configuration)) {
-    _cmd.configuration = {};
-  }
+  const AJAX_URL = 'plugins/discordlink/core/ajax/discordlink.ajax.php';
 
-  // Build test buttons
-  const testButtons = is_numeric(_cmd.id)
-    ? '<a class="btn btn-default btn-xs cmdAction" data-action="configure"><i class="fas fa-cogs"></i></a> <a class="btn btn-default btn-xs cmdAction" data-action="test"><i class="fas fa-rss"></i> {{Tester}}</a>'
-    : '';
+  /*
+   * Fonction pour l'ajout de commande, appelé automatiquement par plugin.template
+   */
+  window.addCmdToTable = function (_cmd) {
+    if (!isset(_cmd)) {
+      _cmd = {
+        configuration: {},
+      };
+    }
 
-  // Prepare specific inputs
-  let requestInput = '';
-  if (init(_cmd.type) === 'action') {
-     requestInput = '<div style="margin-top:5px;"><input class="cmdAttr form-control input-sm" data-l1key="configuration" data-l2key="request" style="width:100%;" ' + (init(_cmd.logicalId) !== '' ? 'readonly' : '') + '></div>';
-     if (init(_cmd.logicalId) == 'refresh') requestInput = ''; 
-  }
+    if (!isset(_cmd.configuration)) {
+      _cmd.configuration = {};
+    }
 
-  // Build row HTML
-  const rowHtml = `<td class="hidden-xs"><span class="cmdAttr" data-l1key="id"></span></td>
-    <td>
-      <div class="input-group">
-        <input class="cmdAttr form-control input-sm roundedLeft" data-l1key="name" placeholder="{{Nom de la commande}}">
-        <span class="input-group-btn"><a class="cmdAction btn btn-sm btn-default" data-l1key="chooseIcon" title="{{Choisir une icône}}"><i class="fas fa-icons"></i></a></span>
-        <span class="cmdAttr input-group-addon roundedRight" data-l1key="display" data-l2key="icon" style="font-size:19px;padding:0 5px 0 0!important;"></span>
-      </div>
-    </td>
-    <td>
-        ${requestInput}
-    </td>
-    <td>
-      <label class="checkbox-inline"><input type="checkbox" class="cmdAttr" data-l1key="isVisible"/>{{Afficher}}</label>
-      ${init(_cmd.type) == 'info' ? '<label class="checkbox-inline"><input type="checkbox" class="cmdAttr" data-l1key="isHistorized"/>{{Historiser}}</label>' : ''}
-      ${init(_cmd.subType) == 'binary' ? '<label class="checkbox-inline"><input type="checkbox" class="cmdAttr" data-l1key="display" data-l2key="invertBinary"/>{{Inverser}}</label>' : ''}
-      ${init(_cmd.subType) == 'numeric' ? `
-      <div style="margin-top:7px;">
-        <input class="tooltips cmdAttr form-control input-sm" data-l1key="configuration" data-l2key="minValue" placeholder="{{Min}}" title="{{Min}}" style="width:30%;max-width:80px;display:inline-block;margin-right:2px;">
-        <input class="tooltips cmdAttr form-control input-sm" data-l1key="configuration" data-l2key="maxValue" placeholder="{{Max}}" title="{{Max}}" style="width:30%;max-width:80px;display:inline-block;margin-right:2px;">
-        <input class="tooltips cmdAttr form-control input-sm" data-l1key="unite" placeholder="Unité" title="{{Unité}}" style="width:30%;max-width:80px;display:inline-block;margin-right:2px;">
-      </div>` : ''}
-      <div style="display:none;">
-        <span class="type" type="${init(_cmd.type)}"></span>
-        <span class="subType" subType="${init(_cmd.subType)}"></span>
-      </div>
-    </td>
-    <td>
-      <span class="cmdAttr" data-l1key="htmlstate"></span>
-    </td>
-    <td>
-      ${testButtons}
-      <i class="fas fa-minus-circle pull-right cmdAction cursor" data-action="remove" title="{{Supprimer la commande}}"></i>
-    </td>`;
+    // Build test buttons
+    const testButtons = is_numeric(_cmd.id)
+      ? '<a class="btn btn-default btn-xs cmdAction" data-action="configure"><i class="fas fa-cogs"></i></a> <a class="btn btn-default btn-xs cmdAction" data-action="test"><i class="fas fa-rss"></i> {{Tester}}</a>'
+      : '';
 
-  const newRow = document.createElement('tr');
-  newRow.className = 'cmd';
-  newRow.setAttribute('data-cmd_id', init(_cmd.id));
-  newRow.innerHTML = rowHtml;
+    // Prepare specific inputs
+    let requestInput = '';
+    if (init(_cmd.type) === 'action') {
+      requestInput = '<div style="margin-top:5px;"><input class="cmdAttr form-control input-sm" data-l1key="configuration" data-l2key="request" style="width:100%;" ' + (init(_cmd.logicalId) !== '' ? 'readonly' : '') + '></div>';
+      if (init(_cmd.logicalId) === 'refresh') requestInput = '';
+    }
 
-  const tableBody = document.querySelector('#table_cmd tbody');
-  if (tableBody) {
-    tableBody.appendChild(newRow);
-    const $newRow = $(newRow);
-    $newRow.setValues(_cmd, '.cmdAttr');
-    jeedom.cmd.changeType($newRow, init(_cmd.subType));
-  }
-}
+    // Build row HTML
+    const rowHtml = `<td class="hidden-xs"><span class="cmdAttr" data-l1key="id"></span></td>
+      <td>
+        <div class="input-group">
+          <input class="cmdAttr form-control input-sm roundedLeft" data-l1key="name" placeholder="{{Nom de la commande}}">
+          <span class="input-group-btn"><a class="cmdAction btn btn-sm btn-default" data-l1key="chooseIcon" title="{{Choisir une icône}}"><i class="fas fa-icons"></i></a></span>
+          <span class="cmdAttr input-group-addon roundedRight" data-l1key="display" data-l2key="icon" style="font-size:19px;padding:0 5px 0 0!important;"></span>
+        </div>
+      </td>
+      <td>
+          ${requestInput}
+      </td>
+      <td>
+        <label class="checkbox-inline"><input type="checkbox" class="cmdAttr" data-l1key="isVisible"/>{{Afficher}}</label>
+        ${init(_cmd.type) == 'info' ? '<label class="checkbox-inline"><input type="checkbox" class="cmdAttr" data-l1key="isHistorized"/>{{Historiser}}</label>' : ''}
+        ${init(_cmd.subType) == 'binary' ? '<label class="checkbox-inline"><input type="checkbox" class="cmdAttr" data-l1key="display" data-l2key="invertBinary"/>{{Inverser}}</label>' : ''}
+        ${init(_cmd.subType) == 'numeric' ? `
+        <div style="margin-top:7px;">
+          <input class="tooltips cmdAttr form-control input-sm" data-l1key="configuration" data-l2key="minValue" placeholder="{{Min}}" title="{{Min}}" style="width:30%;max-width:80px;display:inline-block;margin-right:2px;">
+          <input class="tooltips cmdAttr form-control input-sm" data-l1key="configuration" data-l2key="maxValue" placeholder="{{Max}}" title="{{Max}}" style="width:30%;max-width:80px;display:inline-block;margin-right:2px;">
+          <input class="tooltips cmdAttr form-control input-sm" data-l1key="unite" placeholder="Unité" title="{{Unité}}" style="width:30%;max-width:80px;display:inline-block;margin-right:2px;">
+        </div>` : ''}
+        <div style="display:none;">
+          <span class="type" type="${init(_cmd.type)}"></span>
+          <span class="subType" subType="${init(_cmd.subType)}"></span>
+        </div>
+      </td>
+      <td>
+        <span class="cmdAttr" data-l1key="htmlstate"></span>
+      </td>
+      <td>
+        ${testButtons}
+        <i class="fas fa-minus-circle pull-right cmdAction cursor" data-action="remove" title="{{Supprimer la commande}}"></i>
+      </td>`;
 
-// Expose functions globally for Jeedom core (plugin.template.js)
-window.addCmdToTable = addCmdToTable;
+    const newRow = document.createElement('tr');
+    newRow.className = 'cmd';
+    newRow.setAttribute('data-cmd_id', init(_cmd.id));
+    newRow.innerHTML = rowHtml;
 
+    const tableBody = document.querySelector('#table_cmd tbody');
+    if (tableBody) {
+      tableBody.appendChild(newRow);
+      // Compatibility with Jeedom jQuery plugins
+      $(newRow).setValues(_cmd, '.cmdAttr');
+      jeedom.cmd.changeType($(newRow), init(_cmd.subType));
+    }
+  };
 
-$("#bt_cronDaemonGenerator").on("click", function () {
-  jeedom.getCronSelectModal({}, function (result) {
-    $(
-      ".eqLogicAttr[data-l1key=configuration][data-l2key=autoRefreshDaemon]",
-    ).value(result.value);
-  });
-});
+  /**
+   * Hook Jeedom pour l'initialisation de l'équipement
+   */
+  window.printEqLogic = function (_json) {
+    const daemonCheck = document.getElementById('daemonCheck');
+    const dependencyCheck = document.getElementById('dependencyCheck');
+    if (daemonCheck) daemonCheck.dispatchEvent(new Event('change'));
+    if (dependencyCheck) dependencyCheck.dispatchEvent(new Event('change'));
+  };
 
-$("#bt_cronDependencyGenerator").on("click", function () {
-  jeedom.getCronSelectModal({}, function (result) {
-    $(
-      ".eqLogicAttr[data-l1key=configuration][data-l2key=autoRefreshDependency]",
-    ).value(result.value);
-  });
-});
+  /**
+   * Event Delegation pour l'ensemble du plugin
+   */
+  document.body.addEventListener('click', function (e) {
+    // Cron Daemon Generator
+    if (e.target.closest('#bt_cronDaemonGenerator')) {
+      jeedom.getCronSelectModal({}, function (result) {
+        const input = document.querySelector(".eqLogicAttr[data-l1key=configuration][data-l2key=autoRefreshDaemon]");
+        if (input) input.value = result.value;
+      });
+    }
 
+    // Cron Dependency Generator
+    if (e.target.closest('#bt_cronDependencyGenerator')) {
+      jeedom.getCronSelectModal({}, function (result) {
+        const input = document.querySelector(".eqLogicAttr[data-l1key=configuration][data-l2key=autoRefreshDependency]");
+        if (input) input.value = result.value;
+      });
+    }
 
-function printEqLogic(_json) {
-  $('#daemonCheck').trigger('change');
-  $('#dependencyCheck').trigger('change');
-}
+    // Refresh Channels
+    const refreshBtn = e.target.closest('#bt_refreshChannels');
+    if (refreshBtn) {
+      e.preventDefault();
+      const eqIdInput = document.querySelector('.eqLogicAttr[data-l1key=id]');
+      const eqId = eqIdInput ? eqIdInput.value : null;
 
-$("#daemonCheck").on("change", function () {
-  if ($(this).is(':checked')) {
-    $('.daemon').show();
-  } else {
-    $('.daemon').hide();
-  }
-});
+      const icon = refreshBtn.querySelector('i');
+      if (icon) icon.classList.add('fa-spin');
 
-$("#dependencyCheck").on("change", function () {
-  if ($(this).is(':checked')) {
-    $('.dependency').show();
-  } else {
-    $('.dependency').hide();
-  }
-});
+        domUtils.ajax({
+          type: "POST",
+          url: AJAX_URL,
+          data: {
+            action: "getChannels",
+            id: eqId
+          },
+          dataType: 'json',
+          error: function (request, status, error) {
+            handleAjaxError(request, status, error);
+            if (icon) icon.classList.remove('fa-spin');
+          },
+          success: function (data) {
+            if (icon) icon.classList.remove('fa-spin');
 
-
-$('body').off('click', '#bt_refreshChannels').on('click', '#bt_refreshChannels', function (event) {
-  event.preventDefault();
-  let btn = $(this);
-  let eqId = $('.eqLogicAttr[data-l1key=id]').val();
-  
-  btn.find('i').addClass('fa-spin');
-  $.ajax({
-      type: "POST",
-      url: "plugins/discordlink/core/ajax/discordlink.ajax.php",
-      data: {
-          action: "getChannels",
-          id: eqId
-      },
-      dataType: 'json',
-      error: function (request, status, error) {
-          handleAjaxError(request, status, error);
-          btn.find('i').removeClass('fa-spin');
-      },
-      success: function (data) {
-          btn.find('i').removeClass('fa-spin');
-
-          if (data.result && data.result.error) {
+            if (data.result && data.result.error) {
               jeedomUtils.showAlert({
-                  message: data.result.error,
-                  level: 'warning'
+                message: data.result.error,
+                level: 'warning'
               });
               return;
-          }
+            }
 
-          if (data.result && data.result.channels) {
-              let select = $('select[data-l2key=channelId]');
-              let currentVal = select.val();
-              select.empty();
-              
+            const select = document.querySelector('select[data-l2key=channelId]');
+            if (data.result && data.result.channels && select) {
+              const currentVal = select.value;
+              select.innerHTML = ''; // Clear options
+
               if (data.result.channels.length > 0) {
-                  for (let i in data.result.channels) {
-                      select.append('<option value="' + data.result.channels[i].id + '">(' + data.result.channels[i].guildName + ') ' + data.result.channels[i].name + '</option>');
-                  }
+                data.result.channels.forEach(channel => {
+                  const option = document.createElement('option');
+                  option.value = channel.id;
+                  option.text = `(${channel.guildName}) ${channel.name}`;
+                  select.appendChild(option);
+                });
               } else {
-                  select.append($('<option>', { value: 'null', text: 'Pas de channel disponible' }));
+                const option = document.createElement('option');
+                option.value = 'null';
+                option.text = 'Pas de channel disponible';
+                select.appendChild(option);
               }
-              
+
               if (data.result.current) {
-                   select.val(String(data.result.current));
-              } else if (currentVal && currentVal !== 'null' && select.find('option[value="' + currentVal + '"]').length > 0) {
-                  select.val(currentVal);
+                select.value = String(data.result.current);
+              } else if (currentVal && currentVal !== 'null' && select.querySelector(`option[value="${currentVal}"]`)) {
+                select.value = currentVal;
               }
-          } else {
-               jeedomUtils.showAlert({
-                  message: 'Impossible de récupérer les channels.',
-                  level: 'danger'
+            } else {
+              jeedomUtils.showAlert({
+                message: 'Impossible de récupérer les channels.',
+                level: 'danger'
               });
+            }
           }
-      }
+        });
+    }
   });
-});
+
+  document.body.addEventListener('change', function (e) {
+    // Daemon Checkbox Visibility
+    if (e.target.id === 'daemonCheck') {
+      const els = document.querySelectorAll('.daemon');
+      els.forEach(el => el.style.display = e.target.checked ? '' : 'none');
+    }
+    // Dependency Checkbox Visibility
+    if (e.target.id === 'dependencyCheck') {
+      const els = document.querySelectorAll('.dependency');
+      els.forEach(el => el.style.display = e.target.checked ? '' : 'none');
+    }
+  });
+
+})();

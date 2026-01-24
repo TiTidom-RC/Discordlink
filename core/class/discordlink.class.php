@@ -508,25 +508,6 @@ class discordlink extends eqLogic {
 		}
 	}
 
-	/*
-     * Non obligatoire mais permet de modifier l'affichage du widget si vous en avez besoin
-      public function toHtml($_version = 'dashboard') {
-
-      }
-     */
-
-	/*
-     * Non obligatoire mais ca permet de déclencher une action après modification de variable de configuration
-    public static function postConfig_<Variable>() {
-    }
-     */
-
-	/*
-     * Non obligatoire mais ca permet de déclencher une action avant modification de variable de configuration
-    public static function preConfig_<Variable>() {
-    }
-     */
-
 	public static function getLastUserConnections() {
 		$message = "";
 		$connectedUserListNew = '';
