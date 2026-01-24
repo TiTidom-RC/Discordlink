@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - beta
+    paths-ignore:
+      - 'core/i18n/**'
   workflow_dispatch:
     inputs:
       languages:
@@ -15,18 +17,7 @@ jobs:
   auto-translate:
     runs-on: ubuntu-latest
     steps:
-      - name: Check if merge from translations branch
-        id: check_branch
-        run: |
-          if [[ "${{ github.event.head_commit.message }}" == *"translations"* ]] && [[ "${{ github.event.head_commit.message }}" == *"Merge"* ]]; then
-            echo "skip=true" >> $GITHUB_OUTPUT
-          else
-            echo "skip=false" >> $GITHUB_OUTPUT
-          fi
-        shell: bash
-      
       - uses: Mips2648/plugins-translations@main
-        if: steps.check_branch.outputs.skip != 'true'
         with:
           target_languages: ${{ inputs.languages || 'en_US,es_ES,de_DE,it_IT,pt_PT' }}
           use_core_translations: false
