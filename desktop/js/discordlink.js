@@ -49,7 +49,6 @@ function addCmdToTable(_cmd) {
         <span class="input-group-btn"><a class="cmdAction btn btn-sm btn-default" data-l1key="chooseIcon" title="{{Choisir une icône}}"><i class="fas fa-icons"></i></a></span>
         <span class="cmdAttr input-group-addon roundedRight" data-l1key="display" data-l2key="icon" style="font-size:19px;padding:0 5px 0 0!important;"></span>
       </div>
-      ${requestInput}
     </td>
     <td>
       <span class="type" type="${init(_cmd.type)}">${jeedom.cmd.availableType()}</span>
@@ -66,8 +65,8 @@ function addCmdToTable(_cmd) {
       </div>
     </td>
     <td>
-        <span class="cmdAttr" data-l1key="htmlstate"></span>
-        <div class="content_cmd"></div> 
+        ${requestInput}
+        <div class="content_cmd" style="margin-top: 5px;"></div> 
     </td>
     <td>
       ${testButtons}
