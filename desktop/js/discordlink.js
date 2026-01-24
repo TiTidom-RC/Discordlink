@@ -239,3 +239,50 @@ $(".eqLogicDisplayCard").on("click", function (event) {
     setupcase();
   }, 800);
 });
+
+$('body').off('click', '#bt_refreshChannels').on('click', '#bt_refreshChannels', function () {
+  let btn = $(this);
+  btn.find('i').addClass('fa-spin');
+  $.ajax({
+      type: "POST",
+      url: "plugins/discordlink/core/ajax/discordlink.ajax.php",
+      data: {
+          action: "getChannels"
+      },
+      dataType: 'json',
+      error: function (request, status, error) {
+          handleAjaxError(request, status, error);
+          btn.find('i').removeClass('fa-spin');
+      },
+      success: function (data) {
+          btn.find('i').removeClass('fa-spin');
+          if (data.result) {
+              let select = $('select[data-l2key=channelId]');
+              let currentVal = select.val();
+              select.empty();
+              
+              if (data.result.length > 0) {
+                  for (let i in data.result) {
+                      select.append(
+                          $('<option>', {
+                              value: data.result[i].id,
+                              text: '(' + data.result[i].guildName + ') ' + data.result[i].name
+                          })
+                      );
+                  }
+              } else {
+                  select.append($('<option>', { value: 'null', text: 'Pas de channel disponible' }));
+              }
+              
+              if (currentVal && currentVal !== 'null' && select.find('option[value="' + currentVal + '"]').length > 0) {
+                  select.val(currentVal);
+              }
+          } else {
+               $.alert({
+                  title: 'Erreur',
+                  content: 'Impossible de récupérer les channels.'
+              });
+          }
+      }
+  });
+});

@@ -39,6 +39,11 @@ try {
         ajax::success();
     }
 
+    if (init('action') == 'getChannels') {
+        $channels = discordlink::getChannel();
+        ajax::success($channels);
+    }
+
     if (init('action') == 'getEmoji') {
         $emojiArray = config::byKey('emoji', 'discordlink');
         if (!is_array($emojiArray)) {

@@ -116,24 +116,31 @@ $eqLogics = eqLogic::byType($plugin->getId());
                             <div class="form-group">
                                 <label class="col-sm-3 control-label">{{Channels}}</label>
                                 <div class="col-sm-7">
-                                    <select class="form-control eqLogicAttr" data-l1key="configuration" data-l2key="channelId">
-                                        <?php
-                                        $channels = config::byKey('channels', 'discordlink', 'null');
-                                        $deamon = discordlink::deamon_info();
-                                        $i = 0;
-                                        if ($deamon['state'] == 'ok') {
-                                            $channels = discordlink::getChannel();
-                                            foreach ($channels as $channel) {
-                                                echo '<option value="' . $channel['id'] . '">(' . $channel['guildName'] . ') ' . $channel['name'] . '</option>';
-                                                $i++;
+                                    <div class="input-group">
+                                        <select class="form-control eqLogicAttr" data-l1key="configuration" data-l2key="channelId">
+                                            <?php
+                                            $channels = config::byKey('channels', 'discordlink', 'null');
+                                            $deamon = discordlink::deamon_info();
+                                            $i = 0;
+                                            if ($deamon['state'] == 'ok') {
+                                                $channels = discordlink::getChannel();
+                                                foreach ($channels as $channel) {
+                                                    echo '<option value="' . $channel['id'] . '">(' . $channel['guildName'] . ') ' . $channel['name'] . '</option>';
+                                                    $i++;
+                                                }
                                             }
-                                        }
 
-                                        if ($i == 0) {
-                                            echo '<option value="null">Pas de channel disponible</option>';
-                                        }
-                                        ?>
-                                    </select>
+                                            if ($i == 0) {
+                                                echo '<option value="null">Pas de channel disponible</option>';
+                                            }
+                                            ?>
+                                        </select>
+                                        <span class="input-group-btn">
+                                            <a class="btn btn-default cursor" id="bt_refreshChannels" title="{{Rafraîchir les channels}}">
+                                                <i class="fas fa-sync"></i>
+                                            </a>
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                             </br>
