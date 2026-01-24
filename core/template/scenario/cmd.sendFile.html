@@ -19,52 +19,34 @@
 </div>
 
 <script>
-  $('.listDeviceInfoPath[data-uid=#uid#]').on('click', function () {
-    if ('#message_cmd_subtype#' != '') {
-      jeedom.cmd.getSelectModal({
-        cmd: {
-          type: '#message_cmd_type#',
-          subType: '#message_cmd_subtype#'
-        }
-      }, function (result) {
-        $('.expressionAttr[data-l1key=options][data-l2key=path][data-uid=#uid#]').atCaret('insert', result
-          .human);
-      });
-    } else {
-      jeedom.cmd.getSelectModal({
-        cmd: {
-          type: '#message_cmd_type#'
-        }
-      }, function (result) {
-        $('.expressionAttr[data-l1key=options][data-l2key=path][data-uid=#uid#]').atCaret('insert', result
-          .human);
-      });
+  document.querySelector('.listDeviceInfoPath[data-uid="#uid#"]').addEventListener('click', function () {
+    var options = {
+      cmd: {
+        type: '#message_cmd_type#'
+      }
     }
-  });
-
-  $('.listDeviceInfoDisplayName[data-uid=#uid#]').on('click', function () {
     if ('#message_cmd_subtype#' != '') {
-      jeedom.cmd.getSelectModal({
-        cmd: {
-          type: '#message_cmd_type#',
-          subType: '#message_cmd_subtype#'
-        }
-      }, function (result) {
-        $('.expressionAttr[data-l1key=options][data-l2key=displayName][data-uid=#uid#]').atCaret('insert', result
-          .human);
-      });
-    } else {
-      jeedom.cmd.getSelectModal({
-        cmd: {
-          type: '#message_cmd_type#'
-        }
-      }, function (result) {
-        $('.expressionAttr[data-l1key=options][data-l2key=displayName][data-uid=#uid#]').atCaret('insert', result
-          .human);
-      });
+      options.cmd.subType = '#message_cmd_subtype#'
     }
-  });
+    jeedom.cmd.getSelectModal(options, function (result) {
+      document.querySelector('.expressionAttr[data-l1key=options][data-l2key=path][data-uid="#uid#"]').insertAtCursor(result.human)
+    })
+  })
 
-  if ('#path#' == '#' + 'path#') document.querySelector('.expressionAttr[data-uid=#uid#][data-l1key=options][data-l2key=path]').value = '#defaultPath#'
-  if ('#displayName#' == '#' + 'displayName#') document.querySelector('.expressionAttr[data-uid=#uid#][data-l1key=options][data-l2key=displayName]').value = '#defaultDisplayName#'
+  document.querySelector('.listDeviceInfoDisplayName[data-uid="#uid#"]').addEventListener('click', function () {
+    var options = {
+      cmd: {
+        type: '#message_cmd_type#'
+      }
+    }
+    if ('#message_cmd_subtype#' != '') {
+      options.cmd.subType = '#message_cmd_subtype#'
+    }
+    jeedom.cmd.getSelectModal(options, function (result) {
+      document.querySelector('.expressionAttr[data-l1key=options][data-l2key=fileName][data-uid="#uid#"]').insertAtCursor(result.human)
+    })
+  })
+
+  if ('#path#' == '#' + 'path#') document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=path]').value = '#defaultPath#'
+  if ('#displayName#' == '#' + 'displayName#') document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=fileName]').value = '#defaultDisplayName#'
 </script>
