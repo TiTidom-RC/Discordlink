@@ -51,10 +51,6 @@ function addCmdToTable(_cmd) {
       </div>
     </td>
     <td>
-      <span class="type" type="${init(_cmd.type)}">${jeedom.cmd.availableType()}</span>
-      <span class="subType" subType="${init(_cmd.subType)}"></span>
-    </td>
-    <td>
       <label class="checkbox-inline"><input type="checkbox" class="cmdAttr" data-l1key="isVisible"/>{{Afficher}}</label>
       <label class="checkbox-inline"><input type="checkbox" class="cmdAttr" data-l1key="isHistorized"/>{{Historiser}}</label>
       <label class="checkbox-inline"><input type="checkbox" class="cmdAttr" data-l1key="display" data-l2key="invertBinary"/>{{Inverser}}</label>
@@ -63,10 +59,13 @@ function addCmdToTable(_cmd) {
         <input class="tooltips cmdAttr form-control input-sm" data-l1key="configuration" data-l2key="maxValue" placeholder="{{Max}}" title="{{Max}}" style="width:30%;max-width:80px;display:inline-block;margin-right:2px;">
         <input class="tooltips cmdAttr form-control input-sm" data-l1key="unite" placeholder="Unité" title="{{Unité}}" style="width:30%;max-width:80px;display:inline-block;margin-right:2px;">
       </div>
+      <div style="display:none;">
+        <span class="type" type="${init(_cmd.type)}"></span>
+        <span class="subType" subType="${init(_cmd.subType)}"></span>
+      </div>
     </td>
     <td>
         ${requestInput}
-        <div class="content_cmd" style="margin-top: 5px;"></div> 
     </td>
     <td>
       ${testButtons}
@@ -84,20 +83,6 @@ function addCmdToTable(_cmd) {
     const $newRow = $(newRow);
     $newRow.setValues(_cmd, '.cmdAttr');
     jeedom.cmd.changeType($newRow, init(_cmd.subType));
-    
-    // Logic from original code for specific subtypes
-    if (isset(_cmd.subType) && _cmd.subType == "message") {
-        let divCmd = $newRow.find(".content_cmd").empty();
-        divCmd.append(
-            $("<label>")
-            .text("{{Message}}")
-            .append(
-                $('<input class="cmdAttr form-control input-sm">')
-                .attr("data-l1key", "display")
-                .attr("data-l2key", "message_placeholder")
-            )
-        );
-    }
   }
 }
 
