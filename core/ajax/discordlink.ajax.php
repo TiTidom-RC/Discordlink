@@ -47,7 +47,7 @@ try {
         if (!empty($id) && is_numeric($id)) {
             $eqLogic = eqLogic::byId($id);
             if (is_object($eqLogic)) {
-                $result['current'] = $eqLogic->getConfiguration('channelId');
+                $result['current'] = (string)$eqLogic->getConfiguration('channelId');
             }
         }
         

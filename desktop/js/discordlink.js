@@ -278,7 +278,7 @@ $('body').off('click', '#bt_refreshChannels').on('click', '#bt_refreshChannels',
               }
               
               if (data.result.current) {
-                   select.val(data.result.current);
+                   select.val(String(data.result.current));
               } else if (currentVal && currentVal !== 'null' && select.find('option[value="' + currentVal + '"]').length > 0) {
                   select.val(currentVal);
               }
