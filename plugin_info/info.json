@@ -4,7 +4,8 @@
 	"pluginVersion": "2.0.6",
 	"description": {
 		"fr_FR": "Le plugin DiscordLink permet d'envoyer des messages sur son serveur Discord : messages standards, évolués, TTS - Gestion des Channels (Salons) - Fonction ASK - Envoi de Fichiers - Compatible avec les interactions de Jeedom - Fonction état des Démons de Jeedom - Fonction état des Dépendances des plugins Jeedom - Fonction état du résumé global.",
-		"en_US": "The DiscordLink plugin allows you to send messages to your Discord server: standard messages, advanced messages, TTS - Channel management - ASK function - File sending - Compatible with Jeedom interactions - Jeedom Daemon status function - Jeedom plugin dependency status function - Global summary status function."
+		"en_US": "The DiscordLink plugin allows you to send messages to your Discord server: standard messages, advanced messages, TTS - Channel management - ASK function - File sending - Compatible with Jeedom interactions - Jeedom Daemon status function - Jeedom plugin dependency status function - Global summary status function.",
+		"es_ES": "El complemento DiscordLink permite enviar mensajes a su servidor Discord: mensajes estándar, avanzados, TTS - Gestión de canales (salas) - Función ASK - Envío de archivos - Compatible con las interacciones de Jeedom - Función de estado de los demonios de Jeedom - Función de estado de las dependencias de los complementos de Jeedom - Función de estado del resumen global."
 	},
 	"utilization": "Ce plugin nécessite la création d'une 'Application' Discord et d'un 'Bot' associé depuis le portail développeur Discord.",
 	"licence": "AGPL",
@@ -26,7 +27,7 @@
 		"video": ""
 	},
 	"language": [
-		"en_US",
+		"es_ES",
 		"fr_FR"
 	],
 	"compatibility": [
