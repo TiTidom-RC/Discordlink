@@ -44,114 +44,78 @@
   <input type="color" class="form-control input-sm cursor colorChooser" data-uid="#uid#" value="#colors#"
     style="width: 20%; display: inline-block;" />
   <input class="expressionAttr form-control input-sm" data-l1key="options" data-l2key="colors" value="#colors#"
-    data-uid="#uid#" style="width: 80%; display: inline-block;" placeholder="Couleur (hexa)" />
+    data-uid="#uid#" style="width: 80%; display: inline-block;" placeholder="Couleur (Hexa)" />
 </div>
 <script>
 </script>
 
 <script>
-  $('.listDeviceInfoTitle[data-uid=#uid#]').on('click', function () {
-    if ('#message_cmd_subtype#' != '') {
-      jeedom.cmd.getSelectModal({
-        cmd: {
-          type: '#message_cmd_type#',
-          subType: '#message_cmd_subtype#'
-        }
-      }, function (result) {
-        $('.expressionAttr[data-l1key=options][data-l2key=title][data-uid=#uid#]').atCaret('insert', result
-          .human);
-      });
-    } else {
-      jeedom.cmd.getSelectModal({
-        cmd: {
-          type: '#message_cmd_type#'
-        }
-      }, function (result) {
-        $('.expressionAttr[data-l1key=options][data-l2key=title][data-uid=#uid#]').atCaret('insert', result
-          .human);
-      });
+  document.querySelector('.listDeviceInfoTitle[data-uid="#uid#"]').addEventListener('click', function () {
+    var options = {
+      cmd: {
+        type: '#message_cmd_type#'
+      }
     }
-  });
-
-  $('.listDeviceInfoUrl[data-uid=#uid#]').on('click', function () {
     if ('#message_cmd_subtype#' != '') {
-      jeedom.cmd.getSelectModal({
-        cmd: {
-          type: '#message_cmd_type#',
-          subType: '#message_cmd_subtype#'
-        }
-      }, function (result) {
-        $('.expressionAttr[data-l1key=options][data-l2key=url][data-uid=#uid#]').atCaret('insert', result
-          .human);
-      });
-    } else {
-      jeedom.cmd.getSelectModal({
-        cmd: {
-          type: '#message_cmd_type#'
-        }
-      }, function (result) {
-        $('.expressionAttr[data-l1key=options][data-l2key=url][data-uid=#uid#]').atCaret('insert', result
-          .human);
-      });
+      options.cmd.subType = '#message_cmd_subtype#'
     }
-  });
+    jeedom.cmd.getSelectModal(options, function (result) {
+      document.querySelector('.expressionAttr[data-l1key=options][data-l2key=title][data-uid="#uid#"]').insertAtCursor(result.human)
+    })
+  })
 
-  $('.listDeviceInfoDescription[data-uid=#uid#]').on('click', function () {
+  document.querySelector('.listDeviceInfoUrl[data-uid="#uid#"]').addEventListener('click', function () {
+    var options = {
+      cmd: {
+        type: '#message_cmd_type#'
+      }
+    }
     if ('#message_cmd_subtype#' != '') {
-      jeedom.cmd.getSelectModal({
-        cmd: {
-          type: '#message_cmd_type#',
-          subType: '#message_cmd_subtype#'
-        }
-      }, function (result) {
-        $('.expressionAttr[data-l1key=options][data-l2key=description][data-uid=#uid#]').atCaret('insert',
-          result.human);
-      });
-    } else {
-      jeedom.cmd.getSelectModal({
-        cmd: {
-          type: '#message_cmd_type#'
-        }
-      }, function (result) {
-        $('.expressionAttr[data-l1key=options][data-l2key=description][data-uid=#uid#]').atCaret('insert',
-          result.human);
-      });
+      options.cmd.subType = '#message_cmd_subtype#'
     }
-  });
+    jeedom.cmd.getSelectModal(options, function (result) {
+      document.querySelector('.expressionAttr[data-l1key=options][data-l2key=url][data-uid="#uid#"]').insertAtCursor(result.human)
+    })
+  })
 
-  $('.listDeviceInfoFooter[data-uid=#uid#]').on('click', function () {
+  document.querySelector('.listDeviceInfoDescription[data-uid="#uid#"]').addEventListener('click', function () {
+    var options = {
+      cmd: {
+        type: '#message_cmd_type#'
+      }
+    }
     if ('#message_cmd_subtype#' != '') {
-      jeedom.cmd.getSelectModal({
-        cmd: {
-          type: '#message_cmd_type#',
-          subType: '#message_cmd_subtype#'
-        }
-      }, function (result) {
-        $('.expressionAttr[data-l1key=options][data-l2key=footer][data-uid=#uid#]').atCaret('insert', result
-          .human);
-      });
-    } else {
-      jeedom.cmd.getSelectModal({
-        cmd: {
-          type: '#message_cmd_type#'
-        }
-      }, function (result) {
-        $('.expressionAttr[data-l1key=options][data-l2key=footer][data-uid=#uid#]').atCaret('insert', result
-          .human);
-      });
+      options.cmd.subType = '#message_cmd_subtype#'
     }
-  });
+    jeedom.cmd.getSelectModal(options, function (result) {
+      document.querySelector('.expressionAttr[data-l1key=options][data-l2key=description][data-uid="#uid#"]').insertAtCursor(result.human)
+    })
+  })
 
-  $('.colorChooser[data-uid=#uid#]').off('change').on('change', function () {
-    $('.expressionAttr[data-uid=#uid#][data-l1key=options][data-l2key=colors]').value($(this).value())
-  });
+  document.querySelector('.listDeviceInfoFooter[data-uid="#uid#"]').addEventListener('click', function () {
+    var options = {
+      cmd: {
+        type: '#message_cmd_type#'
+      }
+    }
+    if ('#message_cmd_subtype#' != '') {
+      options.cmd.subType = '#message_cmd_subtype#'
+    }
+    jeedom.cmd.getSelectModal(options, function (result) {
+      document.querySelector('.expressionAttr[data-l1key=options][data-l2key=footer][data-uid="#uid#"]').insertAtCursor(result.human)
+    })
+  })
 
-  if ('#title#' == '#' + 'title#') document.querySelector('.expressionAttr[data-uid=#uid#][data-l1key=options][data-l2key=title]').value = '#defaultTitle#'
-  if ('#url#' == '#' + 'url#') document.querySelector('.expressionAttr[data-uid=#uid#][data-l1key=options][data-l2key=url]').value = '#defaultUrl#'
-  if ('#description#' == '#' + 'description#') document.querySelector('.expressionAttr[data-uid=#uid#][data-l1key=options][data-l2key=description]').value = '#defaultDescription#'
-  if ('#footer#' == '#' + 'footer#') document.querySelector('.expressionAttr[data-uid=#uid#][data-l1key=options][data-l2key=footer]').value = '#defaultFooter#'
+  document.querySelector('.colorChooser[data-uid="#uid#"]').addEventListener('change', function () {
+    document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=colors]').value = this.value
+  })
+
+  if ('#title#' == '#' + 'title#') document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=title]').value = '#defaultTitle#'
+  if ('#url#' == '#' + 'url#') document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=url]').value = '#defaultUrl#'
+  if ('#description#' == '#' + 'description#') document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=description]').value = '#defaultDescription#'
+  if ('#footer#' == '#' + 'footer#') document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=footer]').value = '#defaultFooter#'
   if ('#colors#' == '#' + 'colors#') {
-    document.querySelector('.colorChooser[data-uid=#uid#]').value = '#defaultColor#'
-    $('.colorChooser[data-uid=#uid#]').trigger("change")
+    document.querySelector('.colorChooser[data-uid="#uid#"]').value = '#defaultColor#'
+    document.querySelector('.colorChooser[data-uid="#uid#"]').dispatchEvent(new Event('change'))
   }
 </script>

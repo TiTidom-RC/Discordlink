@@ -3,7 +3,7 @@
     <div class="title #hide_name#">
         <div class="cmdName">#name_display#</div>
     </div>
-    <div class="content-sm" style="padding: 5px;">
+    <div class="content-sm" style="padding: 8px; border: 1px solid rgba(128,128,128,0.5); border-radius: 4px;">
         <div style="margin-bottom: 5px;">
             <input type="text" class="form-control input-sm embedTitle" placeholder="Titre" data-cmd_uid="#uid#"
                 data-cmd_id="#id#" style="margin-bottom: 3px;">
@@ -23,12 +23,12 @@
         <div style="margin-bottom: 5px; display: flex; gap: 5px;">
             <input type="color" class="form-control input-sm embedColorPicker" data-cmd_uid="#uid#"
                 style="width: 50px; padding: 2px;">
-            <input type="text" class="form-control input-sm embedColor" placeholder="Couleur (hexa)"
+            <input type="text" class="form-control input-sm embedColor" placeholder="Couleur (Hexa)"
                 data-cmd_uid="#uid#" data-cmd_id="#id#" style="flex: 1;">
         </div>
         <div style="text-align: center;">
             <a class="btn btn-sm btn-success executeEmbed" style="width: 100%;">
-                <i class="fas fa-paper-plane"></i> Envoyer
+                <i class="fas fa-paper-plane"></i> #name_display#
             </a>
         </div>
     </div>
@@ -43,37 +43,37 @@
                 },
                 success: function (data) {
                     let defaultColor = data.configuration.defaultColor || '#0099ff';
-                    $('.cmd[data-cmd_uid=#uid#] .embedColorPicker').val(defaultColor);
-                    $('.cmd[data-cmd_uid=#uid#] .embedColor').val(defaultColor);
+                    document.querySelector('.cmd[data-cmd_uid="#uid#"] .embedColorPicker').value = defaultColor;
+                    document.querySelector('.cmd[data-cmd_uid="#uid#"] .embedColor').value = defaultColor;
                 }
             });
         })();
 
         // Synchroniser le color picker avec le champ texte
-        $('.cmd[data-cmd_uid=#uid#] .embedColorPicker').off('change').on('change', function () {
-            $('.cmd[data-cmd_uid=#uid#] .embedColor').val($(this).val());
+        document.querySelector('.cmd[data-cmd_uid="#uid#"] .embedColorPicker').addEventListener('change', function () {
+            document.querySelector('.cmd[data-cmd_uid="#uid#"] .embedColor').value = this.value;
         });
 
-        $('.cmd[data-cmd_uid=#uid#] .embedColor').off('input').on('input', function () {
-            let color = $(this).val();
+        document.querySelector('.cmd[data-cmd_uid="#uid#"] .embedColor').addEventListener('input', function () {
+            let color = this.value;
             if (color.match(/^#[0-9A-Fa-f]{6}$/)) {
-                $('.cmd[data-cmd_uid=#uid#] .embedColorPicker').val(color);
+                document.querySelector('.cmd[data-cmd_uid="#uid#"] .embedColorPicker').value = color;
             }
         });
 
         // Gérer le masquage du titre
         if ('#title_disable#' == '1') {
-            $('.cmd[data-cmd_uid=#uid#] .title').hide();
+            document.querySelector('.cmd[data-cmd_uid="#uid#"] .title').style.display = 'none';
         }
 
         // Exécuter la commande
-        $('.cmd[data-cmd_uid=#uid#] .executeEmbed').off('click').on('click', function () {
+        document.querySelector('.cmd[data-cmd_uid="#uid#"] .executeEmbed').addEventListener('click', function () {
             let options = {
-                title: $('.cmd[data-cmd_uid=#uid#] .embedTitle').val(),
-                description: $('.cmd[data-cmd_uid=#uid#] .embedDescription').val(),
-                url: $('.cmd[data-cmd_uid=#uid#] .embedUrl').val(),
-                footer: $('.cmd[data-cmd_uid=#uid#] .embedFooter').val(),
-                colors: $('.cmd[data-cmd_uid=#uid#] .embedColor').val()
+                title: document.querySelector('.cmd[data-cmd_uid="#uid#"] .embedTitle').value,
+                description: document.querySelector('.cmd[data-cmd_uid="#uid#"] .embedDescription').value,
+                url: document.querySelector('.cmd[data-cmd_uid="#uid#"] .embedUrl').value,
+                footer: document.querySelector('.cmd[data-cmd_uid="#uid#"] .embedFooter').value,
+                colors: document.querySelector('.cmd[data-cmd_uid="#uid#"] .embedColor').value
             };
 
             jeedom.cmd.execute({

@@ -420,10 +420,10 @@ class discordlink extends eqLogic {
 				'daemonInfo' => array('requiredPlugin' => '0', 'label' => 'Etat des démons', 'type' => 'action', 'subType' => 'other', 'request' => 'daemonInfo?null', 'visible' => 1),
 				'dependencyInfo' => array('requiredPlugin' => '0', 'label' => 'Etat des dépendances', 'type' => 'action', 'subType' => 'other', 'request' => 'dependencyInfo?null', 'visible' => 1),
 				'globalSummary' => array('requiredPlugin' => '0', 'label' => 'Résumé général', 'type' => 'action', 'subType' => 'other', 'request' => 'globalSummary?null', 'visible' => 1),
-				'objectSummary' => array('requiredPlugin' => '0', 'label' => 'Résumé par objet', 'type' => 'action', 'subType' => 'select', 'request' => 'objectSummary?null', 'visible' => 1),
 				'batteryInfo' => array('requiredPlugin' => '0', 'label' => 'Résumé des batteries', 'type' => 'action', 'subType' => 'other', 'request' => 'batteryInfo?null', 'visible' => 1),
 				'messageCenter' => array('requiredPlugin' => '0', 'label' => 'Centre de messages', 'type' => 'action', 'subType' => 'other', 'request' => 'messageCenter?null', 'visible' => 1),
 				'lastUser' => array('requiredPlugin' => '0', 'label' => 'Dernière Connexion utilisateur', 'type' => 'action', 'subType' => 'other', 'request' => 'lastUser?null', 'visible' => 1),
+				'objectSummary' => array('requiredPlugin' => '0', 'label' => 'Résumé par objet', 'type' => 'action', 'subType' => 'select', 'request' => 'objectSummary?null', 'visible' => 1),
 				'lastMessage' => array('requiredPlugin' => '0', 'label' => 'Dernier message', 'type' => 'info', 'subType' => 'string', 'visible' => 1),
 				'previousMessage1' => array('requiredPlugin' => '0', 'label' => 'Avant dernier message', 'type' => 'info', 'subType' => 'string', 'visible' => 1),
 				'previousMessage2' => array('requiredPlugin' => '0', 'label' => 'Avant Avant dernier message', 'type' => 'info', 'subType' => 'string', 'visible' => 1)
@@ -458,7 +458,9 @@ class discordlink extends eqLogic {
 					}
 					$cmd->setOrder($order);
 					$cmd->setDisplay('message_placeholder', 'Message à envoyer sur Discord');
-					$cmd->setDisplay('forceReturnLineBefore', true);
+					if (in_array($cmdKey, array('lastMessage', 'previousMessage1', 'previousMessage2'))) {
+						$cmd->setDisplay('forceReturnLineBefore', true);
+					}
 					$cmd->save();
 					$order++;
 				}

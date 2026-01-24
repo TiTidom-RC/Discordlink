@@ -1,41 +1,35 @@
 <div class="cmd cmd-widget reportModeHidden" data-type="action" data-subtype="message" data-template="default"
     data-cmd_id="#id#" data-cmd_uid="#uid#" data-version="#version#" data-eqLogic_id="#eqLogic_id#">
-    <br>
-    <table border="0" cellpadding="0" width="202">
-        <tr>
-            <td align="left" style="padding: 0px;" width="100%">
-                <div class="title #hide_name#">
-                    <div class="cmdName">#name_display#</div>
-                </div>
-            </td>
-        </tr>
-        <tr>
-            <td style="padding: 5px;" width="100%">
-                <div class="content-xs">
-                    <textarea class="form-control input-sm message" rows="2" placeholder="#message_placeholder#"
-                        data-cmd_uid="#uid#" data-cmd_id="#id#"></textarea>
-                </div>
-            </td>
-        </tr>
-        <tr>
-            <td align="center" style="padding: 5px;" width="100%">
-                <div class="content-xs">
-                    <a class='btn btn-xs execute'>#name_display#</a>
-                </div>
-            </td>
-        </tr>
-    </table>
+    <div class="title #hide_name#">
+        <div class="cmdName">#name_display#</div>
+    </div>
+    <div class="content-sm" style="padding: 8px; border: 1px solid rgba(128,128,128,0.5); border-radius: 4px;">
+        <div style="margin-bottom: 5px;">
+            <textarea class="form-control input-sm message" rows="2" placeholder="#message_placeholder#"
+                data-cmd_uid="#uid#" data-cmd_id="#id#" style="margin-bottom: 3px;"></textarea>
+        </div>
+        <div style="text-align: center;">
+            <a class="btn btn-sm btn-success execute" style="width: 100%;">
+                <i class="fas fa-paper-plane"></i> #name_display#
+            </a>
+        </div>
+    </div>
 
     <script>
         if ('#title_disable#' == '1') {
-            $('.cmd[data-cmd_uid=#uid#] .title').hide();
+            document.querySelector('.cmd[data-cmd_uid="#uid#"] .title').style.display = 'none';
         }
         if ('#message_disable#' == '1') {
-            $('.cmd[data-cmd_uid=#uid#] .message').hide();
+            document.querySelector('.cmd[data-cmd_uid="#uid#"] .message').style.display = 'none';
         }
-        $('.cmd[data-cmd_uid=#uid#]:last .execute').on('click', function () {
-            jeedom.cmd.execute({ id: '#id#', value: { title: $('.cmd[data-cmd_uid=#uid#] .title').value(), message: $('.cmd[data-cmd_uid=#uid#] .message').value() } });
+        document.querySelector('.cmd[data-cmd_uid="#uid#"] .execute').addEventListener('click', function () {
+            jeedom.cmd.execute({
+                id: '#id#',
+                value: {
+                    title: '',
+                    message: document.querySelector('.cmd[data-cmd_uid="#uid#"] .message').value
+                }
+            });
         });
-
     </script>
 </div>
