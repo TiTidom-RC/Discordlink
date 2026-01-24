@@ -4,6 +4,8 @@
         "Aucune méthode correspondante à : ": "Nenhum método correspondente a: "
     },
     "plugins\/discordlink\/core\/class\/discordlink.class.php": {
+        "' . $match . '": "' . $match . '",
+        "(.*?)": "(.*?)",
         "Commande inconnue ou requête vide : ": "Comando desconhecido ou pedido vazio: ",
         "Expression cron non valide pour ": "Expressão cron inválida para ",
         "Serveur injoignable": "Servidor inacessível",
@@ -13,16 +15,16 @@
         "Vous n\\'êtes pas autorisé à effectuer cette action": "Não tem permissão para realizar esta ação"
     },
     "plugins\/discordlink\/core\/template\/scenario\/cmd.sendEmbed.html": {
-        "Choisir la commande": "Escolher o comando"
+        "Sélectionner la commande": "Selecionar o comando"
     },
     "plugins\/discordlink\/core\/template\/scenario\/cmd.sendFile.html": {
-        "Choisir la commande": "Escolher o comando"
+        "Sélectionner la commande": "Selecionar o comando"
     },
     "plugins\/discordlink\/core\/template\/scenario\/cmd.sendMsg.html": {
-        "Choisir la commande": "Escolher o comando"
+        "Sélectionner la commande": "Selecionar o comando"
     },
     "plugins\/discordlink\/core\/template\/scenario\/cmd.sendMsgtts.html": {
-        "Choisir la commande": "Escolher o comando"
+        "Sélectionner la commande": "Selecionar o comando"
     },
     "plugins\/discordlink\/desktop\/js\/discordlink.js": {
         "Afficher": "Exibir",
