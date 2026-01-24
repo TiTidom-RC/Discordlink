@@ -259,6 +259,15 @@ $('body').off('click', '#bt_refreshChannels').on('click', '#bt_refreshChannels',
       },
       success: function (data) {
           btn.find('i').removeClass('fa-spin');
+
+          if (data.result && data.result.error) {
+              $.alert({
+                  title: 'Attention',
+                  content: data.result.error
+              });
+              return;
+          }
+
           if (data.result && data.result.channels) {
               let select = $('select[data-l2key=channelId]');
               let currentVal = select.val();
@@ -266,12 +275,7 @@ $('body').off('click', '#bt_refreshChannels').on('click', '#bt_refreshChannels',
               
               if (data.result.channels.length > 0) {
                   for (let i in data.result.channels) {
-                      select.append(
-                          $('<option>', {
-                              value: data.result.channels[i].id,
-                              text: '(' + data.result.channels[i].guildName + ') ' + data.result.channels[i].name
-                          })
-                      );
+                      select.append('<option value="' + data.result.channels[i].id + '">(' + data.result.channels[i].guildName + ') ' + data.result.channels[i].name + '</option>');
                   }
               } else {
                   select.append($('<option>', { value: 'null', text: 'Pas de channel disponible' }));

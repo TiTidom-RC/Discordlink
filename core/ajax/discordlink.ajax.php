@@ -40,7 +40,18 @@ try {
     }
 
     if (init('action') == 'getChannels') {
+        if (discordlink::deamon_info()['state'] != 'ok') {
+            ajax::success(array('error' => 'Le démon n\'est pas démarré. Veuillez le démarrer avant de rafraîchir les channels.'));
+            return;
+        }
+
         $channels = discordlink::getChannel();
+        // Force IDs to string to avoid snowflake precision issues in JSON/JS
+        foreach ($channels as &$channel) {
+            $channel['id'] = (string)$channel['id'];
+        }
+        unset($channel); // Break reference
+
         $result = array('channels' => $channels);
         
         $id = init('id');
