@@ -1,0 +1,18 @@
+name: PHP Syntax Check
+
+on:
+  push:
+    branches:
+      - beta
+  pull_request:
+    branches:
+      - beta
+
+jobs:
+  php-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      
+      - name: PHP Syntax Checker (Lint)
+        uses: StephaneBour/actions-php-lint@8.4
