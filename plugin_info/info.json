@@ -1,27 +1,41 @@
 {
-	"id" : "discordlink",
-	"name" : "Discord Link",
-	"pluginVersion" : "2.0.6",
-	"description" : {"fr_FR" : "Le plugin DiscordLink permet d'envoyer des messages sur son serveur Discord : messages standards, évolués, TTS - Gestion des Channels (Salons) - Fonction ASK - Envoi de Fichiers - Compatible avec les interactions de Jeedom - Fonction état des Démons de Jeedom - Fonction état des Dépendances des plugins Jeedom - Fonction état du résumé global."},
+	"id": "discordlink",
+	"name": "Discord Link",
+	"pluginVersion": "2.0.6",
+	"description": {
+		"fr_FR": "Le plugin DiscordLink permet d'envoyer des messages sur son serveur Discord : messages standards, évolués, TTS - Gestion des Channels (Salons) - Fonction ASK - Envoi de Fichiers - Compatible avec les interactions de Jeedom - Fonction état des Démons de Jeedom - Fonction état des Dépendances des plugins Jeedom - Fonction état du résumé global.",
+		"en_US": "The DiscordLink plugin allows you to send messages to your Discord server: standard messages, advanced messages, TTS - Channel management - ASK function - File sending - Compatible with Jeedom interactions - Jeedom Daemon status function - Jeedom plugin dependency status function - Global summary status function."
+	},
 	"utilization": "Ce plugin nécessite la création d'une 'Application' Discord et d'un 'Bot' associé depuis le portail développeur Discord.",
-	"licence" : "AGPL",
-	"author" : "TiTidom",
-	"require" : "4.4.2",
-	"category" : "communication",
-	"hasDependency" : true,
-	"hasOwnDeamon" : true,
-	"maxDependancyInstallTime" : 600,
-	"os" : {
-		"min" : 11
+	"licence": "AGPL",
+	"author": "TiTidom",
+	"require": "4.4.2",
+	"category": "communication",
+	"hasDependency": true,
+	"hasOwnDeamon": true,
+	"maxDependancyInstallTime": 600,
+	"os": {
+		"min": 11
 	},
-	"changelog" : "https://titidom-rc.github.io/Documentation/fr_FR/DiscordLink/changelog",
-	"changelog_beta" : "https://titidom-rc.github.io/Documentation/fr_FR/DiscordLink/beta/changelog",
-	"documentation" : "https://titidom-rc.github.io/Documentation/fr_FR/DiscordLink/index",
-	"documentation_beta" : "https://titidom-rc.github.io/Documentation/fr_FR/DiscordLink/index",
-	"link" : {
-		"forum":"https://community.jeedom.com/tag/plugin-discordlink",
-		"video" : ""
+	"changelog": "https://titidom-rc.github.io/Documentation/fr_FR/DiscordLink/changelog",
+	"changelog_beta": "https://titidom-rc.github.io/Documentation/fr_FR/DiscordLink/beta/changelog",
+	"documentation": "https://titidom-rc.github.io/Documentation/fr_FR/DiscordLink/index",
+	"documentation_beta": "https://titidom-rc.github.io/Documentation/fr_FR/DiscordLink/index",
+	"link": {
+		"forum": "https://community.jeedom.com/tag/plugin-discordlink",
+		"video": ""
 	},
-	"language" : ["fr_FR"],
-	"compatibility" : ["atlas","smart","rpi","docker","diy","mobile","v4"]
+	"language": [
+		"en_US",
+		"fr_FR"
+	],
+	"compatibility": [
+		"atlas",
+		"smart",
+		"rpi",
+		"docker",
+		"diy",
+		"mobile",
+		"v4"
+	]
 }
