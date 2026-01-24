@@ -189,7 +189,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                 <label class="col-sm-3 control-label">
                                     {{Couleur par défaut}}
                                     <sup>
-                                        <i class="fas fa-question-circle floatright" style="color: var(--al-info-color) !important;" title="{{Couleur que prendra un message enrichi par défaut}}"></i>
+                                        <i class="fas fa-question-circle" title="{{Couleur que prendra un message enrichi par défaut}}"></i>
                                     </sup>
                                 </label>
                                 <div class="col-sm-7">
