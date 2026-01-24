@@ -1,9 +1,6 @@
 name: JavaScript Syntax Check
 
 on:
-  push:
-    branches:
-      - beta
   pull_request:
     branches:
       - beta
