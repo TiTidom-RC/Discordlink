@@ -41,7 +41,17 @@ try {
 
     if (init('action') == 'getChannels') {
         $channels = discordlink::getChannel();
-        ajax::success($channels);
+        $result = array('channels' => $channels);
+        
+        $id = init('id');
+        if (!empty($id) && is_numeric($id)) {
+            $eqLogic = eqLogic::byId($id);
+            if (is_object($eqLogic)) {
+                $result['current'] = $eqLogic->getConfiguration('channelId');
+            }
+        }
+        
+        ajax::success($result);
     }
 
     if (init('action') == 'getEmoji') {

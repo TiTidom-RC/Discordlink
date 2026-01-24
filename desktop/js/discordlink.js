@@ -242,12 +242,15 @@ $(".eqLogicDisplayCard").on("click", function (event) {
 
 $('body').off('click', '#bt_refreshChannels').on('click', '#bt_refreshChannels', function () {
   let btn = $(this);
+  let eqId = $('.eqLogicAttr[data-l1key=id]').val();
+  
   btn.find('i').addClass('fa-spin');
   $.ajax({
       type: "POST",
       url: "plugins/discordlink/core/ajax/discordlink.ajax.php",
       data: {
-          action: "getChannels"
+          action: "getChannels",
+          id: eqId
       },
       dataType: 'json',
       error: function (request, status, error) {
@@ -256,17 +259,17 @@ $('body').off('click', '#bt_refreshChannels').on('click', '#bt_refreshChannels',
       },
       success: function (data) {
           btn.find('i').removeClass('fa-spin');
-          if (data.result) {
+          if (data.result && data.result.channels) {
               let select = $('select[data-l2key=channelId]');
               let currentVal = select.val();
               select.empty();
               
-              if (data.result.length > 0) {
-                  for (let i in data.result) {
+              if (data.result.channels.length > 0) {
+                  for (let i in data.result.channels) {
                       select.append(
                           $('<option>', {
-                              value: data.result[i].id,
-                              text: '(' + data.result[i].guildName + ') ' + data.result[i].name
+                              value: data.result.channels[i].id,
+                              text: '(' + data.result.channels[i].guildName + ') ' + data.result.channels[i].name
                           })
                       );
                   }
@@ -274,7 +277,9 @@ $('body').off('click', '#bt_refreshChannels').on('click', '#bt_refreshChannels',
                   select.append($('<option>', { value: 'null', text: 'Pas de channel disponible' }));
               }
               
-              if (currentVal && currentVal !== 'null' && select.find('option[value="' + currentVal + '"]').length > 0) {
+              if (data.result.current) {
+                   select.val(data.result.current);
+              } else if (currentVal && currentVal !== 'null' && select.find('option[value="' + currentVal + '"]').length > 0) {
                   select.val(currentVal);
               }
           } else {
