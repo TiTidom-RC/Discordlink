@@ -252,6 +252,9 @@ function discordlink_update() {
     } else {
         log::add('discordlink', 'info', 'Mise à jour terminée - Aucune commande problématique détectée.');
     }
+
+    // Mise à jour des emojis (ajoute les nouveaux emojis par défaut s'ils n'existent pas)
+    discordlink::setEmoji();
 }
 
 

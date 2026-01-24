@@ -124,10 +124,29 @@ class discordlink extends eqLogic {
 			'dep_nok' => ':red_circle:',
 			'batterie_ok' => ':green_circle:',
 			'batterie_progress' => ':orange_circle:',
-			'batterie_nok' => ':red_circle:'
+			'batterie_nok' => ':red_circle:',
+			'lastUser_warning' => ':warning:',
+			'lastUser_mag_right' => ':mag_right:',
+			'lastUser_mag' => ':mag:',
+			'lastUser_check' => ':white_check_mark:',
+			'lastUser_internet' => ':globe_with_meridians:',
+			'lastUser_connected' => ':green_circle:',
+			'lastUser_disconnected' => ':red_circle:',
+			'lastUser_icon' => ':busts_in_silhouette:'
 		);
 
-		$emojiArray = ($reset == 1) ? $default : config::byKey('emoji', 'discordlink', $default);
+		if ($reset == 1) {
+			// Reset complet : on force les valeurs par défaut
+			$emojiArray = $default;
+		} else {
+			// Récupération des emojis existants (peut être vide ou null pour une nouvelle installation)
+			$existing = config::byKey('emoji', 'discordlink', array());
+			
+			// Fusion : les emojis personnalisés sont préservés, les nouveaux sont ajoutés
+			// array_merge avec $default en premier pour avoir la base, puis $existing écrase avec les personnalisations
+			$emojiArray = array_merge($default, is_array($existing) ? $existing : array());
+		}
+		
 		config::save('emoji', $emojiArray, 'discordlink');
 	}
 
@@ -522,15 +541,15 @@ class discordlink extends eqLogic {
 		$level = log::getLogLevel('connection');
 		$levelName = log::convertLogLevel($level);
 
-		//Add Emoji
-		$emojiWarning = discordlink::addEmoji("lastUser_warning", ":warning:");
-		$emojiMagRight = discordlink::addEmoji("lastUser_mag_right", ":mag_right:");
-		$emojiMag = discordlink::addEmoji("lastUser_mag", ":mag:");
-		$emojiCheck = discordlink::addEmoji("lastUser_check", ":white_check_mark:");
-		$emojiInternet = discordlink::addEmoji("lastUser_internet", ":globe_with_meridians:");
-		$emojiConnected = discordlink::addEmoji("lastUser_connecter", ":green_circle:");
-		$emojiDisconnected = discordlink::addEmoji("lastUser_deconnecter", ":red_circle:");
-		$emojiSilhouette = discordlink::addEmoji("lastUser_silhouette", ":busts_in_silhouette:");
+		// Récupération des emojis
+		$emojiWarning = discordlink::getIcon("lastUser_warning");
+		$emojiMagRight = discordlink::getIcon("lastUser_mag_right");
+		$emojiMag = discordlink::getIcon("lastUser_mag");
+		$emojiCheck = discordlink::getIcon("lastUser_check");
+		$emojiInternet = discordlink::getIcon("lastUser_internet");
+		$emojiConnected = discordlink::getIcon("lastUser_connected");
+		$emojiDisconnected = discordlink::getIcon("lastUser_disconnected");
+		$emojiIcon = discordlink::getIcon("lastUser_icon");
 
 
 		if ($level > 200) {
@@ -710,7 +729,7 @@ class discordlink extends eqLogic {
 		}
 
 		// Préparation des tags de notification
-		$title = $emojiSilhouette . 'CONNEXIONS ' . $emojiSilhouette;
+		$title = $emojiIcon . 'CONNEXIONS ' . $emojiIcon;
 		return array(
 			'title' => $title,
 			'message' => $message . $logLevelWarning,
