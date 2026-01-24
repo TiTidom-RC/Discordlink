@@ -458,7 +458,6 @@ class discordlink extends eqLogic {
 					}
 					$cmd->setOrder($order);
 					$cmd->setDisplay('message_placeholder', 'Message à envoyer sur Discord');
-					$cmd->setDisplay('forceReturnLineBefore', true);
 					$cmd->save();
 					$order++;
 				}
