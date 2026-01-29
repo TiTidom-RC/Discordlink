@@ -1,44 +1,52 @@
 <div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
-  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">Patch</span>
-  <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="patch" rows="1"
-    style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#patch#</textarea>
+  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">Path</span>
+  <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="path" rows="1"
+    style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#path#</textarea>
   <span class="input-group-btn">
-    <button class="btn btn-default listEquipementInfo roundedRight" type="button" title="{{Sélectionner la commande}}"
+    <button class="btn btn-default listDeviceInfoPath roundedRight" type="button" title="{{Sélectionner la commande}}"
       data-cmd_id="#id#" data-uid="#uid#"><i class="fas fa-list-alt"></i></button>
   </span>
 </div>
 
 <div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
-  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">Name File</span>
-  <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="Name_File" rows="1"
-    style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#Name_File#</textarea>
+  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">Display Name</span>
+  <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="displayName" rows="1"
+    style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#displayName#</textarea>
   <span class="input-group-btn">
-    <button class="btn btn-default listEquipementInfo roundedRight" type="button" title="{{Sélectionner la commande}}"
+    <button class="btn btn-default listDeviceInfoDisplayName roundedRight" type="button" title="{{Sélectionner la commande}}"
       data-cmd_id="#id#" data-uid="#uid#"><i class="fas fa-list-alt"></i></button>
   </span>
 </div>
 
 <script>
-  $('.listEquipementInfo[data-uid=#uid#]').on('click', function () {
-    if ('#message_cmd_subtype#' != '') {
-      jeedom.cmd.getSelectModal({
-        cmd: {
-          type: '#message_cmd_type#',
-          subType: '#message_cmd_subtype#'
-        }
-      }, function (result) {
-        $('.expressionAttr[data-l1key=options][data-l2key=message][data-uid=#uid#]').atCaret('insert', result
-          .human);
-      });
-    } else {
-      jeedom.cmd.getSelectModal({
-        cmd: {
-          type: '#message_cmd_type#'
-        }
-      }, function (result) {
-        $('.expressionAttr[data-l1key=options][data-l2key=message][data-uid=#uid#]').atCaret('insert', result
-          .human);
-      });
+  document.querySelector('.listDeviceInfoPath[data-uid="#uid#"]').addEventListener('click', function () {
+    var options = {
+      cmd: {
+        type: '#message_cmd_type#'
+      }
     }
-  });
+    if ('#message_cmd_subtype#' != '') {
+      options.cmd.subType = '#message_cmd_subtype#'
+    }
+    jeedom.cmd.getSelectModal(options, function (result) {
+      document.querySelector('.expressionAttr[data-l1key=options][data-l2key=path][data-uid="#uid#"]').insertAtCursor(result.human)
+    })
+  })
+
+  document.querySelector('.listDeviceInfoDisplayName[data-uid="#uid#"]').addEventListener('click', function () {
+    var options = {
+      cmd: {
+        type: '#message_cmd_type#'
+      }
+    }
+    if ('#message_cmd_subtype#' != '') {
+      options.cmd.subType = '#message_cmd_subtype#'
+    }
+    jeedom.cmd.getSelectModal(options, function (result) {
+      document.querySelector('.expressionAttr[data-l1key=options][data-l2key=fileName][data-uid="#uid#"]').insertAtCursor(result.human)
+    })
+  })
+
+  if ('#path#' == '#' + 'path#') document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=path]').value = '#defaultPath#'
+  if ('#displayName#' == '#' + 'displayName#') document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=fileName]').value = '#defaultDisplayName#'
 </script>

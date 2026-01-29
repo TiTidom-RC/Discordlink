@@ -16,1130 +16,1271 @@
  * along with Jeedom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* * ***************************Includes********************************* */
+/* * *************************** Includes ********************************* */
 require_once __DIR__ . '/../../../../core/php/core.inc.php';
-require_once dirname(__FILE__) . '/../../core/php/discordlink.inc.php';
 
 class discordlink extends eqLogic {
-    /*     * *************************Attributs****************************** */
+	/*     * ************************* Attributes ****************************** */
 
 	const DEFAULT_COLOR = '#ff0000';
+	const SOCKET_PORT = 3466;
+	private static $_daemonBaseURL = null;
+
+	public static function getInfo() {
+		$file = __DIR__ . '/../../plugin_info/info.json';
+		if (file_exists($file)) {
+			try {
+				$data = json_decode(file_get_contents($file), true);
+				return is_array($data) ? $data : array();
+			} catch (Exception $e) {
+				log::add('discordlink', 'error', 'Erreur lors de la lecture du fichier info.json : ' . $e->getMessage());
+				return array();
+			}
+		}
+		return array();
+	}
 
 	public static function templateWidget() {
 		$return['action']['message']['message'] =    array(
-				'template' => 'message',
-				'replace' => array("#_desktop_width_#" => "100","#_mobile_width_#" => "50", "#title_disable#" => "1", "#message_disable#" => "0")
+			'template' => 'message',
+			'replace' => array("#_desktop_width_#" => "100", "#_mobile_width_#" => "50", "#title_disable#" => "1", "#message_disable#" => "0")
 		);
 		$return['action']['message']['embed'] =    array(
 			'template' => 'embed',
-			'replace' => array("#_desktop_width_#" => "100","#_mobile_width_#" => "50", "#title_disable#" => "1", "#message_disable#" => "0")
+			'replace' => array("#_desktop_width_#" => "100", "#_mobile_width_#" => "50", "#title_disable#" => "1", "#message_disable#" => "0")
 		);
 		return $return;
 	}
 
-	public static function testplugin($_pluginid){
-		$result = false;
-		try {$test = plugin::byId($_pluginid);  if ($test->isActive()) $result=true;}  catch(Exception $e) {}
-		return $result;
+	public static function testPlugin($_pluginId) {
+		$plugin = plugin::byId($_pluginId);
+		return (is_object($plugin) && $plugin->isActive());
 	}
 
-	public static function setchannel() {
-		$channels = discordlink::getchannel();
-		foreach ($channels as $key => $channel) {
-			$channelname = $channel['name'];
-			$channelname = discordlink::remove_emoji2($channelname);
-			$channels[$key]['name'] = $channelname;
+	public static function getDaemonBaseURL() {
+		if (self::$_daemonBaseURL === null) {
+			$host = '127.0.0.1';
+			if (jeedom::getHardwareName() == 'docker') {
+				$internalAddr = config::byKey('internalAddr');
+				if (!empty($internalAddr)) {
+					$host = $internalAddr;
+				}
+			}
+			self::$_daemonBaseURL = 'http://' . $host . ':' . config::byKey('socketport', 'discordlink', self::SOCKET_PORT);
 		}
+		return self::$_daemonBaseURL;
+	}
+
+	public static function getChannel($maxRetries = 3, $delayMs = 500) {
+		$attempt = 0;
+		while ($attempt < $maxRetries) {
+			try {
+				$requestHttp = new com_http(self::getDaemonBaseURL() . '/getchannel');
+				$response = $requestHttp->exec(10, 2);
+				if ($response !== false && !empty($response)) {
+					$channels = json_decode($response, true);
+					if (is_array($channels)) {
+						if ($attempt > 0) {
+							log::add('discordlink', 'debug', 'Channels récupérés après ' . ($attempt + 1) . ' tentative(s)');
+						}
+						return $channels;
+					}
+				}
+			} catch (Exception $e) {
+				log::add('discordlink', 'debug', 'Tentative ' . ($attempt + 1) . '/' . $maxRetries . ' échouée: ' . $e->getMessage());
+			}
+			
+			$attempt++;
+			if ($attempt < $maxRetries) {
+				usleep($delayMs * 1000); // Pause avant la prochaine tentative
+			}
+		}
+		
+		log::add('discordlink', 'error', 'Impossible de récupérer les channels depuis le daemon après ' . $maxRetries . ' tentatives');
+		return array();
+	}
+
+	public static function setChannel() {
+		$channels = static::getChannel();
+		if (empty($channels)) return;
+
+		array_walk($channels, function (&$channel) {
+			$channel['name'] = discordlink::removeEmoji($channel['name']);
+		});
+
 		config::save('channels', $channels, 'discordlink');
 	}
 
-	private static function remove_emoji2($text){
-		return preg_replace('/[\x{1F3F4}](?:\x{E0067}\x{E0062}\x{E0077}\x{E006C}\x{E0073}\x{E007F})|[\x{1F3F4}](?:\x{E0067}\x{E0062}\x{E0073}\x{E0063}\x{E0074}\x{E007F})|[\x{1F3F4}](?:\x{E0067}\x{E0062}\x{E0065}\x{E006E}\x{E0067}\x{E007F})|[\x{1F3F4}](?:\x{200D}\x{2620}\x{FE0F})|[\x{1F3F3}](?:\x{FE0F}\x{200D}\x{1F308})|[\x{0023}\x{002A}\x{0030}\x{0031}\x{0032}\x{0033}\x{0034}\x{0035}\x{0036}\x{0037}\x{0038}\x{0039}](?:\x{FE0F}\x{20E3})|[\x{1F441}](?:\x{FE0F}\x{200D}\x{1F5E8}\x{FE0F})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F467}\x{200D}\x{1F467})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F467}\x{200D}\x{1F466})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F467})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F466}\x{200D}\x{1F466})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F466})|[\x{1F468}](?:\x{200D}\x{1F468}\x{200D}\x{1F467}\x{200D}\x{1F467})|[\x{1F468}](?:\x{200D}\x{1F468}\x{200D}\x{1F466}\x{200D}\x{1F466})|[\x{1F468}](?:\x{200D}\x{1F468}\x{200D}\x{1F467}\x{200D}\x{1F466})|[\x{1F468}](?:\x{200D}\x{1F468}\x{200D}\x{1F467})|[\x{1F468}](?:\x{200D}\x{1F468}\x{200D}\x{1F466})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F469}\x{200D}\x{1F467}\x{200D}\x{1F467})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F469}\x{200D}\x{1F466}\x{200D}\x{1F466})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F469}\x{200D}\x{1F467}\x{200D}\x{1F466})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F469}\x{200D}\x{1F467})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F469}\x{200D}\x{1F466})|[\x{1F469}](?:\x{200D}\x{2764}\x{FE0F}\x{200D}\x{1F469})|[\x{1F469}\x{1F468}](?:\x{200D}\x{2764}\x{FE0F}\x{200D}\x{1F468})|[\x{1F469}](?:\x{200D}\x{2764}\x{FE0F}\x{200D}\x{1F48B}\x{200D}\x{1F469})|[\x{1F469}\x{1F468}](?:\x{200D}\x{2764}\x{FE0F}\x{200D}\x{1F48B}\x{200D}\x{1F468})|[\x{1F468}\x{1F469}](?:\x{1F3FF}\x{200D}\x{1F9B3})|[\x{1F468}\x{1F469}](?:\x{1F3FE}\x{200D}\x{1F9B3})|[\x{1F468}\x{1F469}](?:\x{1F3FD}\x{200D}\x{1F9B3})|[\x{1F468}\x{1F469}](?:\x{1F3FC}\x{200D}\x{1F9B3})|[\x{1F468}\x{1F469}](?:\x{1F3FB}\x{200D}\x{1F9B3})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F9B3})|[\x{1F468}\x{1F469}](?:\x{1F3FF}\x{200D}\x{1F9B2})|[\x{1F468}\x{1F469}](?:\x{1F3FE}\x{200D}\x{1F9B2})|[\x{1F468}\x{1F469}](?:\x{1F3FD}\x{200D}\x{1F9B2})|[\x{1F468}\x{1F469}](?:\x{1F3FC}\x{200D}\x{1F9B2})|[\x{1F468}\x{1F469}](?:\x{1F3FB}\x{200D}\x{1F9B2})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F9B2})|[\x{1F468}\x{1F469}](?:\x{1F3FF}\x{200D}\x{1F9B1})|[\x{1F468}\x{1F469}](?:\x{1F3FE}\x{200D}\x{1F9B1})|[\x{1F468}\x{1F469}](?:\x{1F3FD}\x{200D}\x{1F9B1})|[\x{1F468}\x{1F469}](?:\x{1F3FC}\x{200D}\x{1F9B1})|[\x{1F468}\x{1F469}](?:\x{1F3FB}\x{200D}\x{1F9B1})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F9B1})|[\x{1F468}\x{1F469}](?:\x{1F3FF}\x{200D}\x{1F9B0})|[\x{1F468}\x{1F469}](?:\x{1F3FE}\x{200D}\x{1F9B0})|[\x{1F468}\x{1F469}](?:\x{1F3FD}\x{200D}\x{1F9B0})|[\x{1F468}\x{1F469}](?:\x{1F3FC}\x{200D}\x{1F9B0})|[\x{1F468}\x{1F469}](?:\x{1F3FB}\x{200D}\x{1F9B0})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F9B0})|[\x{1F575}\x{1F3CC}\x{26F9}\x{1F3CB}](?:\x{FE0F}\x{200D}\x{2640}\x{FE0F})|[\x{1F575}\x{1F3CC}\x{26F9}\x{1F3CB}](?:\x{FE0F}\x{200D}\x{2642}\x{FE0F})|[\x{1F46E}\x{1F575}\x{1F482}\x{1F477}\x{1F473}\x{1F471}\x{1F9D9}\x{1F9DA}\x{1F9DB}\x{1F9DC}\x{1F9DD}\x{1F64D}\x{1F64E}\x{1F645}\x{1F646}\x{1F481}\x{1F64B}\x{1F647}\x{1F926}\x{1F937}\x{1F486}\x{1F487}\x{1F6B6}\x{1F3C3}\x{1F9D6}\x{1F9D7}\x{1F9D8}\x{1F3CC}\x{1F3C4}\x{1F6A3}\x{1F3CA}\x{26F9}\x{1F3CB}\x{1F6B4}\x{1F6B5}\x{1F938}\x{1F93D}\x{1F93E}\x{1F939}](?:\x{1F3FF}\x{200D}\x{2640}\x{FE0F})|[\x{1F46E}\x{1F575}\x{1F482}\x{1F477}\x{1F473}\x{1F471}\x{1F9D9}\x{1F9DA}\x{1F9DB}\x{1F9DC}\x{1F9DD}\x{1F64D}\x{1F64E}\x{1F645}\x{1F646}\x{1F481}\x{1F64B}\x{1F647}\x{1F926}\x{1F937}\x{1F486}\x{1F487}\x{1F6B6}\x{1F3C3}\x{1F9D6}\x{1F9D7}\x{1F9D8}\x{1F3CC}\x{1F3C4}\x{1F6A3}\x{1F3CA}\x{26F9}\x{1F3CB}\x{1F6B4}\x{1F6B5}\x{1F938}\x{1F93D}\x{1F93E}\x{1F939}](?:\x{1F3FE}\x{200D}\x{2640}\x{FE0F})|[\x{1F46E}\x{1F575}\x{1F482}\x{1F477}\x{1F473}\x{1F471}\x{1F9D9}\x{1F9DA}\x{1F9DB}\x{1F9DC}\x{1F9DD}\x{1F64D}\x{1F64E}\x{1F645}\x{1F646}\x{1F481}\x{1F64B}\x{1F647}\x{1F926}\x{1F937}\x{1F486}\x{1F487}\x{1F6B6}\x{1F3C3}\x{1F9D6}\x{1F9D7}\x{1F9D8}\x{1F3CC}\x{1F3C4}\x{1F6A3}\x{1F3CA}\x{26F9}\x{1F3CB}\x{1F6B4}\x{1F6B5}\x{1F938}\x{1F93D}\x{1F93E}\x{1F939}](?:\x{1F3FD}\x{200D}\x{2640}\x{FE0F})|[\x{1F46E}\x{1F575}\x{1F482}\x{1F477}\x{1F473}\x{1F471}\x{1F9D9}\x{1F9DA}\x{1F9DB}\x{1F9DC}\x{1F9DD}\x{1F64D}\x{1F64E}\x{1F645}\x{1F646}\x{1F481}\x{1F64B}\x{1F647}\x{1F926}\x{1F937}\x{1F486}\x{1F487}\x{1F6B6}\x{1F3C3}\x{1F9D6}\x{1F9D7}\x{1F9D8}\x{1F3CC}\x{1F3C4}\x{1F6A3}\x{1F3CA}\x{26F9}\x{1F3CB}\x{1F6B4}\x{1F6B5}\x{1F938}\x{1F93D}\x{1F93E}\x{1F939}](?:\x{1F3FC}\x{200D}\x{2640}\x{FE0F})|[\x{1F46E}\x{1F575}\x{1F482}\x{1F477}\x{1F473}\x{1F471}\x{1F9D9}\x{1F9DA}\x{1F9DB}\x{1F9DC}\x{1F9DD}\x{1F64D}\x{1F64E}\x{1F645}\x{1F646}\x{1F481}\x{1F64B}\x{1F647}\x{1F926}\x{1F937}\x{1F486}\x{1F487}\x{1F6B6}\x{1F3C3}\x{1F9D6}\x{1F9D7}\x{1F9D8}\x{1F3CC}\x{1F3C4}\x{1F6A3}\x{1F3CA}\x{26F9}\x{1F3CB}\x{1F6B4}\x{1F6B5}\x{1F938}\x{1F93D}\x{1F93E}\x{1F939}](?:\x{1F3FB}\x{200D}\x{2640}\x{FE0F})|[\x{1F46E}\x{1F9B8}\x{1F9B9}\x{1F482}\x{1F477}\x{1F473}\x{1F471}\x{1F9D9}\x{1F9DA}\x{1F9DB}\x{1F9DC}\x{1F9DD}\x{1F9DE}\x{1F9DF}\x{1F64D}\x{1F64E}\x{1F645}\x{1F646}\x{1F481}\x{1F64B}\x{1F647}\x{1F926}\x{1F937}\x{1F486}\x{1F487}\x{1F6B6}\x{1F3C3}\x{1F46F}\x{1F9D6}\x{1F9D7}\x{1F9D8}\x{1F3C4}\x{1F6A3}\x{1F3CA}\x{1F6B4}\x{1F6B5}\x{1F938}\x{1F93C}\x{1F93D}\x{1F93E}\x{1F939}](?:\x{200D}\x{2640}\x{FE0F})|[\x{1F46E}\x{1F575}\x{1F482}\x{1F477}\x{1F473}\x{1F471}\x{1F9D9}\x{1F9DA}\x{1F9DB}\x{1F9DC}\x{1F9DD}\x{1F64D}\x{1F64E}\x{1F645}\x{1F646}\x{1F481}\x{1F64B}\x{1F647}\x{1F926}\x{1F937}\x{1F486}\x{1F487}\x{1F6B6}\x{1F3C3}\x{1F9D6}\x{1F9D7}\x{1F9D8}\x{1F3CC}\x{1F3C4}\x{1F6A3}\x{1F3CA}\x{26F9}\x{1F3CB}\x{1F6B4}\x{1F6B5}\x{1F938}\x{1F93D}\x{1F93E}\x{1F939}](?:\x{1F3FF}\x{200D}\x{2642}\x{FE0F})|[\x{1F46E}\x{1F575}\x{1F482}\x{1F477}\x{1F473}\x{1F471}\x{1F9D9}\x{1F9DA}\x{1F9DB}\x{1F9DC}\x{1F9DD}\x{1F64D}\x{1F64E}\x{1F645}\x{1F646}\x{1F481}\x{1F64B}\x{1F647}\x{1F926}\x{1F937}\x{1F486}\x{1F487}\x{1F6B6}\x{1F3C3}\x{1F9D6}\x{1F9D7}\x{1F9D8}\x{1F3CC}\x{1F3C4}\x{1F6A3}\x{1F3CA}\x{26F9}\x{1F3CB}\x{1F6B4}\x{1F6B5}\x{1F938}\x{1F93D}\x{1F93E}\x{1F939}](?:\x{1F3FE}\x{200D}\x{2642}\x{FE0F})|[\x{1F46E}\x{1F575}\x{1F482}\x{1F477}\x{1F473}\x{1F471}\x{1F9D9}\x{1F9DA}\x{1F9DB}\x{1F9DC}\x{1F9DD}\x{1F64D}\x{1F64E}\x{1F645}\x{1F646}\x{1F481}\x{1F64B}\x{1F647}\x{1F926}\x{1F937}\x{1F486}\x{1F487}\x{1F6B6}\x{1F3C3}\x{1F9D6}\x{1F9D7}\x{1F9D8}\x{1F3CC}\x{1F3C4}\x{1F6A3}\x{1F3CA}\x{26F9}\x{1F3CB}\x{1F6B4}\x{1F6B5}\x{1F938}\x{1F93D}\x{1F93E}\x{1F939}](?:\x{1F3FD}\x{200D}\x{2642}\x{FE0F})|[\x{1F46E}\x{1F575}\x{1F482}\x{1F477}\x{1F473}\x{1F471}\x{1F9D9}\x{1F9DA}\x{1F9DB}\x{1F9DC}\x{1F9DD}\x{1F64D}\x{1F64E}\x{1F645}\x{1F646}\x{1F481}\x{1F64B}\x{1F647}\x{1F926}\x{1F937}\x{1F486}\x{1F487}\x{1F6B6}\x{1F3C3}\x{1F9D6}\x{1F9D7}\x{1F9D8}\x{1F3CC}\x{1F3C4}\x{1F6A3}\x{1F3CA}\x{26F9}\x{1F3CB}\x{1F6B4}\x{1F6B5}\x{1F938}\x{1F93D}\x{1F93E}\x{1F939}](?:\x{1F3FC}\x{200D}\x{2642}\x{FE0F})|[\x{1F46E}\x{1F575}\x{1F482}\x{1F477}\x{1F473}\x{1F471}\x{1F9D9}\x{1F9DA}\x{1F9DB}\x{1F9DC}\x{1F9DD}\x{1F64D}\x{1F64E}\x{1F645}\x{1F646}\x{1F481}\x{1F64B}\x{1F647}\x{1F926}\x{1F937}\x{1F486}\x{1F487}\x{1F6B6}\x{1F3C3}\x{1F9D6}\x{1F9D7}\x{1F9D8}\x{1F3CC}\x{1F3C4}\x{1F6A3}\x{1F3CA}\x{26F9}\x{1F3CB}\x{1F6B4}\x{1F6B5}\x{1F938}\x{1F93D}\x{1F93E}\x{1F939}](?:\x{1F3FB}\x{200D}\x{2642}\x{FE0F})|[\x{1F46E}\x{1F9B8}\x{1F9B9}\x{1F482}\x{1F477}\x{1F473}\x{1F471}\x{1F9D9}\x{1F9DA}\x{1F9DB}\x{1F9DC}\x{1F9DD}\x{1F9DE}\x{1F9DF}\x{1F64D}\x{1F64E}\x{1F645}\x{1F646}\x{1F481}\x{1F64B}\x{1F647}\x{1F926}\x{1F937}\x{1F486}\x{1F487}\x{1F6B6}\x{1F3C3}\x{1F46F}\x{1F9D6}\x{1F9D7}\x{1F9D8}\x{1F3C4}\x{1F6A3}\x{1F3CA}\x{1F6B4}\x{1F6B5}\x{1F938}\x{1F93C}\x{1F93D}\x{1F93E}\x{1F939}](?:\x{200D}\x{2642}\x{FE0F})|[\x{1F468}\x{1F469}](?:\x{1F3FF}\x{200D}\x{1F692})|[\x{1F468}\x{1F469}](?:\x{1F3FE}\x{200D}\x{1F692})|[\x{1F468}\x{1F469}](?:\x{1F3FD}\x{200D}\x{1F692})|[\x{1F468}\x{1F469}](?:\x{1F3FC}\x{200D}\x{1F692})|[\x{1F468}\x{1F469}](?:\x{1F3FB}\x{200D}\x{1F692})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F692})|[\x{1F468}\x{1F469}](?:\x{1F3FF}\x{200D}\x{1F680})|[\x{1F468}\x{1F469}](?:\x{1F3FE}\x{200D}\x{1F680})|[\x{1F468}\x{1F469}](?:\x{1F3FD}\x{200D}\x{1F680})|[\x{1F468}\x{1F469}](?:\x{1F3FC}\x{200D}\x{1F680})|[\x{1F468}\x{1F469}](?:\x{1F3FB}\x{200D}\x{1F680})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F680})|[\x{1F468}\x{1F469}](?:\x{1F3FF}\x{200D}\x{2708}\x{FE0F})|[\x{1F468}\x{1F469}](?:\x{1F3FE}\x{200D}\x{2708}\x{FE0F})|[\x{1F468}\x{1F469}](?:\x{1F3FD}\x{200D}\x{2708}\x{FE0F})|[\x{1F468}\x{1F469}](?:\x{1F3FC}\x{200D}\x{2708}\x{FE0F})|[\x{1F468}\x{1F469}](?:\x{1F3FB}\x{200D}\x{2708}\x{FE0F})|[\x{1F468}\x{1F469}](?:\x{200D}\x{2708}\x{FE0F})|[\x{1F468}\x{1F469}](?:\x{1F3FF}\x{200D}\x{1F3A8})|[\x{1F468}\x{1F469}](?:\x{1F3FE}\x{200D}\x{1F3A8})|[\x{1F468}\x{1F469}](?:\x{1F3FD}\x{200D}\x{1F3A8})|[\x{1F468}\x{1F469}](?:\x{1F3FC}\x{200D}\x{1F3A8})|[\x{1F468}\x{1F469}](?:\x{1F3FB}\x{200D}\x{1F3A8})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F3A8})|[\x{1F468}\x{1F469}](?:\x{1F3FF}\x{200D}\x{1F3A4})|[\x{1F468}\x{1F469}](?:\x{1F3FE}\x{200D}\x{1F3A4})|[\x{1F468}\x{1F469}](?:\x{1F3FD}\x{200D}\x{1F3A4})|[\x{1F468}\x{1F469}](?:\x{1F3FC}\x{200D}\x{1F3A4})|[\x{1F468}\x{1F469}](?:\x{1F3FB}\x{200D}\x{1F3A4})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F3A4})|[\x{1F468}\x{1F469}](?:\x{1F3FF}\x{200D}\x{1F4BB})|[\x{1F468}\x{1F469}](?:\x{1F3FE}\x{200D}\x{1F4BB})|[\x{1F468}\x{1F469}](?:\x{1F3FD}\x{200D}\x{1F4BB})|[\x{1F468}\x{1F469}](?:\x{1F3FC}\x{200D}\x{1F4BB})|[\x{1F468}\x{1F469}](?:\x{1F3FB}\x{200D}\x{1F4BB})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F4BB})|[\x{1F468}\x{1F469}](?:\x{1F3FF}\x{200D}\x{1F52C})|[\x{1F468}\x{1F469}](?:\x{1F3FE}\x{200D}\x{1F52C})|[\x{1F468}\x{1F469}](?:\x{1F3FD}\x{200D}\x{1F52C})|[\x{1F468}\x{1F469}](?:\x{1F3FC}\x{200D}\x{1F52C})|[\x{1F468}\x{1F469}](?:\x{1F3FB}\x{200D}\x{1F52C})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F52C})|[\x{1F468}\x{1F469}](?:\x{1F3FF}\x{200D}\x{1F4BC})|[\x{1F468}\x{1F469}](?:\x{1F3FE}\x{200D}\x{1F4BC})|[\x{1F468}\x{1F469}](?:\x{1F3FD}\x{200D}\x{1F4BC})|[\x{1F468}\x{1F469}](?:\x{1F3FC}\x{200D}\x{1F4BC})|[\x{1F468}\x{1F469}](?:\x{1F3FB}\x{200D}\x{1F4BC})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F4BC})|[\x{1F468}\x{1F469}](?:\x{1F3FF}\x{200D}\x{1F3ED})|[\x{1F468}\x{1F469}](?:\x{1F3FE}\x{200D}\x{1F3ED})|[\x{1F468}\x{1F469}](?:\x{1F3FD}\x{200D}\x{1F3ED})|[\x{1F468}\x{1F469}](?:\x{1F3FC}\x{200D}\x{1F3ED})|[\x{1F468}\x{1F469}](?:\x{1F3FB}\x{200D}\x{1F3ED})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F3ED})|[\x{1F468}\x{1F469}](?:\x{1F3FF}\x{200D}\x{1F527})|[\x{1F468}\x{1F469}](?:\x{1F3FE}\x{200D}\x{1F527})|[\x{1F468}\x{1F469}](?:\x{1F3FD}\x{200D}\x{1F527})|[\x{1F468}\x{1F469}](?:\x{1F3FC}\x{200D}\x{1F527})|[\x{1F468}\x{1F469}](?:\x{1F3FB}\x{200D}\x{1F527})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F527})|[\x{1F468}\x{1F469}](?:\x{1F3FF}\x{200D}\x{1F373})|[\x{1F468}\x{1F469}](?:\x{1F3FE}\x{200D}\x{1F373})|[\x{1F468}\x{1F469}](?:\x{1F3FD}\x{200D}\x{1F373})|[\x{1F468}\x{1F469}](?:\x{1F3FC}\x{200D}\x{1F373})|[\x{1F468}\x{1F469}](?:\x{1F3FB}\x{200D}\x{1F373})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F373})|[\x{1F468}\x{1F469}](?:\x{1F3FF}\x{200D}\x{1F33E})|[\x{1F468}\x{1F469}](?:\x{1F3FE}\x{200D}\x{1F33E})|[\x{1F468}\x{1F469}](?:\x{1F3FD}\x{200D}\x{1F33E})|[\x{1F468}\x{1F469}](?:\x{1F3FC}\x{200D}\x{1F33E})|[\x{1F468}\x{1F469}](?:\x{1F3FB}\x{200D}\x{1F33E})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F33E})|[\x{1F468}\x{1F469}](?:\x{1F3FF}\x{200D}\x{2696}\x{FE0F})|[\x{1F468}\x{1F469}](?:\x{1F3FE}\x{200D}\x{2696}\x{FE0F})|[\x{1F468}\x{1F469}](?:\x{1F3FD}\x{200D}\x{2696}\x{FE0F})|[\x{1F468}\x{1F469}](?:\x{1F3FC}\x{200D}\x{2696}\x{FE0F})|[\x{1F468}\x{1F469}](?:\x{1F3FB}\x{200D}\x{2696}\x{FE0F})|[\x{1F468}\x{1F469}](?:\x{200D}\x{2696}\x{FE0F})|[\x{1F468}\x{1F469}](?:\x{1F3FF}\x{200D}\x{1F3EB})|[\x{1F468}\x{1F469}](?:\x{1F3FE}\x{200D}\x{1F3EB})|[\x{1F468}\x{1F469}](?:\x{1F3FD}\x{200D}\x{1F3EB})|[\x{1F468}\x{1F469}](?:\x{1F3FC}\x{200D}\x{1F3EB})|[\x{1F468}\x{1F469}](?:\x{1F3FB}\x{200D}\x{1F3EB})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F3EB})|[\x{1F468}\x{1F469}](?:\x{1F3FF}\x{200D}\x{1F393})|[\x{1F468}\x{1F469}](?:\x{1F3FE}\x{200D}\x{1F393})|[\x{1F468}\x{1F469}](?:\x{1F3FD}\x{200D}\x{1F393})|[\x{1F468}\x{1F469}](?:\x{1F3FC}\x{200D}\x{1F393})|[\x{1F468}\x{1F469}](?:\x{1F3FB}\x{200D}\x{1F393})|[\x{1F468}\x{1F469}](?:\x{200D}\x{1F393})|[\x{1F468}\x{1F469}](?:\x{1F3FF}\x{200D}\x{2695}\x{FE0F})|[\x{1F468}\x{1F469}](?:\x{1F3FE}\x{200D}\x{2695}\x{FE0F})|[\x{1F468}\x{1F469}](?:\x{1F3FD}\x{200D}\x{2695}\x{FE0F})|[\x{1F468}\x{1F469}](?:\x{1F3FC}\x{200D}\x{2695}\x{FE0F})|[\x{1F468}\x{1F469}](?:\x{1F3FB}\x{200D}\x{2695}\x{FE0F})|[\x{1F468}\x{1F469}](?:\x{200D}\x{2695}\x{FE0F})|[\x{1F476}\x{1F9D2}\x{1F466}\x{1F467}\x{1F9D1}\x{1F468}\x{1F469}\x{1F9D3}\x{1F474}\x{1F475}\x{1F46E}\x{1F575}\x{1F482}\x{1F477}\x{1F934}\x{1F478}\x{1F473}\x{1F472}\x{1F9D5}\x{1F9D4}\x{1F471}\x{1F935}\x{1F470}\x{1F930}\x{1F931}\x{1F47C}\x{1F385}\x{1F936}\x{1F9D9}\x{1F9DA}\x{1F9DB}\x{1F9DC}\x{1F9DD}\x{1F64D}\x{1F64E}\x{1F645}\x{1F646}\x{1F481}\x{1F64B}\x{1F647}\x{1F926}\x{1F937}\x{1F486}\x{1F487}\x{1F6B6}\x{1F3C3}\x{1F483}\x{1F57A}\x{1F9D6}\x{1F9D7}\x{1F9D8}\x{1F6C0}\x{1F6CC}\x{1F574}\x{1F3C7}\x{1F3C2}\x{1F3CC}\x{1F3C4}\x{1F6A3}\x{1F3CA}\x{26F9}\x{1F3CB}\x{1F6B4}\x{1F6B5}\x{1F938}\x{1F93D}\x{1F93E}\x{1F939}\x{1F933}\x{1F4AA}\x{1F9B5}\x{1F9B6}\x{1F448}\x{1F449}\x{261D}\x{1F446}\x{1F595}\x{1F447}\x{270C}\x{1F91E}\x{1F596}\x{1F918}\x{1F919}\x{1F590}\x{270B}\x{1F44C}\x{1F44D}\x{1F44E}\x{270A}\x{1F44A}\x{1F91B}\x{1F91C}\x{1F91A}\x{1F44B}\x{1F91F}\x{270D}\x{1F44F}\x{1F450}\x{1F64C}\x{1F932}\x{1F64F}\x{1F485}\x{1F442}\x{1F443}](?:\x{1F3FF})|[\x{1F476}\x{1F9D2}\x{1F466}\x{1F467}\x{1F9D1}\x{1F468}\x{1F469}\x{1F9D3}\x{1F474}\x{1F475}\x{1F46E}\x{1F575}\x{1F482}\x{1F477}\x{1F934}\x{1F478}\x{1F473}\x{1F472}\x{1F9D5}\x{1F9D4}\x{1F471}\x{1F935}\x{1F470}\x{1F930}\x{1F931}\x{1F47C}\x{1F385}\x{1F936}\x{1F9D9}\x{1F9DA}\x{1F9DB}\x{1F9DC}\x{1F9DD}\x{1F64D}\x{1F64E}\x{1F645}\x{1F646}\x{1F481}\x{1F64B}\x{1F647}\x{1F926}\x{1F937}\x{1F486}\x{1F487}\x{1F6B6}\x{1F3C3}\x{1F483}\x{1F57A}\x{1F9D6}\x{1F9D7}\x{1F9D8}\x{1F6C0}\x{1F6CC}\x{1F574}\x{1F3C7}\x{1F3C2}\x{1F3CC}\x{1F3C4}\x{1F6A3}\x{1F3CA}\x{26F9}\x{1F3CB}\x{1F6B4}\x{1F6B5}\x{1F938}\x{1F93D}\x{1F93E}\x{1F939}\x{1F933}\x{1F4AA}\x{1F9B5}\x{1F9B6}\x{1F448}\x{1F449}\x{261D}\x{1F446}\x{1F595}\x{1F447}\x{270C}\x{1F91E}\x{1F596}\x{1F918}\x{1F919}\x{1F590}\x{270B}\x{1F44C}\x{1F44D}\x{1F44E}\x{270A}\x{1F44A}\x{1F91B}\x{1F91C}\x{1F91A}\x{1F44B}\x{1F91F}\x{270D}\x{1F44F}\x{1F450}\x{1F64C}\x{1F932}\x{1F64F}\x{1F485}\x{1F442}\x{1F443}](?:\x{1F3FE})|[\x{1F476}\x{1F9D2}\x{1F466}\x{1F467}\x{1F9D1}\x{1F468}\x{1F469}\x{1F9D3}\x{1F474}\x{1F475}\x{1F46E}\x{1F575}\x{1F482}\x{1F477}\x{1F934}\x{1F478}\x{1F473}\x{1F472}\x{1F9D5}\x{1F9D4}\x{1F471}\x{1F935}\x{1F470}\x{1F930}\x{1F931}\x{1F47C}\x{1F385}\x{1F936}\x{1F9D9}\x{1F9DA}\x{1F9DB}\x{1F9DC}\x{1F9DD}\x{1F64D}\x{1F64E}\x{1F645}\x{1F646}\x{1F481}\x{1F64B}\x{1F647}\x{1F926}\x{1F937}\x{1F486}\x{1F487}\x{1F6B6}\x{1F3C3}\x{1F483}\x{1F57A}\x{1F9D6}\x{1F9D7}\x{1F9D8}\x{1F6C0}\x{1F6CC}\x{1F574}\x{1F3C7}\x{1F3C2}\x{1F3CC}\x{1F3C4}\x{1F6A3}\x{1F3CA}\x{26F9}\x{1F3CB}\x{1F6B4}\x{1F6B5}\x{1F938}\x{1F93D}\x{1F93E}\x{1F939}\x{1F933}\x{1F4AA}\x{1F9B5}\x{1F9B6}\x{1F448}\x{1F449}\x{261D}\x{1F446}\x{1F595}\x{1F447}\x{270C}\x{1F91E}\x{1F596}\x{1F918}\x{1F919}\x{1F590}\x{270B}\x{1F44C}\x{1F44D}\x{1F44E}\x{270A}\x{1F44A}\x{1F91B}\x{1F91C}\x{1F91A}\x{1F44B}\x{1F91F}\x{270D}\x{1F44F}\x{1F450}\x{1F64C}\x{1F932}\x{1F64F}\x{1F485}\x{1F442}\x{1F443}](?:\x{1F3FD})|[\x{1F476}\x{1F9D2}\x{1F466}\x{1F467}\x{1F9D1}\x{1F468}\x{1F469}\x{1F9D3}\x{1F474}\x{1F475}\x{1F46E}\x{1F575}\x{1F482}\x{1F477}\x{1F934}\x{1F478}\x{1F473}\x{1F472}\x{1F9D5}\x{1F9D4}\x{1F471}\x{1F935}\x{1F470}\x{1F930}\x{1F931}\x{1F47C}\x{1F385}\x{1F936}\x{1F9D9}\x{1F9DA}\x{1F9DB}\x{1F9DC}\x{1F9DD}\x{1F64D}\x{1F64E}\x{1F645}\x{1F646}\x{1F481}\x{1F64B}\x{1F647}\x{1F926}\x{1F937}\x{1F486}\x{1F487}\x{1F6B6}\x{1F3C3}\x{1F483}\x{1F57A}\x{1F9D6}\x{1F9D7}\x{1F9D8}\x{1F6C0}\x{1F6CC}\x{1F574}\x{1F3C7}\x{1F3C2}\x{1F3CC}\x{1F3C4}\x{1F6A3}\x{1F3CA}\x{26F9}\x{1F3CB}\x{1F6B4}\x{1F6B5}\x{1F938}\x{1F93D}\x{1F93E}\x{1F939}\x{1F933}\x{1F4AA}\x{1F9B5}\x{1F9B6}\x{1F448}\x{1F449}\x{261D}\x{1F446}\x{1F595}\x{1F447}\x{270C}\x{1F91E}\x{1F596}\x{1F918}\x{1F919}\x{1F590}\x{270B}\x{1F44C}\x{1F44D}\x{1F44E}\x{270A}\x{1F44A}\x{1F91B}\x{1F91C}\x{1F91A}\x{1F44B}\x{1F91F}\x{270D}\x{1F44F}\x{1F450}\x{1F64C}\x{1F932}\x{1F64F}\x{1F485}\x{1F442}\x{1F443}](?:\x{1F3FC})|[\x{1F476}\x{1F9D2}\x{1F466}\x{1F467}\x{1F9D1}\x{1F468}\x{1F469}\x{1F9D3}\x{1F474}\x{1F475}\x{1F46E}\x{1F575}\x{1F482}\x{1F477}\x{1F934}\x{1F478}\x{1F473}\x{1F472}\x{1F9D5}\x{1F9D4}\x{1F471}\x{1F935}\x{1F470}\x{1F930}\x{1F931}\x{1F47C}\x{1F385}\x{1F936}\x{1F9D9}\x{1F9DA}\x{1F9DB}\x{1F9DC}\x{1F9DD}\x{1F64D}\x{1F64E}\x{1F645}\x{1F646}\x{1F481}\x{1F64B}\x{1F647}\x{1F926}\x{1F937}\x{1F486}\x{1F487}\x{1F6B6}\x{1F3C3}\x{1F483}\x{1F57A}\x{1F9D6}\x{1F9D7}\x{1F9D8}\x{1F6C0}\x{1F6CC}\x{1F574}\x{1F3C7}\x{1F3C2}\x{1F3CC}\x{1F3C4}\x{1F6A3}\x{1F3CA}\x{26F9}\x{1F3CB}\x{1F6B4}\x{1F6B5}\x{1F938}\x{1F93D}\x{1F93E}\x{1F939}\x{1F933}\x{1F4AA}\x{1F9B5}\x{1F9B6}\x{1F448}\x{1F449}\x{261D}\x{1F446}\x{1F595}\x{1F447}\x{270C}\x{1F91E}\x{1F596}\x{1F918}\x{1F919}\x{1F590}\x{270B}\x{1F44C}\x{1F44D}\x{1F44E}\x{270A}\x{1F44A}\x{1F91B}\x{1F91C}\x{1F91A}\x{1F44B}\x{1F91F}\x{270D}\x{1F44F}\x{1F450}\x{1F64C}\x{1F932}\x{1F64F}\x{1F485}\x{1F442}\x{1F443}](?:\x{1F3FB})|[\x{1F1E6}\x{1F1E7}\x{1F1E8}\x{1F1E9}\x{1F1F0}\x{1F1F2}\x{1F1F3}\x{1F1F8}\x{1F1F9}\x{1F1FA}](?:\x{1F1FF})|[\x{1F1E7}\x{1F1E8}\x{1F1EC}\x{1F1F0}\x{1F1F1}\x{1F1F2}\x{1F1F5}\x{1F1F8}\x{1F1FA}](?:\x{1F1FE})|[\x{1F1E6}\x{1F1E8}\x{1F1F2}\x{1F1F8}](?:\x{1F1FD})|[\x{1F1E6}\x{1F1E7}\x{1F1E8}\x{1F1EC}\x{1F1F0}\x{1F1F2}\x{1F1F5}\x{1F1F7}\x{1F1F9}\x{1F1FF}](?:\x{1F1FC})|[\x{1F1E7}\x{1F1E8}\x{1F1F1}\x{1F1F2}\x{1F1F8}\x{1F1F9}](?:\x{1F1FB})|[\x{1F1E6}\x{1F1E8}\x{1F1EA}\x{1F1EC}\x{1F1ED}\x{1F1F1}\x{1F1F2}\x{1F1F3}\x{1F1F7}\x{1F1FB}](?:\x{1F1FA})|[\x{1F1E6}\x{1F1E7}\x{1F1EA}\x{1F1EC}\x{1F1ED}\x{1F1EE}\x{1F1F1}\x{1F1F2}\x{1F1F5}\x{1F1F8}\x{1F1F9}\x{1F1FE}](?:\x{1F1F9})|[\x{1F1E6}\x{1F1E7}\x{1F1EA}\x{1F1EC}\x{1F1EE}\x{1F1F1}\x{1F1F2}\x{1F1F5}\x{1F1F7}\x{1F1F8}\x{1F1FA}\x{1F1FC}](?:\x{1F1F8})|[\x{1F1E6}\x{1F1E7}\x{1F1E8}\x{1F1EA}\x{1F1EB}\x{1F1EC}\x{1F1ED}\x{1F1EE}\x{1F1F0}\x{1F1F1}\x{1F1F2}\x{1F1F3}\x{1F1F5}\x{1F1F8}\x{1F1F9}](?:\x{1F1F7})|[\x{1F1E6}\x{1F1E7}\x{1F1EC}\x{1F1EE}\x{1F1F2}](?:\x{1F1F6})|[\x{1F1E8}\x{1F1EC}\x{1F1EF}\x{1F1F0}\x{1F1F2}\x{1F1F3}](?:\x{1F1F5})|[\x{1F1E6}\x{1F1E7}\x{1F1E8}\x{1F1E9}\x{1F1EB}\x{1F1EE}\x{1F1EF}\x{1F1F2}\x{1F1F3}\x{1F1F7}\x{1F1F8}\x{1F1F9}](?:\x{1F1F4})|[\x{1F1E7}\x{1F1E8}\x{1F1EC}\x{1F1ED}\x{1F1EE}\x{1F1F0}\x{1F1F2}\x{1F1F5}\x{1F1F8}\x{1F1F9}\x{1F1FA}\x{1F1FB}](?:\x{1F1F3})|[\x{1F1E6}\x{1F1E7}\x{1F1E8}\x{1F1E9}\x{1F1EB}\x{1F1EC}\x{1F1ED}\x{1F1EE}\x{1F1EF}\x{1F1F0}\x{1F1F2}\x{1F1F4}\x{1F1F5}\x{1F1F8}\x{1F1F9}\x{1F1FA}\x{1F1FF}](?:\x{1F1F2})|[\x{1F1E6}\x{1F1E7}\x{1F1E8}\x{1F1EC}\x{1F1EE}\x{1F1F2}\x{1F1F3}\x{1F1F5}\x{1F1F8}\x{1F1F9}](?:\x{1F1F1})|[\x{1F1E8}\x{1F1E9}\x{1F1EB}\x{1F1ED}\x{1F1F1}\x{1F1F2}\x{1F1F5}\x{1F1F8}\x{1F1F9}\x{1F1FD}](?:\x{1F1F0})|[\x{1F1E7}\x{1F1E9}\x{1F1EB}\x{1F1F8}\x{1F1F9}](?:\x{1F1EF})|[\x{1F1E6}\x{1F1E7}\x{1F1E8}\x{1F1EB}\x{1F1EC}\x{1F1F0}\x{1F1F1}\x{1F1F3}\x{1F1F8}\x{1F1FB}](?:\x{1F1EE})|[\x{1F1E7}\x{1F1E8}\x{1F1EA}\x{1F1EC}\x{1F1F0}\x{1F1F2}\x{1F1F5}\x{1F1F8}\x{1F1F9}](?:\x{1F1ED})|[\x{1F1E6}\x{1F1E7}\x{1F1E8}\x{1F1E9}\x{1F1EA}\x{1F1EC}\x{1F1F0}\x{1F1F2}\x{1F1F3}\x{1F1F5}\x{1F1F8}\x{1F1F9}\x{1F1FA}\x{1F1FB}](?:\x{1F1EC})|[\x{1F1E6}\x{1F1E7}\x{1F1E8}\x{1F1EC}\x{1F1F2}\x{1F1F3}\x{1F1F5}\x{1F1F9}\x{1F1FC}](?:\x{1F1EB})|[\x{1F1E6}\x{1F1E7}\x{1F1E9}\x{1F1EA}\x{1F1EC}\x{1F1EE}\x{1F1EF}\x{1F1F0}\x{1F1F2}\x{1F1F3}\x{1F1F5}\x{1F1F7}\x{1F1F8}\x{1F1FB}\x{1F1FE}](?:\x{1F1EA})|[\x{1F1E6}\x{1F1E7}\x{1F1E8}\x{1F1EC}\x{1F1EE}\x{1F1F2}\x{1F1F8}\x{1F1F9}](?:\x{1F1E9})|[\x{1F1E6}\x{1F1E8}\x{1F1EA}\x{1F1EE}\x{1F1F1}\x{1F1F2}\x{1F1F3}\x{1F1F8}\x{1F1F9}\x{1F1FB}](?:\x{1F1E8})|[\x{1F1E7}\x{1F1EC}\x{1F1F1}\x{1F1F8}](?:\x{1F1E7})|[\x{1F1E7}\x{1F1E8}\x{1F1EA}\x{1F1EC}\x{1F1F1}\x{1F1F2}\x{1F1F3}\x{1F1F5}\x{1F1F6}\x{1F1F8}\x{1F1F9}\x{1F1FA}\x{1F1FB}\x{1F1FF}](?:\x{1F1E6})|[\x{00A9}\x{00AE}\x{203C}\x{2049}\x{2122}\x{2139}\x{2194}-\x{2199}\x{21A9}-\x{21AA}\x{231A}-\x{231B}\x{2328}\x{23CF}\x{23E9}-\x{23F3}\x{23F8}-\x{23FA}\x{24C2}\x{25AA}-\x{25AB}\x{25B6}\x{25C0}\x{25FB}-\x{25FE}\x{2600}-\x{2604}\x{260E}\x{2611}\x{2614}-\x{2615}\x{2618}\x{261D}\x{2620}\x{2622}-\x{2623}\x{2626}\x{262A}\x{262E}-\x{262F}\x{2638}-\x{263A}\x{2640}\x{2642}\x{2648}-\x{2653}\x{2660}\x{2663}\x{2665}-\x{2666}\x{2668}\x{267B}\x{267E}-\x{267F}\x{2692}-\x{2697}\x{2699}\x{269B}-\x{269C}\x{26A0}-\x{26A1}\x{26AA}-\x{26AB}\x{26B0}-\x{26B1}\x{26BD}-\x{26BE}\x{26C4}-\x{26C5}\x{26C8}\x{26CE}-\x{26CF}\x{26D1}\x{26D3}-\x{26D4}\x{26E9}-\x{26EA}\x{26F0}-\x{26F5}\x{26F7}-\x{26FA}\x{26FD}\x{2702}\x{2705}\x{2708}-\x{270D}\x{270F}\x{2712}\x{2714}\x{2716}\x{271D}\x{2721}\x{2728}\x{2733}-\x{2734}\x{2744}\x{2747}\x{274C}\x{274E}\x{2753}-\x{2755}\x{2757}\x{2763}-\x{2764}\x{2795}-\x{2797}\x{27A1}\x{27B0}\x{27BF}\x{2934}-\x{2935}\x{2B05}-\x{2B07}\x{2B1B}-\x{2B1C}\x{2B50}\x{2B55}\x{3030}\x{303D}\x{3297}\x{3299}\x{1F004}\x{1F0CF}\x{1F170}-\x{1F171}\x{1F17E}-\x{1F17F}\x{1F18E}\x{1F191}-\x{1F19A}\x{1F201}-\x{1F202}\x{1F21A}\x{1F22F}\x{1F232}-\x{1F23A}\x{1F250}-\x{1F251}\x{1F300}-\x{1F321}\x{1F324}-\x{1F393}\x{1F396}-\x{1F397}\x{1F399}-\x{1F39B}\x{1F39E}-\x{1F3F0}\x{1F3F3}-\x{1F3F5}\x{1F3F7}-\x{1F3FA}\x{1F400}-\x{1F4FD}\x{1F4FF}-\x{1F53D}\x{1F549}-\x{1F54E}\x{1F550}-\x{1F567}\x{1F56F}-\x{1F570}\x{1F573}-\x{1F57A}\x{1F587}\x{1F58A}-\x{1F58D}\x{1F590}\x{1F595}-\x{1F596}\x{1F5A4}-\x{1F5A5}\x{1F5A8}\x{1F5B1}-\x{1F5B2}\x{1F5BC}\x{1F5C2}-\x{1F5C4}\x{1F5D1}-\x{1F5D3}\x{1F5DC}-\x{1F5DE}\x{1F5E1}\x{1F5E3}\x{1F5E8}\x{1F5EF}\x{1F5F3}\x{1F5FA}-\x{1F64F}\x{1F680}-\x{1F6C5}\x{1F6CB}-\x{1F6D2}\x{1F6E0}-\x{1F6E5}\x{1F6E9}\x{1F6EB}-\x{1F6EC}\x{1F6F0}\x{1F6F3}-\x{1F6F9}\x{1F910}-\x{1F93A}\x{1F93C}-\x{1F93E}\x{1F940}-\x{1F945}\x{1F947}-\x{1F970}\x{1F973}-\x{1F976}\x{1F97A}\x{1F97C}-\x{1F9A2}\x{1F9B0}-\x{1F9B9}\x{1F9C0}-\x{1F9C2}\x{1F9D0}-\x{1F9FF}]/u', '', $text);
-  	}
+	private static function removeEmoji($text) {
+		// Supprime tous les emoji Unicode (PHP 7.4+) - Property Emoji couvre tous les emoji modernes
+		// Inclut: emoticons, symboles, drapeaux, ZWJ sequences, variations, skin tones
+		return preg_replace('/\p{Emoji}/u', '', $text);
+	}
 
-	public static function setemojy($reset = 0) {
-		$json = '{"motion":":person_walking:","door":":door:","windows":":frame_photo:","light":":bulb:","outlet":":electric_plug:","temperature":":thermometer:","humidity":":droplet:","luminosity":":sunny:","power":":cloud_lightning:","security":":rotating_light:","shutter":":beginner:","deamon_ok":":green_circle:","deamon_nok":":red_circle:","dep_ok":":green_circle:","dep_progress":":orange_circle:","dep_nok":":red_circle:","batterie_ok":":green_circle:","batterie_progress":":orange_circle:","batterie_nok":":red_circle:","zwave_ok":":green_circle:","zwave_nok":":red_circle:"}';
-		$default = json_decode($json);
-		$emojyarray = config::byKey('emojy', 'discordlink', $default);
+	public static function setEmoji($reset = 0) {
+		$default = array(
+			'motion' => ':walking:',
+			'door' => ':door:',
+			'windows' => ':framed_picture:',
+			'light' => ':bulb:',
+			'outlet' => ':electric_plug:',
+			'temperature' => ':thermometer:',
+			'humidity' => ':droplet:',
+			'luminosity' => ':sunny:',
+			'power' => ':cloud_with_lightning:',
+			'security' => ':rotating_light:',
+			'shutter' => ':beginner:',
+			'deamon_ok' => ':green_circle:',
+			'deamon_nok' => ':red_circle:',
+			'dep_ok' => ':green_circle:',
+			'dep_progress' => ':orange_circle:',
+			'dep_nok' => ':red_circle:',
+			'batterie_ok' => ':green_circle:',
+			'batterie_progress' => ':orange_circle:',
+			'batterie_nok' => ':red_circle:',
+			'lastUser_warning' => ':warning:',
+			'lastUser_mag_right' => ':mag_right:',
+			'lastUser_mag' => ':mag:',
+			'lastUser_check' => ':white_check_mark:',
+			'lastUser_internet' => ':globe_with_meridians:',
+			'lastUser_connected' => ':green_circle:',
+			'lastUser_disconnected' => ':red_circle:',
+			'lastUser_icon' => ':busts_in_silhouette:'
+		);
+
 		if ($reset == 1) {
-			$emojyarray = $json;
+			// Reset complet : on force les valeurs par défaut
+			$emojiArray = $default;
+		} else {
+			// Récupération des emojis existants et fusion avec les nouveaux
+			$existing = config::byKey('emoji', 'discordlink', array());
+			$emojiArray = array_merge($default, is_array($existing) ? $existing : array());
 		}
-		config::save('emojy', $emojyarray, 'discordlink');
+		
+		config::save('emoji', $emojiArray, 'discordlink');
 	}
 
-	public static function setinvite() {
-		$invite = discordlink::getinvite();
-		config::save('invite', $invite, 'discordlink');
+	public static function updateInfo() {
+		static::updateObject();
+		static::setChannel();
 	}
 
-	public static function updateinfo() {
-		sleep(2);
-		// discordlink::setinvite(); // Fonctionnalité obsolète - désactivée côté Node.js
-		discordlink::updateobject();
-		discordlink::setchannel();
-	}
-
-	public static function emojyconvert($_text): string
-	{
-		$_returntext = '';
-		$textsplit = explode(" ", $_text);
-		foreach ($textsplit as $value) {
-			if (substr($value,0,4) === "emo_") {
-				$emojy = discordlink::geticon(str_replace("emo_","",$value));
-				$_returntext .= $emojy;
+	public static function emojiConvert($_text): string {
+		$_returnText = '';
+		$textParts = explode(" ", $_text);
+		foreach ($textParts as $value) {
+			if (substr($value, 0, 4) === "emo_") {
+				$emoji = discordlink::getIcon(str_replace("emo_", "", $value));
+				$_returnText .= $emoji;
 			} else {
-				$_returntext .= $value;
+				$_returnText .= $value;
 			}
-			$_returntext .= " ";
+			$_returnText .= " ";
 		}
-		return $_returntext;
+		return $_returnText;
 	}
 
-	public static function checkall() {
-		$dateRun = new DateTime();
-		$_options = array('cron'=>true);
+	private static function executeCronIfDue($eqLogic, $cronExpr, $cmdLogicId, $debugLabel, $dateRun, $_options) {
+		if (empty($cronExpr)) {
+			log::add('discordlink', 'debug', $debugLabel . ' pour ' . $eqLogic->getName() . ' : aucun cron configuré');
+			return;
+		}
+
+		try {
+			$c = new Cron\CronExpression($cronExpr, new Cron\FieldFactory);
+			if ($c->isDue($dateRun)) {
+				log::add('discordlink', 'info', $debugLabel . ' pour ' . $eqLogic->getName() . ' (cron: ' . $cronExpr . ') - Exécution');
+				$cmd = $eqLogic->getCmd('action', $cmdLogicId);
+				if (is_object($cmd)) {
+					$cmd->execCmd($_options);
+				} else {
+					log::add('discordlink', 'warning', $debugLabel . ' pour ' . $eqLogic->getName() . ' : commande ' . $cmdLogicId . ' introuvable');
+				}
+			} else {
+				log::add('discordlink', 'debug', $debugLabel . ' pour ' . $eqLogic->getName() . ' (cron: ' . $cronExpr . ') - Non dû à cette date');
+			}
+		} catch (Exception $exc) {
+			log::add('discordlink', 'error', __('Expression cron non valide pour ', __FILE__) . $eqLogic->getHumanName() . ' : ' . $cronExpr);
+		}
+	}
+
+	/**
+	 * Exécute les vérifications planifiées pour tous les équipements
+	 * Vérifie les crons personnalisés (démons, dépendances, connexions)
+	 * et exécute les notifications Discord si les conditions sont remplies
+	 */
+	public static function runScheduledChecks() {
 		$eqLogics = eqLogic::byType('discordlink');
+		if (empty($eqLogics)) {
+			log::add('discordlink', 'debug', 'runScheduledChecks() : Aucun équipement discordlink trouvé');
+			return;
+		}
+
+		log::add('discordlink', 'debug', 'runScheduledChecks() : Début vérification de ' . count($eqLogics) . ' équipement(s)');
+		$dateRun = new DateTime();
+		$options = ['cron' => true];
 
 		foreach ($eqLogics as $eqLogic) {
-
-			$autorefreshDeamon = $eqLogic->getConfiguration('autorefreshDeamon');
-			$autorefreshDependances = $eqLogic->getConfiguration('autorefreshDependances');
-			$autorefreshZWave = $eqLogic->getConfiguration('autorefreshZWave');
-
-			if ($eqLogic->getConfiguration('deamoncheck', 0) == 1 && $autorefreshDeamon != '') {
-				try {
-					$c = new Cron\CronExpression($autorefreshDeamon, new Cron\FieldFactory);
-					if ($c->isDue($dateRun)) {
-						log::add('discordlink', 'debug', 'DeamonCheck');
-						$cmdDeamon = $eqLogic->getCmd('action', 'deamonInfo');
-						$cmdDeamon->execCmd($_options);
-					}
-				} catch (Exception $exc) {
-					log::add('discordlink', 'error', __('Expression cron non valide pour ', __FILE__) . $eqLogic->getHumanName() . ' : ' . $autorefreshDeamon);
-				}
-			}
-			if ($eqLogic->getConfiguration('depcheck', 0) == 1 && $autorefreshDependances != '') {
-				try {
-					$c = new Cron\CronExpression($autorefreshDependances, new Cron\FieldFactory);
-					if ($c->isDue($dateRun)) {
-						log::add('discordlink', 'debug', 'DepCheck');
-						$cmdDep = $eqLogic->getCmd('action', 'dependanceInfo');
-						$cmdDep->execCmd($_options);
-					}
-				} catch (Exception $exc) {
-					log::add('discordlink', 'error', __('Expression cron non valide pour ', __FILE__) . $eqLogic->getHumanName() . ' : ' . $autorefreshDependances);
-				}
-			}
-			if ($eqLogic->getConfiguration('zwavecheck', 0) == 1 && $autorefreshZWave != '') {
-				try {
-					$c = new Cron\CronExpression($autorefreshZWave, new Cron\FieldFactory);
-					if ($c->isDue($dateRun)) {
-						log::add('discordlink', 'debug', 'ZWaveCheck');
-						$cmdZwave = $eqLogic->getCmd('action', 'zwave');
-						$cmdZwave->execCmd($_options);
-					}
-				} catch (Exception $exc) {
-					log::add('discordlink', 'error', __('Expression cron non valide pour ', __FILE__) . $eqLogic->getHumanName() . ' : ' . $autorefreshZWave);
-				}
+			// Vérification démon
+			if ((bool)$eqLogic->getConfiguration('daemonCheck', 0)) {
+				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - daemonCheck activé, cron configuré: ' . $eqLogic->getConfiguration('autoRefreshDaemon', 'non défini'));
+				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autoRefreshDaemon'), 'daemonInfo', 'DaemonCheck', $dateRun, $options);
+			} else {
+				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - daemonCheck désactivé (valeur: ' . var_export($eqLogic->getConfiguration('daemonCheck', 0), true) . ')');
 			}
 
-			if ($eqLogic->getConfiguration('connectcheck', 0) == 1) {
-				log::add('discordlink', 'debug', 'connectcheck');
-				$cmdDeamon = $eqLogic->getCmd('action', 'LastUser');
-				$cmdDeamon->execCmd($_options);
+			// Vérification dépendances
+			if ((bool)$eqLogic->getConfiguration('dependencyCheck', 0)) {
+				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - dependencyCheck activé, cron configuré: ' . $eqLogic->getConfiguration('autoRefreshDependency', 'non défini'));
+				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autoRefreshDependency'), 'dependencyInfo', 'DependencyCheck', $dateRun, $options);
+			} else {
+				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - dependencyCheck désactivé (valeur: ' . var_export($eqLogic->getConfiguration('dependencyCheck', 0), true) . ')');
+			}
+
+			// Vérification connexions utilisateurs
+			if ((bool)$eqLogic->getConfiguration('connectionCheck', 0)) {
+				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - connectionCheck activé');
+				$cmd = $eqLogic->getCmd('action', 'lastUser');
+				if (is_object($cmd)) {
+					log::add('discordlink', 'debug', 'Vérification connexion utilisateur pour ' . $eqLogic->getName());
+					$cmd->execCmd($options);
+				} else {
+					log::add('discordlink', 'warning', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - commande lastUser introuvable');
+				}
+			} else {
+				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - connectionCheck désactivé (valeur: ' . var_export($eqLogic->getConfiguration('connectionCheck', 0), true) . ')');
 			}
 		}
 	}
-	/*     * ***********************Methode static*************************** */
+	/*     * *********************** Static Methods *************************** */
 
-    /*
+	/*
      * Fonction exécutée automatiquement toutes les minutes par Jeedom
 	 */
 	public static function cron() {
-		discordlink::checkall();
+		static::runScheduledChecks();
 	}
 
-	/*public static function cron5() {
-		discordlink::checkall();
-	}*/
-
-    /*
+	/*
      * Fonction exécutée automatiquement toutes les heures par Jeedom*/
-      public static function cronHourly() {
-		discordlink::updateinfo();
-      }
+	public static function cronHourly() {
+		static::updateInfo();
+	}
 
-    /*
+	/*
      * Fonction exécutée automatiquement tous les jours par Jeedom*/
-      public static function cronDaily() {
-		  $eqLogics = eqLogic::byType('discordlink');
-		  foreach ($eqLogics as $eqLogic) {
-			  $clearchannel = $eqLogic->getConfiguration('clearchannel',0);
-			  if ($clearchannel ==1) {
-			  	$cmd = $eqLogic->getCmd("action","deleteMessage");
-				if (is_object($cmd)) {
-					try {
-						log::add('discordlink', 'info', 'Nettoyage quotidien du channel pour ' . $eqLogic->getName());
-						$cmd->execCmd();
-					} catch (Exception $e) {
-						log::add('discordlink', 'error', 'Erreur lors du nettoyage quotidien pour ' . $eqLogic->getName() . ': ' . $e->getMessage());
-					}
-				}
-			  }
-		  }
-      }
+	public static function cronDaily() {
+		$eqLogics = eqLogic::byType('discordlink');
+		foreach ($eqLogics as $eqLogic) {
+			if (!(bool)$eqLogic->getConfiguration('clearChannel', 0)) continue;
 
-    /*     * *********************Méthodes d'instance************************* */
+			$cmd = $eqLogic->getCmd('action', 'deleteMessage');
+			if (!is_object($cmd)) continue;
 
-	public static function getchannel() {
-		$deamon = discordlink::deamon_info();
-		if ($deamon['state'] == 'ok') {
-			$request_http = new com_http("http://" . config::byKey('internalAddr') . ":3466/getchannel");
-			$request_http->setAllowEmptyReponse(true);//Autorise les réponses vides
-			$request_http->setNoSslCheck(true);
-			$request_http->setNoReportError(true);
-			$result = $request_http->exec(6,3);//Time out à 3s 3 essais
-			log::add('discordlink', 'debug', 'Set Invite Channel Json: '.$result);
-			if (!$result) return "null";
-			//$result = substr($result, 1, -1);
-			$json = json_decode($result, true);
-			return $json;
-		} else {
-			log::add('discordlink', 'debug', 'Set Invite Deamon : ERROR');
-		}
-	}
-
-	public static function getinvite() {
-		$deamon = discordlink::deamon_info();
-		if ($deamon['state'] == 'ok') {
-			log::add('discordlink', 'debug', 'Get Invite !!');
-			$request_http = new com_http("http://" . config::byKey('internalAddr') . ":3466/getinvite");
-			$request_http->setAllowEmptyReponse(true);//Autorise les réponses vides
-			$request_http->setNoSslCheck(true);
-			$request_http->setNoReportError(true);
-			$result = $request_http->exec(6,3);//Time out à 3s 3 essais
-			if (!$result) return "null";
-			$result = substr($result, 1, -1);
-			$json = json_decode($result, true);
-			$invite = $json['invite'] ?? "null";
-			log::add('discordlink', 'debug', 'Invite = '.$invite);
-			return $invite;
-		}
-	}
-
-	public static function dependancy_info() {
-		$return = array();
-		$return['log'] = 'discordlink_dep';
-		$resources = realpath(dirname(__FILE__) . '/../../resources/');
-		$packageJson=json_decode(file_get_contents($resources.'/package.json'),true);
-		$state='ok';
-		foreach($packageJson["dependencies"] as $dep => $ver){
-			if(!file_exists($resources.'/node_modules/'.$dep.'/package.json')) {
-				$state='nok';
+			try {
+				log::add('discordlink', 'info', 'Nettoyage quotidien du channel pour ' . $eqLogic->getName());
+				$cmd->execCmd();
+			} catch (Exception $e) {
+				log::add('discordlink', 'error', 'Erreur lors du nettoyage quotidien pour ' . $eqLogic->getName() . ': ' . $e->getMessage());
 			}
 		}
-		$return['progress_file'] = jeedom::getTmpFolder('discordlink') . '/dependance';
-		$return['state']=$state;
-		return $return;
-    }
-
-	public static function dependancy_install($verbose = "false") {
-		if (file_exists(jeedom::getTmpFolder('discordlink') . '/dependance')) {
-			return false;
-		}
-		log::remove('discordlink_dep');
-		$_debug = 0;
-		if (log::getLogLevel('discordlink') == 100 || $verbose === "true" || $verbose === true) $_debug = 1;
-		log::add('discordlink', 'info', 'Installation des dépendances : ');
-		$resource_path = realpath(dirname(__FILE__) . '/../../resources');
-		return array('script' => $resource_path . '/install.sh ' . $resource_path . ' discordlink ' . $_debug, 'log' => log::getPathToLog('discordlink_dep'));
 	}
+
+	/*     * ********************* Instance Methods ************************* */
+
+	// Dépendances gérées nativement via packages.json (Node.js géré par Jeedom Core)
 
 
 	public static function deamon_info() {
-		$return = array();
-		$return['log'] = 'discordlink_node';
-		$return['state'] = 'nok';
+		$return = array(
+			'log' => 'discordlink_node',
+			'state' => 'nok',
+			'launchable' => 'nok'
+		);
 
-		// Regarder si discordlink.js est lancé
-		$pid = trim(shell_exec('ps ax | grep "resources/discordlink.js" | grep -v "grep" | wc -l'));
-		if ($pid != '' && $pid != '0') $return['state'] = 'ok';
-
-		// Regarder si le token est ok
-		if (config::byKey('Token', 'discordlink', 'null') != "null") $return['launchable'] = 'ok';
-		else {
-			$return['launchable'] = 'nok';
-			$return['launchable_message'] = "TOKEN DISCORD ABSENT ";
+		// Vérifier si le serveur HTTP répond sur le port configuré
+		try {
+			$requestHttp = new com_http(self::getDaemonBaseURL() . '/heartbeat');
+			$requestHttp->setNoReportError(true);
+			$response = $requestHttp->exec(2, 1); // Timeout rapide: 2s
+			if ($response !== false) {
+				$return['state'] = 'ok';
+				$json = json_decode($response, true);
+				if (is_array($json) && isset($json['status']) && $json['status'] == 'ok') {
+					log::add('discordlink', 'debug', 'Heartbeat OK (Uptime: ' . round($json['uptime'], 2) . 's)');
+				} else {
+					log::add('discordlink', 'warning', 'Heartbeat réponse inattendue : ' . $response);
+				}
+			}
+		} catch (Exception $e) {
+			// Le serveur ne répond pas, daemon non actif
+			$return['state'] = 'nok';
 		}
+
+		$token = config::byKey('Token', 'discordlink');
+		if (!empty($token) && $token !== 'null') {
+			$return['launchable'] = 'ok';
+		} else {
+			$return['launchable_message'] = 'TOKEN DISCORD ABSENT';
+		}
+
 		return $return;
 	}
 
 	public static function deamon_start($_debug = false) {
-		self::deamon_stop();
-		$deamon_info = self::deamon_info();
-		if ($deamon_info['launchable'] != 'ok') throw new Exception(__('Veuillez vérifier la configuration', __FILE__));
+		static::deamon_stop();
+
+		if (static::deamon_info()['launchable'] != 'ok') {
+			throw new Exception(__('Veuillez vérifier la configuration', __FILE__));
+		}
+
 		log::add('discordlink', 'info', 'Lancement du bot');
-		$url = network::getNetworkAccess('internal', 'proto:127.0.0.1:port:comp') . '/plugins/discordlink/core/api/jeeDiscordlink.php?apikey=' . jeedom::getApiKey('discordlink');
-		$log = $_debug ? '1' : '0';
-		$sensor_path = realpath(dirname(__FILE__) . '/../../resources');
-		$joueA = 'Travailler main dans la main avec votre Jeedom';
-		if(config::byKey('joueA', 'discordlink') != ''){
-			$joueA = config::byKey('joueA', 'discordlink');
-		}
-		$cmd = 'nice -n 19 node ' . $sensor_path . '/discordlink.js ' . network::getNetworkAccess('internal') . ' ' . config::byKey('Token', 'discordlink') . ' '.log::getLogLevel('discordlink') . ' ' . $url . ' ' . jeedom::getApiKey('discordlink') . ' ' . rawurlencode($joueA);
+
+		$apiKey = jeedom::getApiKey('discordlink');
+		$cmd = sprintf(
+			'nice -n 19 node %s/discordlink.js %s %s %s %s %s %s %s',
+			escapeshellarg(realpath(dirname(__FILE__) . '/../../resources')),
+			escapeshellarg(network::getNetworkAccess('internal', 'proto:127.0.0.1:port:comp')),
+			escapeshellarg(config::byKey('Token', 'discordlink')),
+			escapeshellarg(log::getLogLevel('discordlink')),
+			escapeshellarg(network::getNetworkAccess('internal', 'proto:127.0.0.1:port:comp') . '/plugins/discordlink/core/api/jeeDiscordlink.php?apikey=' . $apiKey),
+			escapeshellarg($apiKey),
+			escapeshellarg(config::byKey('joueA', 'discordlink', 'Travailler main dans la main avec votre Jeedom')),
+			escapeshellarg(config::byKey('socketport', 'discordlink', self::SOCKET_PORT))
+		);
+
 		log::add('discordlink', 'debug', 'Lancement démon discordlink : ' . $cmd);
-		$result = exec('NODE_ENV=production nohup ' . $cmd . ' >> ' . log::getPathToLog('discordlink_node') . ' 2>&1 &');
-		if (strpos(strtolower($result), 'error') !== false || strpos(strtolower($result), 'traceback') !== false) {
-			log::add('discordlink', 'error', $result);
+
+		$fullCmd = sprintf(
+			'NODE_ENV=production nohup %s >> %s 2>&1 & echo $!',
+			$cmd,
+			escapeshellarg(log::getPathToLog('discordlink_node'))
+		);
+
+		$pid = trim(shell_exec($fullCmd));
+		if (empty($pid) || !is_numeric($pid)) {
+			log::add('discordlink', 'error', 'Échec du lancement du démon (PID invalide)');
 			return false;
 		}
-		$i = 0;
-		while ($i < 30) {
-			$deamon_info = self::deamon_info();
-			if ($deamon_info['state'] == 'ok') break;
+
+		log::add('discordlink', 'debug', 'Démon lancé avec PID : ' . $pid);
+
+		for ($i = 0; $i < 30; $i++) {
+			if (static::deamon_info()['state'] == 'ok') {
+				message::removeAll('discordlink', 'unableStartDeamon');
+				log::add('discordlink', 'info', 'Démon discordlink lancé');
+				static::updateInfo();
+				return true;
+			}
 			sleep(1);
-			$i++;
 		}
-		if ($i >= 30) {
-			log::add('discordlink', 'error', 'Impossible de lancer le démon discordlink, vérifiez le port', 'unableStartDeamon');
-			return false;
-		}
-		message::removeAll('discordlink', 'unableStartDeamon');
-		log::add('discordlink', 'info', 'Démon discordlink lancé');
-		discordlink::updateinfo();
-		return true;
+
+		log::add('discordlink', 'error', 'Impossible de lancer le démon discordlink, vérifiez le port', 'unableStartDeamon');
+		return false;
 	}
 
 	public static function deamon_stop() {
-		log::add('discordlink', 'info', 'Arrêt du service discordlink');
-		@file_get_contents("http://" . config::byKey('internalAddr') . ":3466/stop");
-		sleep(3);
-		if(shell_exec('ps aux | grep "resources/discordlink.js" | grep -v "grep" | wc -l') == '1') {
-			exec('sudo kill $(ps aux | grep "resources/discordlink.js" | grep -v "grep" | awk \'{print $2}\') &>/dev/null');
-			$deamon_info = self::deamon_info();
-			if ($deamon_info['state'] == 'ok') {
-				sleep(1);
-				exec('sudo kill -9 $(ps aux | grep "resources/discordlink.js" | grep -v "grep" | awk \'{print $2}\') &>/dev/null');
+		log::add('discordlink', 'info', 'Arrêt du démon discordlink');
+
+		// Arrêt gracieux via API HTTP
+		try {
+			$requestHttp = new com_http(self::getDaemonBaseURL() . '/stop');
+			$requestHttp->setNoReportError(true);
+			$requestHttp->setAllowEmptyReponse(true);
+			$requestHttp->exec(1, 1);
+		} catch (Exception $e) {
+			log::add('discordlink', 'error', 'Erreur Arrêt du Démon :: ' . $e->getMessage());
+		}
+
+		// Attente dynamique de l'arrêt du processus (max 3s)
+		// On précise "node" et on utilise l'astuce [s] pour que pgrep ne matche pas sa propre commande
+		$processPattern = escapeshellarg('node .*discordlink.j[s]');
+		for ($i = 0; $i < 30; $i++) {
+			$pidCount = (int)trim(shell_exec('pgrep -f ' . $processPattern . ' 2>/dev/null | wc -l'));
+			if ($pidCount == 0) {
+				log::add('discordlink', 'info', 'Démon arrêté avec succès');
+				break;
 			}
-			$deamon_info = self::deamon_info();
-			if ($deamon_info['state'] == 'ok') {
-				sleep(1);
-				exec('sudo kill -9 $(ps aux | grep "resources/discordlink.js" | grep -v "grep" | awk \'{print $2}\') &>/dev/null');
+			usleep(100000); // Pause de 0.1s
+		}
+
+		// Vérification et kill forcé si le processus est toujours actif
+		if ($pidCount > 0) {
+			log::add('discordlink', 'warning', 'Le Démon est toujours actif, envoi de SIGTERM');
+			// SIGTERM d'abord
+			exec('pkill -f ' . $processPattern . ' 2>&1');
+
+			// Attente dynamique de l'effet du SIGTERM (max 1s)
+			for ($i = 0; $i < 10; $i++) {
+				$pidCount = (int)trim(shell_exec('pgrep -f ' . $processPattern . ' 2>/dev/null | wc -l'));
+				if ($pidCount == 0) {
+					log::add('discordlink', 'info', 'Démon arrêté suite au SIGTERM');
+					break;
+				}
+				usleep(100000); // Pause de 0.1s
+			}
+
+			// Vérifier si toujours actif, puis SIGKILL
+			if ($pidCount > 0) {
+				log::add('discordlink', 'warning', 'Le Démon résiste au SIGTERM, envoi de SIGKILL');
+				exec('pkill -9 -f ' . $processPattern . ' 2>&1');
 			}
 		}
-    }
+	}
 
-
-    public function preInsert() {
+	public function preInsert() {
 		$this->setConfiguration('defaultColor', self::DEFAULT_COLOR);
 		$this->setIsEnable(1);
-    }
+	}
 
-    public function postInsert() {
+	public function postInsert() {
+	}
 
-    }
-
-    public function preSave() {
-		$channel = $this->getConfiguration('channelid');
-		log::add('discordlink', 'debug', 'setLogicalId : ' . $channel);
-		if ($channel != 'null' && $channel != '') {
-			if (isset($channel)) {
-				$this->setLogicalId($channel);
-				log::add('discordlink', 'debug', 'setLogicalId : ' . $channel);
-			}
+	public function preSave() {
+		$channel = $this->getConfiguration('channelId');
+		if (!empty($channel) && $channel != 'null') {
+			$this->setLogicalId($channel);
+			log::add('discordlink', 'debug', 'setLogicalId : ' . $channel);
 		} else {
-			$this->setConfiguration('channelid', $this->getLogicalId());
+			$this->setConfiguration('channelId', $this->getLogicalId());
 		}
 	}
 
-	public static function geticon($_icon) {
-		$icon = "null";
-		$emojyArray = config::byKey('emojy', 'discordlink');
-		$icon = $emojyArray[$_icon];
-		if ($icon == "null" || $icon == "") {
-			$icon = discordlink::addemojy($_icon);
-		}
-		$icon .= " ";
-		return $icon;
+	public static function getIcon($_icon) {
+		$emojiArray = config::byKey('emoji', 'discordlink', array());
+		$icon = isset($emojiArray[$_icon]) && !empty($emojiArray[$_icon]) ? $emojiArray[$_icon] : static::addEmoji($_icon);
+		return $icon . ' ';
 	}
 
-	public static function addemojy($_icon, $_emojy = "null") {
-		$icon = "null";
-		$emojyArray = config::byKey('emojy', 'discordlink');
-		$icon = $emojyArray[$_icon];
-		if ($icon == "null" || $icon == "") {
-			if ($_emojy != "null") {
-				$emojyArray[$_icon] = $_emojy;
-			} else {
-				$emojyArray[$_icon] = ":interrobang:";
-			}
-		}
-		config::save('emojy', $emojyArray, 'discordlink');
-		return $emojyArray[$_icon];
+	public static function addEmoji($_icon, $_emoji = null) {
+		$emojiArray = config::byKey('emoji', 'discordlink', array());
+		$emojiArray[$_icon] = $_emoji ?? ':interrobang:';
+		config::save('emoji', $emojiArray, 'discordlink');
+		return $emojiArray[$_icon];
 	}
 
-	public static function CreateCmd() {
+	public static function createCmd() {
 
 		$eqLogics = eqLogic::byType('discordlink');
 		foreach ($eqLogics as $eqLogic) {
 
-			$TabCmd = array(
-				'sendMsg'=>array('reqplug' => '0', 'Libelle'=>'Envoi message', 'Type'=>'action', 'SubType' => 'message','request'=> 'sendMsg?message=#message#', 'visible' => 1, 'Template' => 'discordlink::message'),
-				'sendMsgTTS'=>array('reqplug' => '0','Libelle'=>'Envoi message TTS', 'Type'=>'action', 'SubType' => 'message', 'request'=> 'sendMsgTTS?message=#message#', 'visible' => 1, 'Template' => 'discordlink::message'),
-				'sendEmbed'=>array('reqplug' => '0','Libelle'=>'Envoi message évolué', 'Type'=>'action', 'SubType' => 'message', 'request'=> 'sendEmbed?color=#color#&title=#title#&url=#url#&description=#description#&field=#field#&countanswer=#countanswer#&footer=#footer#&timeout=#timeout#&quickreply=#quickreply#&defaultColor=#defaultColor#', 'visible' => 0),
-				'sendFile'=>array('reqplug' => '0','Libelle'=>'Envoi fichier', 'Type'=>'action', 'SubType' => 'message', 'request'=> 'sendFile?patch=#patch#&name=#name#&message=#message#', 'visible' => 0),
-				'deleteMessage'=>array('reqplug' => '0','Libelle'=>'Supprime les messages du channel', 'Type'=>'action', 'SubType'=>'other','request'=>'deleteMessage?null', 'visible' => 0),
-				'deamonInfo'=>array('reqplug' => '0','Libelle'=>'Etat des démons', 'Type'=>'action', 'SubType'=>'other','request'=>'deamonInfo?null', 'visible' => 1),
-				'dependanceInfo'=>array('reqplug' => '0','Libelle'=>'Etat des dépendances', 'Type'=>'action', 'SubType'=>'other','request'=>'dependanceInfo?null', 'visible' => 1),
-				'zwave'=>array('reqplug' => 'openzwave','Libelle'=>'Etat des équipements Z-Wave', 'Type'=>'action', 'SubType'=>'other','request'=>'zwave?null', 'visible' => 1),
-				'globalSummary'=>array('reqplug' => '0','Libelle'=>'Résumé général', 'Type'=>'action', 'SubType'=>'other','request'=>'globalSummary?null', 'visible' => 1),
-				'objectSummary'=>array('reqplug' => '0','Libelle'=>'Résumé par objet', 'Type'=>'action', 'SubType'=>'select','request'=>'objectSummary?null', 'visible' => 1),
-				'batteryinfo'=>array('reqplug' => '0','Libelle'=>'Résumé des batteries', 'Type'=>'action', 'SubType'=>'other','request'=>'batteryinfo?null', 'visible' => 1),
-				'centreMsg'=>array('reqplug' => '0','Libelle'=>'Centre de messages', 'Type'=>'action', 'SubType'=>'other','request'=>'centreMsg?null', 'visible' => 1),
-				'LastUser'=>array('reqplug' => '0','Libelle'=>'Dernière Connexion utilisateur', 'Type'=>'action', 'SubType'=>'other','request'=>'LastUser?null', 'visible' => 1),
-				'covidSend'=>array('reqplug' => '0','Libelle'=>'Send Attestation', 'Type'=>'action', 'SubType'=>'other','request'=>'covidSend?null', 'visible' => 1),
-				'1oldmsg'=>array('reqplug' => '0','Libelle'=>'Dernier message', 'Type'=>'info', 'SubType'=>'string', 'visible' => 1),
-				'2oldmsg'=>array('reqplug' => '0','Libelle'=>'Avant dernier message', 'Type'=>'info', 'SubType'=>'string', 'visible' => 1),
-				'3oldmsg'=>array('reqplug' => '0','Libelle'=>'Avant Avant dernier message', 'Type'=>'info', 'SubType'=>'string', 'visible' => 1)
+			$commandsConfig = array(
+				'sendMsg' => array('requiredPlugin' => '0', 'label' => 'Envoi message', 'type' => 'action', 'subType' => 'message', 'request' => 'sendMsg?message=#message#', 'visible' => 1, 'template' => 'discordlink::message'),
+				'sendMsgTTS' => array('requiredPlugin' => '0', 'label' => 'Envoi message TTS', 'type' => 'action', 'subType' => 'message', 'request' => 'sendMsgTTS?message=#message#', 'visible' => 1, 'template' => 'discordlink::message'),
+				'sendEmbed' => array('requiredPlugin' => '0', 'label' => 'Envoi message évolué', 'type' => 'action', 'subType' => 'message', 'request' => 'sendEmbed?color=#color#&title=#title#&url=#url#&description=#description#&field=#field#&countanswer=#countanswer#&footer=#footer#&timeout=#timeout#&quickreply=#quickreply#', 'visible' => 1, 'template' => 'discordlink::embed'),
+				'sendFile' => array('requiredPlugin' => '0', 'label' => 'Envoi fichier', 'type' => 'action', 'subType' => 'message', 'request' => 'sendFile?patch=#patch#&name=#name#&message=#message#', 'visible' => 0),
+				'deleteMessage' => array('requiredPlugin' => '0', 'label' => 'Supprime les messages du channel', 'type' => 'action', 'subType' => 'other', 'request' => 'deleteMessage?null', 'visible' => 0),
+				'daemonInfo' => array('requiredPlugin' => '0', 'label' => 'Etat des démons', 'type' => 'action', 'subType' => 'other', 'request' => 'daemonInfo?null', 'visible' => 1),
+				'dependencyInfo' => array('requiredPlugin' => '0', 'label' => 'Etat des dépendances', 'type' => 'action', 'subType' => 'other', 'request' => 'dependencyInfo?null', 'visible' => 1),
+				'globalSummary' => array('requiredPlugin' => '0', 'label' => 'Résumé général', 'type' => 'action', 'subType' => 'other', 'request' => 'globalSummary?null', 'visible' => 1),
+				'batteryInfo' => array('requiredPlugin' => '0', 'label' => 'Résumé des batteries', 'type' => 'action', 'subType' => 'other', 'request' => 'batteryInfo?null', 'visible' => 1),
+				'messageCenter' => array('requiredPlugin' => '0', 'label' => 'Centre de messages', 'type' => 'action', 'subType' => 'other', 'request' => 'messageCenter?null', 'visible' => 1),
+				'lastUser' => array('requiredPlugin' => '0', 'label' => 'Dernière Connexion utilisateur', 'type' => 'action', 'subType' => 'other', 'request' => 'lastUser?null', 'visible' => 1),
+				'objectSummary' => array('requiredPlugin' => '0', 'label' => 'Résumé par objet', 'type' => 'action', 'subType' => 'select', 'request' => 'objectSummary?null', 'visible' => 1),
+				'lastMessage' => array('requiredPlugin' => '0', 'label' => 'Dernier message', 'type' => 'info', 'subType' => 'string', 'visible' => 1),
+				'previousMessage1' => array('requiredPlugin' => '0', 'label' => 'Avant dernier message', 'type' => 'info', 'subType' => 'string', 'visible' => 1),
+				'previousMessage2' => array('requiredPlugin' => '0', 'label' => 'Avant Avant dernier message', 'type' => 'info', 'subType' => 'string', 'visible' => 1)
 			);
-
-			//Chaque commande
-			$Order = 0;
-			foreach ($TabCmd as $CmdKey => $Cmd){
-				$pluginisla = 0;
-				if ($Cmd['reqplug'] != "0") {
-					if (discordlink::testplugin($Cmd['reqplug'])) $pluginisla = 1;
-				}
-				if ($Cmd['reqplug'] == "0" || $pluginisla == 1)  {
-					$Cmddiscordlink = $eqLogic->getCmd(null, $CmdKey);
-					if (!is_object($Cmddiscordlink) ) {
-						$Cmddiscordlink = new discordlinkCmd();
-						$Cmddiscordlink->setName($Cmd['Libelle']);
-						$Cmddiscordlink->setIsVisible($Cmd['visible']);
-						$Cmddiscordlink->setType($Cmd['Type']);
-						$Cmddiscordlink->setSubType($Cmd['SubType']);
+			$order = 0;
+			foreach ($commandsConfig as $cmdKey => $cmdConfig) {
+				// Vérifier si le plugin requis est actif ("0" = pas de dépendance)
+				if ($cmdConfig['requiredPlugin'] == "0" || discordlink::testPlugin($cmdConfig['requiredPlugin'])) {
+					$cmd = $eqLogic->getCmd(null, $cmdKey);
+					if (!is_object($cmd)) {
+						$cmd = new discordlinkCmd();
+						$cmd->setName($cmdConfig['label']);
+						$cmd->setIsVisible($cmdConfig['visible']);
+						$cmd->setType($cmdConfig['type']);
+						$cmd->setSubType($cmdConfig['subType']);
 					}
-					$Cmddiscordlink->setEqLogic_id($eqLogic->getId());
-					$Cmddiscordlink->setLogicalId($CmdKey);
-					if ($Cmd['Type'] == "action" && $CmdKey != "deamonInfo") {
-						$Cmddiscordlink->setConfiguration('request', $Cmd['request']);
-						$Cmddiscordlink->setConfiguration('value', 'http://' . config::byKey('internalAddr') . ':3466/' . $Cmd['request'] . "&channelID=" . $eqLogic->getConfiguration('channelid'));
+					$cmd->setEqLogic_id($eqLogic->getId());
+					$cmd->setLogicalId($cmdKey);
+					if ($cmdConfig['type'] == "action" && $cmdKey != "daemonInfo") {
+						$cmd->setConfiguration('request', $cmdConfig['request']);
+						$cmd->setConfiguration('value', discordlink::getDaemonBaseURL() . '/' . $cmdConfig['request'] . "&channelID=" . $eqLogic->getConfiguration('channelId'));
 					}
-					if ($Cmd['Type'] == "action" && $CmdKey == "deamonInfo") {
-						$Cmddiscordlink->setConfiguration('request', $Cmd['request']);
-						$Cmddiscordlink->setConfiguration('value', $Cmd['request']);
+					if ($cmdConfig['type'] == "action" && $cmdKey == "daemonInfo") {
+						$cmd->setConfiguration('request', $cmdConfig['request']);
+						$cmd->setConfiguration('value', $cmdConfig['request']);
 					}
 
-					$Cmddiscordlink->setDisplay('generic_type','GENERIC_INFO');
-					if (!empty($Cmd['Template'])) {
-						$Cmddiscordlink->setTemplate("dashboard", $Cmd['Template']);
-						$Cmddiscordlink->setTemplate("mobile", $Cmd['Template']);
+					$cmd->setDisplay('generic_type', 'GENERIC_INFO');
+					if (!empty($cmdConfig['template'])) {
+						$cmd->setTemplate("dashboard", $cmdConfig['template']);
+						$cmd->setTemplate("mobile", $cmdConfig['template']);
 					}
-					$Cmddiscordlink->setOrder($Order);
-					$Cmddiscordlink->setDisplay('message_placeholder', 'Message à envoyer sur Discord');
-					$Cmddiscordlink->setDisplay('forceReturnLineBefore', true);
-					$Cmddiscordlink->save();
-					$Order++;
+					$cmd->setOrder($order);
+					$cmd->setDisplay('message_placeholder', 'Message à envoyer sur Discord');
+					if (in_array($cmdKey, array('lastMessage', 'previousMessage1', 'previousMessage2'))) {
+						$cmd->setDisplay('forceReturnLineBefore', true);
+					}
+					$cmd->save();
+					$order++;
 				}
 			}
 		}
 	}
 
 	public function getDefaultColor() {
-		return $this->getConfiguration('defaultColor', self::DEFAULT_COLOR);	
+		return $this->getConfiguration('defaultColor', self::DEFAULT_COLOR);
 	}
 
-    public function postSave() {
-		discordlink::CreateCmd();
-		discordlink::updateobject();
+	public function postSave() {
+		static::createCmd();
+		static::updateObject();
 	}
 
-    public function preUpdate() {
+	public function preUpdate() {
+	}
 
-    }
+	public function postUpdate() {
+		discordlink::createCmd();
+	}
 
-    public function postUpdate() {
-		discordlink::CreateCmd();
-    }
+	public function preRemove() {
+	}
 
-    public function preRemove() {
+	public function postRemove() {
+	}
 
-    }
+	public static function updateObject() {
+		$objects = jeeObject::all();
+		if (empty($objects)) return;
 
-    public function postRemove() {
+		$listValue = implode(';', array_map(function ($object) {
+			return $object->getId() . '|' . $object->getName();
+		}, $objects));
 
-    }
-
-	public static function updateobject() {
-
-		$listValue = '';
-		foreach(jeeObject::all() as $object) {
-			$listValue .= $object->getId()."|".$object->getName().";";
-		}
-
-		if ($listValue != '') {
-			$eqLogics = eqLogic::byType('discordlink');
-			foreach ($eqLogics as $eqLogic) {
-				$Cmddiscordlink = $eqLogic->getCmd(null, 'objectSummary');
-				$Cmddiscordlink->setConfiguration('listValue', $listValue);
-				$Cmddiscordlink->save();
+		$eqLogics = eqLogic::byType('discordlink');
+		foreach ($eqLogics as $eqLogic) {
+			$cmd = $eqLogic->getCmd(null, 'objectSummary');
+			if (is_object($cmd)) {
+				$cmd->setConfiguration('listValue', $listValue);
+				$cmd->save();
 			}
 		}
 	}
 
-    /*
-     * Non obligatoire mais permet de modifier l'affichage du widget si vous en avez besoin
-      public function toHtml($_version = 'dashboard') {
+	public static function getLastUserConnections() {
+		$message = "";
+		$onlineCount = 0;
+		$daysBeforeUserRemoval = 61;
+		$hasCronActivity = false;
+		$cronInterval = 65;
+		$timeNow = date("Y-m-d H:i:s");
+		$maxLine = log::getConfig('maxLineLog');
+		// Récupération du niveau de log du log Connection :: 100 = debug | 200 = info | 300 = warning | 400 = error (default) | 1000 = none
+		$level = log::getLogLevel('connection');
+		$levelName = log::convertLogLevel($level);
 
-      }
-     */
+		// Récupération des emojis
+		$emojiWarning = discordlink::getIcon("lastUser_warning");
+		$emojiMagRight = discordlink::getIcon("lastUser_mag_right");
+		$emojiMag = discordlink::getIcon("lastUser_mag");
+		$emojiCheck = discordlink::getIcon("lastUser_check");
+		$emojiInternet = discordlink::getIcon("lastUser_internet");
+		$emojiConnected = discordlink::getIcon("lastUser_connected");
+		$emojiDisconnected = discordlink::getIcon("lastUser_disconnected");
+		$emojiIcon = discordlink::getIcon("lastUser_icon");
 
-    /*
-     * Non obligatoire mais ca permet de déclencher une action après modification de variable de configuration
-    public static function postConfig_<Variable>() {
-    }
-     */
 
-    /*
-     * Non obligatoire mais ca permet de déclencher une action avant modification de variable de configuration
-    public static function preConfig_<Variable>() {
-    }
-     */
+		if ($level > 200) {
+			$logLevelWarning = "\n" . "\n" . $emojiWarning . "Plus d'informations ? " . $emojiWarning . "\n" . "veuillez mettre le log **connection** sur **info** dans *Configuration/Logs* (niveau actuel : **" . $levelName . "**)";
+		} else {
+			$logLevelWarning = "";
+		}
+		$offlineDelay = 10;
+		$timestampNow = strtotime($timeNow);
+		$connectedUserNames = array();
+		$connectedUserDates = array();
+		$connectedUserStatuses = array();
 
-    /*     * **********************Getteur Setteur*************************** */
+		foreach (user::all() as $user) {
+			$lastDate = $user->getOptions('lastConnection');
+			if (empty($lastDate)) {
+				$lastDate = "1970-01-01 00:00:00";
+			}
+
+			$status = 'hors ligne';
+			if (($timestampNow - strtotime($lastDate)) < ($offlineDelay * 60)) {
+				$status = 'en ligne';
+			}
+
+			// Stockage dans les tableaux pour usage ultérieur
+			$connectedUserNames[] = $user->getLogin();
+			$connectedUserDates[] = $lastDate;
+			$connectedUserStatuses[] = $status;
+		}
+
+		// Récupération des lignes du log Connection
+		$delta = log::getDelta('connection', 0, '', false, false, 0, $maxLine);
+		$connectionLogs = array();
+		if (isset($delta['logText']) && !empty($delta['logText'])) {
+			$lines = explode("\n", $delta['logText']);
+			$connectionLogs = array_reverse(array_filter($lines));
+		}
+
+		$logUserIndex = 0;
+		$lastLogConnectionName = '';
+		if (is_array($connectionLogs)) {
+			foreach ($connectionLogs as $value) {
+				// Format attendu: [2026-01-16 18:46:50] INFO  Connexion de l'utilisateur par clef : admin
+				if (preg_match('/^\[(.*?)\]\s+INFO\s+(.*)\s:\s(.*)$/', $value, $matches)) {
+					$currentLogDate = $matches[1];
+					$currentLogMsg = $matches[2];
+					$currentLogUser = strtolower(trim($matches[3]));
+
+					// Vérification de la date
+					if (strtotime($timeNow) - strtotime($currentLogDate) > $cronInterval) {
+						if ($logUserIndex == 0) {
+							$message = "\n" . "**Pas de connexion** ces **" . $cronInterval . "** dernières secondes !";
+						}
+						break;
+					}
+
+					$logUserIndex++;
+					$connectionLogDates[$logUserIndex] = $currentLogDate;
+					$connectionLogNames[$logUserIndex] = $currentLogUser;
+
+					// Détermination du type de connexion
+					if (strpos($currentLogMsg, 'clef') !== false) {
+						$connectionLogTypes[$logUserIndex] = 'clef';
+					} elseif (strpos($currentLogMsg, 'API') !== false) {
+						$connectionLogTypes[$logUserIndex] = 'api';
+					} else {
+						$connectionLogTypes[$logUserIndex] = 'navigateur';
+					}
+
+					if ($logUserIndex == 1) {
+						$message .= "\n" . $emojiMagRight . "__Récapitulatif de ces " . $cronInterval . " dernières secondes :__ " . $emojiMag;
+					}
+
+					$onlineCount++;
+					$message .= "\n" . $emojiCheck . "**" . $connectionLogNames[$logUserIndex] . "** s'est connecté par **" . $connectionLogTypes[$logUserIndex] . "** à **" . date("H", strtotime($connectionLogDates[$logUserIndex])) . "h" . date("i", strtotime($connectionLogDates[$logUserIndex])) . "**";
+
+					$hasCronActivity = true;
+
+					// Évite les doublons consécutifs dans le log pour le même utilisateur
+					if ($lastLogConnectionName === $connectionLogNames[$logUserIndex]) {
+						continue;
+					}
+					$lastLogConnectionName = $connectionLogNames[$logUserIndex];
+
+					// Mise à jour du statut des utilisateurs
+					$foundCount = 0;
+					foreach ($connectedUserNames as $key => $userName) {
+						if ($connectionLogNames[$logUserIndex] == $userName) {
+							$foundCount++;
+							if ($connectedUserStatuses[$key] == 'hors ligne') {
+								$connectedUserDates[$key] = $connectionLogDates[$logUserIndex];
+								$connectedUserStatuses[$key] = 'en ligne';
+							}
+						}
+					}
+
+					// Ajout nouvel utilisateur si non trouvé
+					if ($foundCount == 0) {
+						$connectedUserNames[] = $connectionLogNames[$logUserIndex];
+						$connectedUserDates[] = $connectionLogDates[$logUserIndex];
+						$connectedUserStatuses[] = 'en ligne';
+						$connectedUserIPs[] = ''; // Initialiser IP pour éviter warning plus tard
+					}
+				}
+			}
+		}
+
+		$sessions = listSession();
+
+		$message .= "\n" . "\n" . $emojiMagRight . "__Récapitulatif des sessions actuelles :__ " . $emojiMag;
+		// Parcours des sessions pour vérifier le statut et le nombre de sessions
+		foreach ($connectedUserNames as $userIndex => $userName) {
+			$sessionIndex = 0;
+			$foundCount = 0;
+			$connectedUserStatuses[$userIndex] = 'hors ligne';
+			$connectedUserIPs[$userIndex] = '';
+
+			foreach ($sessions as $id => $session) {
+				$sessionIndex++;
+
+				$userDelay = strtotime(date("Y-m-d H:i:s")) - strtotime($session['datetime']);
+
+				if ($userName == $session['login']) {
+					if ($userDelay < $offlineDelay * 60) {
+						$foundCount++;
+						$onlineCount++;
+						$connectedUserStatuses[$userIndex] = 'en ligne';
+						$connectedUserIPs[$userIndex] .= "\n" . "-> " . $emojiInternet . " IP : " . $session['ip'];
+					} else {
+					}
+				}
+			}
+			$connectTimestamp = strtotime($connectedUserDates[$userIndex]);
+			if (date("Y-m-d", $connectTimestamp) == date("Y-m-d", $timestampNow)) {
+				$date = date("H\hi", $connectTimestamp);
+			} else {
+				$date = date_fr(date("l d F Y", $connectTimestamp)) . "** à **" . date("H\hi", $connectTimestamp);
+			}
+			if ($foundCount > 0) {
+				$message .= "\n" . $emojiConnected . " **" . $userName . "** est **en ligne** depuis **" . $date . "**";
+				$message .= $connectedUserIPs[$userIndex];
+			} else {
+				if (strtotime($timeNow) - strtotime($connectedUserDates[$userIndex]) < ($daysBeforeUserRemoval * 24 * 60 * 60)) {
+					$message .= "\n" . $emojiDisconnected . " **" . $userName . "** est **hors ligne** (dernière connexion **" . $date . "**)";
+				}
+			}
+		}
+
+		// Préparation des tags de notification
+		$title = $emojiIcon . 'CONNEXIONS ' . $emojiIcon;
+		return array(
+			'title' => $title,
+			'message' => $message . $logLevelWarning,
+			'nbEnLigne' => $onlineCount,
+			'cronOk' => $hasCronActivity
+		);
+	}
+
+	/*     * ********************** Getter Setter *************************** */
 }
 class discordlinkCmd extends cmd {
 
-		/*     * *************************Attributs****************************** */
+	/*     * ************************* Attributes ****************************** */
+
+	/*     * *********************** Static Methods *************************** */
 
 
-		/*     * ***********************Methode static*************************** */
+	/*     * ********************* Instance Methods ************************* */
 
-
-		/*     * *********************Methode d'instance************************* */
-
-		/*
+	/*
 		 * Non obligatoire permet de demander de ne pas supprimer les commandes même si elles ne sont pas dans la nouvelle configuration de l'équipement envoyé en JS
 		  public function dontRemoveCmd() {
 		  return true;
 		  }
 		 */
 
-		public function execute($_options = null) {
-			if ($this->getLogicalId() == 'refresh') {
-				$this->getEqLogic()->refresh();
-				return;
-			}
-
-			$deamon = discordlink::deamon_info();
-			if ($deamon['state'] == 'ok') {
-				$request = $this->buildRequest($_options);
-				if ($request != 'truesendwithembed') {
-					log::add('discordlink', 'debug', 'Envoi de ' . $request);
-					$request_http = new com_http($request);
-					$request_http->setAllowEmptyReponse(true);//Autorise les réponses vides
-					if ($this->getConfiguration('noSslCheck') == 1) $request_http->setNoSslCheck(true);
-					if ($this->getConfiguration('doNotReportHttpError') == 1) $request_http->setNoReportError(true);
-					if (isset($_options['speedAndNoErrorReport']) && $_options['speedAndNoErrorReport'] == true) {// option non activée
-						$request_http->setNoReportError(true);
-						$request_http->exec(0.1, 1);
-						return;
-					}
-					$result = $request_http->exec($this->getConfiguration('timeout', 6), $this->getConfiguration('maxHttpRetry', 1));//Time out à 3s 3 essais
-					if (!$result) throw new Exception(__('Serveur injoignable', __FILE__));
-					return true;
-				} else {
-					return true;
-				}
-			}
-			return false;
+	public function execute($_options = null) {
+		if ($this->getLogicalId() == 'refresh') {
+			$this->getEqLogic()->refresh();
+			return;
 		}
 
-		private function buildRequest($_options = array()) {
-			if ($this->getType() != 'action') return $this->getConfiguration('request');
-			$cmdANDarg = explode('?', $this->getConfiguration('request'), 2);
-			if (count($cmdANDarg) > 1)
-				list($command, $arguments) = $cmdANDarg;
-			else {
-				$command=$this->getConfiguration('request');
-				$arguments="";
-			}
-			switch ($command) {
-				case 'sendMsg':
-				case 'sendMsgTTS':
-					$request = $this->build_ControledeSliderSelectMessage($_options);
-				break;
-				case 'sendEmbed':
-					$request = $this->build_ControledeSliderSelectEmbed($_options);
-				break;
-				case 'sendFile':
-					$request = $this->build_ControledeSliderSelectFile($_options);
-				break;
-				case 'deamonInfo':
-					$request = $this->build_deamonInfo($_options);
-				break;
-				case 'dependanceInfo':
-					$request = $this->build_dependanceInfo($_options);
-				break;
-				case 'globalSummary':
-					$request = $this->build_globalSummary($_options);
-				break;
-				case 'batteryinfo':
-					$request = $this->build_baterieglobal($_options);
-				break;
-				case 'objectSummary':
-					$request = $this->build_objectSummary($_options);
-				break;
-				case 'zwave':
-					$request = $this->build_zwave($_options);
-				break;
-				case 'centreMsg':
-					$request = $this->build_centreMsg($_options);
-				break;
-				case 'LastUser':
-					$request = $this->build_LastUser($_options);
-				break;
-				case 'covidSend':
-					$request = $this->build_CovidSend($_options);
-					break;
-				case 'deleteMessage':
-					$request = 'clearChannel?'; 
-					break;
-				default:
-					$request = '';
-				break;
-			}
-			if ($request != 'truesendwithembed') {
-				$request = scenarioExpression::setTags($request);
-				if (trim($request) == '') throw new Exception(__('Commande inconnue ou requête vide : ', __FILE__) . print_r($this, true));
-				$channelID=str_replace("_player", "", $this->getEqLogic()->getConfiguration('channelid'));
-				return 'http://' . config::byKey('internalAddr') . ':3466/' . $request . '&channelID=' . $channelID;
+		$deamon = discordlink::deamon_info();
+		if ($deamon['state'] == 'ok') {
+			$request = $this->buildRequest($_options);
+			if ($request != 'requestHandledInternally') {
+				log::add('discordlink', 'debug', 'Envoi de ' . $request);
+				$request_http = new com_http($request);
+				$request_http->setAllowEmptyReponse(true); //Autorise les réponses vides
+				if ($this->getConfiguration('noSslCheck') == 1) $request_http->setNoSslCheck(true);
+				if ($this->getConfiguration('doNotReportHttpError') == 1) $request_http->setNoReportError(true);
+				if (isset($_options['speedAndNoErrorReport']) && $_options['speedAndNoErrorReport'] == true) { // option non activée
+					$request_http->setNoReportError(true);
+					$request_http->exec(0.1, 1);
+					return;
+				}
+				$result = $request_http->exec($this->getConfiguration('timeout', 6), $this->getConfiguration('maxHttpRetry', 1)); //Time out à 3s 3 essais
+				if (!$result) throw new Exception(__('Serveur injoignable', __FILE__));
+				return true;
 			} else {
-				return $request;
+				return true;
 			}
 		}
-
-		private function build_ControledeSliderSelectMessage($_options = array(), $default = "Une erreur est survenue") {
-
-			$request = $this->getConfiguration('request');
-			if ((isset($_options['message'])) && ($_options['message'] == "")) $_options['message'] = $default;
-			if (!(isset($_options['message']))) $_options['message'] = "";
-			$_options['message']=str_replace("|","\n",$_options['message']);
-			$request = str_replace(array('#message#'), array(urlencode(self::decodeTexteAleatoire($_options['message']))), $request);
-			log::add('discordlink_node', 'info', '---->RequestFinale:'.$request);
-			return $request;
-		}
-
-		private function build_ControledeSliderSelectFile($_options = array(), $default = "Une erreur est survenu") {
-			$patch = "null";
-			$nameFile = "null";
-			$message = "null";
-
-			$request = $this->getConfiguration('request');
-			if ((isset($_options['patch'])) && ($_options['patch'] == "")) $_options['patch'] = $default;
-			if (!(isset($_options['patch']))) $_options['patch'] = "";
-
-			if (isset($_options['files']) && is_array($_options['files'])) {
-				foreach ($_options['files'] as $file) {
-					if (version_compare(phpversion(), '5.5.0', '>=')) {
-						$patch = $file;
-						$files = new CurlFile($file);
-						$nameexplode = explode('.',$files->getFilename());
-						log::add('discordlink', 'info', $_options['title'].' taille : '.$nameexplode[sizeof($nameexplode)-1]);
-						$nameFile = (isset($_options['title']) ? $_options['title'].'.'.$nameexplode[sizeof($nameexplode)-1] : $files->getFilename());
-					}
-				}
-				$message = $_options['message'];
-
-			} else {
-				$patch = $_options['patch'];
-				$nameFile = $_options['Name_File'];
-			}
-
-			$request = str_replace(array('#message#'),
-			array(urlencode(self::decodeTexteAleatoire($message))), $request);
-			$request = str_replace(array('#name#'),
-			array(urlencode(self::decodeTexteAleatoire($nameFile))), $request);
-			$request = str_replace(array('#patch#'),
-			array(urlencode(self::decodeTexteAleatoire($patch))), $request);
-
-			log::add('discordlink_node', 'info', '---->RequestFinale:'.$request);
-			return $request;
-		}
-
-		private function build_ControledeSliderSelectEmbed($_options = array(), $default = "Une erreur est survenue") {
-
-			$request = $this->getConfiguration('request');
-
-			$titre = "null";
-			$url = "null";
-			$description = "null";
-			$footer = "null";
-			$field = "null";
-			$colors = "null";
-			$timeout = "null";
-			$countanswer = "null";
-			$quickreply = "null";
-			$defaultColor = $this->getEqLogic()->getDefaultColor();
-
-			if (isset($_options['answer'])) {
-				if (("" != ($_options['title']))) $titre = $_options['title'];
-				$colors = "#1100FF";
-
-				if ($_options['answer'][0] != "") {
-					$answer = $_options['answer'];
-					$timeout = $_options['timeout'];
-					$description = "";
-
-					$a = 0;
-					$url = "[";
-					$choix = [":regional_indicator_a:", ":regional_indicator_b:", ":regional_indicator_c:", ":regional_indicator_d:", ":regional_indicator_e:", ":regional_indicator_f:", ":regional_indicator_g:", ":regional_indicator_h:", ":regional_indicator_i:", ":regional_indicator_j:", ":regional_indicator_k:", ":regional_indicator_l:", ":regional_indicator_m:", ":regional_indicator_n:", ":regional_indicator_o:", ":regional_indicator_p:", ":regional_indicator_q:", ":regional_indicator_r:", ":regional_indicator_s:", ":regional_indicator_t:", ":regional_indicator_u:", ":regional_indicator_v:", ":regional_indicator_w:", ":regional_indicator_x:", ":regional_indicator_y:", ":regional_indicator_z:"];
-					while ($a < count($answer)) {
-						$description .= $choix[$a] . " : " . $answer[$a];
-						$description .= "
-";
-						$url .= '"' . $answer[$a] . '",';
-						$a++;
-					}
-					$url = rtrim($url, ',');
-					$url .= ']';
-					$countanswer = count($answer);
-				} else {
-					$timeout = $_options['timeout'];
-					$countanswer = 0;
-					$description = "Votre prochain message sera la réponse.";
-					$url = "text";
-				}
-			} else {
-				if (isset($_options['Titre'])) if (("" != ($_options['Titre']))) $titre = $_options['Titre'];
-				if (isset($_options['url'])) if (("" != ($_options['url']))) $url = $_options['url'];
-				if (isset($_options['description'])) if (("" != ($_options['description']))) $description = $_options['description'];
-				if (isset($_options['footer'])) if (("" != ($_options['footer']))) $footer = $_options['footer'];
-				if (isset($_options['colors'])) if (("" != ($_options['colors']))) $colors = $_options['colors'];
-				if (isset($_options['field'])) if (("" != ($_options['field']))) $field = json_encode($_options['field']);
-				if (isset($_options['quickreply'])) if (("" != ($_options['quickreply']))) $quickreply = $_options['quickreply'];
-			}
-
-			$description = discordlink::emojyconvert($description);
-			log::add('discordlink', 'debug', 'description : '.$description);
-
-			$description = str_replace("|","\n",$description);
-
-			$request = str_replace(array('#title#'),
-			array(urlencode(self::decodeTexteAleatoire($titre))), $request);
-			$request = str_replace(array('#url#'),
-			array(urlencode(self::decodeTexteAleatoire($url))), $request);
-			$request = str_replace(array('#description#'),
-			array(urlencode(self::decodeTexteAleatoire($description))), $request);
-			$request = str_replace(array('#footer#'),
-			array(urlencode(self::decodeTexteAleatoire($footer))), $request);
-			$request = str_replace(array('#countanswer#'),
-			array(urlencode(self::decodeTexteAleatoire($countanswer))), $request);
-			$request = str_replace(array('#field#'),
-			array(urlencode(self::decodeTexteAleatoire($field))), $request);
-			$request = str_replace(array('#color#'),
-			array(urlencode(self::decodeTexteAleatoire($colors))), $request);
-			$request = str_replace(array('#defaultColor#'),
-			array(urlencode(self::decodeTexteAleatoire($defaultColor))), $request);
-			$request = str_replace(array('#timeout#'),
-			array(urlencode(self::decodeTexteAleatoire($timeout))), $request);
-			$request = str_replace(array('#quickreply#'),
-			array(urlencode(self::decodeTexteAleatoire($quickreply))), $request);
-
-			log::add('discordlink_node', 'info', '---->RequestFinale:'.$request);
-			return $request;
-		}
-
-		public static function decodeTexteAleatoire($_text) {
-			$return = $_text;
-			if (strpos($_text, '|') !== false && strpos($_text, '[') !== false && strpos($_text, ']') !== false) {
-				$replies = interactDef::generateTextVariant($_text);
-				$random = rand(0, count($replies) - 1);
-				$return = $replies[$random];
-			}
-			preg_match_all('/{\((.*?)\) \?(.*?):(.*?)}/', $return, $matches, PREG_SET_ORDER, 0);
-			$replace = array();
-			if (is_array($matches) && count($matches) > 0) {
-				foreach ($matches as $match) {
-					if (count($match) != 4) {
-						continue;
-					}
-					$replace[$match[0]] = (jeedom::evaluateExpression($match[1])) ? trim($match[2]) : trim($match[3]);
-				}
-			}
-			return str_replace(array_keys($replace), $replace, $return);
-		}
-
-		public function build_deamonInfo($_options = array()) {
-			$message='';
-			$colors = '#00ff08';
-
-			foreach(plugin::listPlugin(true) as $plugin){
-				if($plugin->getHasOwnDeamon() && config::byKey('deamonAutoMode', $plugin->getId(), 1) == 1) {
-					$deamon_info = $plugin->deamon_info();
-					if ($deamon_info['state'] != 'ok') {
-						$message .='|'.discordlink::geticon("deamon_nok").$plugin->getName().' ('.$plugin->getId().')';
-						if ($colors != '#ff0000') $colors = '#ff0000';
-					} else {
-						$message .='|'.discordlink::geticon("deamon_ok").$plugin->getName().' ('.$plugin->getId().')';
-					}
-
-					if ($plugin->getId() == 'blea') {
-						if (discordlink::testplugin('blea')) {
-							$remotes = blea_remote::all();
-							foreach ($remotes as $remote) {
-								$last = $remote->getCache('lastupdate','0');
-								if ($last == '0' || time() - strtotime($last)>65){
-									$message .='|'.discordlink::geticon("deamon_nok").' Antenne BLEA : '.$remote->getRemoteName();
-									if ($colors != '#ff0000') $colors = '#ff0000';
-								} else {
-									$message .='|'.discordlink::geticon("deamon_ok").' Antenne BLEA : '.$remote->getRemoteName();
-								}
-							}
-						}
-					}
-
-				}
-			}
-
-			if (isset($_options['cron']) AND $colors == '#00ff08') return 'truesendwithembed';
-			$message=str_replace("|","\n",$message);
-			$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-			$_options = array('Titre'=>'Etat des démons', 'description'=> $message, 'colors'=> $colors, 'footer'=> 'By DiscordLink');
-			$cmd->execCmd($_options);
-			return 'truesendwithembed';
-		}
-
-		public function build_dependanceInfo($_options = array()) {
-			$message='';
-			$colors = '#00ff08';
-
-			foreach(plugin::listPlugin(true) as $plugin){
-				if($plugin->getHasDependency()) {
-					$dependency_info = $plugin->dependancy_info();
-					if ($dependency_info['state'] == 'ok') {
-						$message .='|'.discordlink::geticon("dep_ok").$plugin->getName().' ('.$plugin->getId().')';
-					} elseif ($dependency_info['state'] == 'in_progress') {
-						$message .='|'.discordlink::geticon("dep_progress").$plugin->getName().' ('.$plugin->getId().')';
-						if ($colors == '#00ff08') $colors = '#ffae00';
-					} else {
-						$message .='|'.discordlink::geticon("dep_nok").' ('.$plugin->getId().')';
-						if ($colors != '#ff0000') $colors = '#ff0000';
-					}
-
-				}
-			}
-
-			if (isset($_options['cron']) && $colors == '#00ff08') return 'truesendwithembed';
-			$message=str_replace("|","\n",$message);
-			$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-			$_options = array('Titre'=>'Etat des dépendances', 'description'=> $message, 'colors'=> $colors, 'footer'=> 'By DiscordLink');
-			$cmd->execCmd($_options);
-			return 'truesendwithembed';
-		}
-
-		public function build_globalSummary($_options = array()) {
-
-			$objects = jeeObject::all();
-			$def = config::byKey('object:summary');
-			$values = array();
-			$message='';
-			foreach ($def as $key => $value) {
-				$result ='';
-				$result = jeeObject::getGlobalSummary($key);
-				if ($result == '') continue;
-				$message .='|'.discordlink::geticon($key).' *** '. $result.' '.$def[$key]['unit'] .' ***		('.$def[$key]['name'].')';
-			}
-				$message=str_replace("|","\n",$message);
-				$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-				$_options = array('Titre'=>'Résumé général', 'description'=> $message, 'colors'=> '#0033ff', 'footer'=> 'By DiscordLink');
-				$cmd->execCmd($_options);
-
-			return 'truesendwithembed';
-		}
-
-		public function build_baterieglobal($_options = array()) {
-			$message='null';
-			$colors = '#00ff08';
-			$seuil_alert = 30;
-			$seuil_critique = 10;
-			$nb_alert = 0;
-			$nb_critique = 0;
-			$nb_battery = 0;
-			$nb_total = 0;
-			$nb_ligne = 0;
-
-			$eqLogics = eqLogic::all(true);
-			$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-
-			$list_battery = '';
-			foreach($eqLogics as $eqLogic)
-			{
-				$nb_total = $nb_total + 1;
-				if((is_numeric(eqLogic::byId($eqLogic->getId())->getStatus('battery')) == 1)) {
-					$nb_battery = $nb_battery + 1;
-					if(eqLogic::byId($eqLogic->getId())->getStatus('battery') <= $seuil_alert) {
-						if(eqLogic::byId($eqLogic->getId())->getStatus('battery') <= $seuil_critique) {
-
-							$list_battery .= "\n".discordlink::geticon("batterie_nok").substr($eqLogic->getHumanName(), strrpos($eqLogic->getHumanName(), '[',-1) + 1, -1) . ' => __***' . eqLogic::byId($eqLogic->getId())->getStatus('battery') . "%***__";
-							$nb_critique = $nb_critique + 1;
-							if ($colors != '#ff0000') $colors = '#ff0000';
-						} else {
-							$list_battery .= "\n".discordlink::geticon("batterie_progress").substr($eqLogic->getHumanName(), strrpos($eqLogic->getHumanName(), '[',-1) + 1, -1) . ' =>  __***' . eqLogic::byId($eqLogic->getId())->getStatus('battery') . "%***__";
-							$nb_alert = $nb_alert + 1;
-							if ($colors == '#00ff08') $colors = '#ffae00';
-						}
-					} else {
-						$list_battery = $list_battery . "\n" .discordlink::geticon("batterie_ok"). substr($eqLogic->getHumanName(), strrpos($eqLogic->getHumanName(), '[',-1) + 1, -1) . ' =>  __***' . eqLogic::byId($eqLogic->getId())->getStatus('battery') . "%***__";
-					}
-
-					if ($nb_ligne == 20) {
-						$message = $list_battery;
-						$message=str_replace("|","\n",$message);
-						$_options = array('Titre'=>'Résumé Batteries : ', 'description'=> $message, 'colors'=> $colors, 'footer'=> 'By DiscordLink');
-						$cmd->execCmd($_options);
-						$nb_ligne = 0;
-						$list_battery = '';
-						$message = '';
-					}
-					$nb_ligne++;
-				}
-			}
-
-			$message = $list_battery;
-			$message=str_replace("|","\n",$message);
-			$_options = array('Titre'=>'Résumé Batteries : ', 'description'=> $message, 'colors'=> $colors, 'footer'=> 'By DiscordLink');
-			$cmd->execCmd($_options);
-
-			$message2 = "Batterie en alerte : __***" . $nb_alert . "***__\n Batterie critique : __***".$nb_critique."***__";
-
-			$message2=str_replace("|","\n",$message2);
-			$_options2 = array('Titre'=>'Résumé Batterie', 'description'=> $message2, 'colors'=> $colors, 'footer'=> 'By DiscordLink');
-			$cmd->execCmd($_options2);
-
-			return 'truesendwithembed';
-		}
-
-		public function build_objectSummary($_options = array()) {
-
-			$idobject = $_options['select'];
-			log::add('discordlink', 'debug', 'idobject : '.$idobject);
-			$object = jeeObject::byId($idobject);
-			$def = config::byKey('object:summary');
-			$message='';
-			foreach ($def as $key => $value) {
-				$result = '';
-				$result = $object->getSummary($key);
-				if ($result == '') continue;
-				$message .='|'.discordlink::geticon($key).' *** '. $result.' '.$def[$key]['unit'] .' ***		('.$def[$key]['name'].')';
-			}
-				$message=str_replace("|","\n",$message);
-				$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-				$_options = array('Titre'=>'Résumé : '.$object->getname(), 'description'=> $message, 'colors'=> '#0033ff', 'footer'=> 'By DiscordLink');
-				$cmd->execCmd($_options);
-
-			return 'truesendwithembed';
-		}
-
-		public function build_zwave($_options = array()) {
-
-			if (discordlink::testplugin('openzwave')) {
-				$message = '';
-				$colors = '#00ff08';
-				$maxTime = $this->getEqLogic()->getConfiguration('TempMax', 43200);
-				$_format = 'Y-m-d H:M:S';
-				$eqLogics = eqLogic::byType('openzwave');
-				foreach($eqLogics as $eqLogic) {
-					$zwaveexclude = $this->getEqLogic()->getConfiguration('zwaveIdExclude', '');
-					if (!(strpos($zwaveexclude, $eqLogic->getLogicalId()) !== false)) {
-						$maxDate = date($_format, "1970-1-1 00:00:00");
-						$collectDate = strtotime($eqLogic->getStatus('lastCommunication', date($_format)));
-						//$scenario->setLog( 'Commande ' . $cmd->getHumanName() . ' - ' . $collectDate);
-						$maxDate = max($maxDate, $collectDate);
-						$elapsedTime = time() - $maxDate;
-						if ($elapsedTime >= $maxTime) {
-							$message .= "|".discordlink::geticon("zwave_nok"). " ". $eqLogic->getName(). ' ('.$elapsedTime.')';
-							if ($colors != '#ff0000') $colors = '#ff0000';
-						} else {
-							$message .= "|".discordlink::geticon("zwave_ok"). " ". $eqLogic->getName().' ('.$elapsedTime.')';
-						}
-					}
-				}
-				// log fin de traitement
-				if (isset($_options['cron']) && $colors == '#00ff08') return 'truesendwithembed';
-				$message=str_replace("|","\n",$message);
-				$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-				$_options = array('Titre'=>'Zwave Info ', 'description'=> $message, 'colors'=> $colors, 'footer'=> 'By DiscordLink');
-				$cmd->execCmd($_options);
-			}
-			return 'truesendwithembed';
-		}
-
-		public function build_centreMsg($_options = array()) {
-
-			// Parcours de tous les Updates
-				$listUpdate = "";
-				$nbMaj = 0;
-				$msgBloq = "";
-				$nbMajBloq = 0;
-				foreach (update::all() as $update) {
-					$monUpdate = $update->getName();
-					$statusUpdate = strtolower($update->getStatus());
-					$configUpdate = $update->getConfiguration('doNotUpdate');
-					if ($configUpdate == 1) {
-						$configUpdate = " **(MaJ bloquée)**";
-						$nbMajBloq++;
-					}else{$configUpdate = "";}
-					if ($statusUpdate == "update") {
-						$nbMaj++;
-						if ($listUpdate == ""){ $listUpdate = $nbMaj."- ".$monUpdate.$configUpdate; } else {$listUpdate .= "\n".$nbMaj."- ".$monUpdate.$configUpdate;}
-					}
-				}
-				if ($nbMajBloq == 0) {
-					$msgBloq = "";
-				} elseif ($nbMajBloq == 1) {
-					$msgBloq = " (dont **".$nbMajBloq."** bloquée)";
-				} else {
-					$msgBloq = " (dont **".$nbMajBloq."** bloquées)";
-				}
-
-				// Message selon le nombre de mises à jours
-				if ($nbMaj == 0) {
-					$msg = "*Vous n'avez pas de mises à jour en attente !*";
-				}elseif  ($nbMaj == 1) {
-					$msg = "*Vous avez **".$nbMaj."** mise à jour en attente".$msgBloq." :*"."\n".$listUpdate;
-				} else {
-					$msg = "*Vous avez **".$nbMaj."** mises à jour en attente".$msgBloq." :*"."\n".$listUpdate;
-				}
-
-				$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-				$_options = array('Titre'=>':gear: CENTRE DE MISES A JOUR :gear:', 'description'=> $msg, 'colors'=> '#ff0000', 'footer'=> 'By jcamus86');
-				$cmd->execCmd($_options);
-
-				// -------------------------------------------------------------------------------------- //
-				$msg = "";
-				$nbMsg = 0;
-				$nbMsgMax = 5;		//Nombre de messages par bloc de notification
-				$MsgBloc = 1;
-				$listMessage = message::all();
-				foreach ($listMessage as $message){
-					$nbMsg++;
-					if (!($nbMsg <= $nbMsgMax)){
-						$nbMsg = 1;
-						$MsgBloc = $MsgBloc + 1;
-					}
-
-					$msg[$MsgBloc] .= "[".$message->getDate()."]";
-					$msg[$MsgBloc] .= " (".$message->getPlugin().") :";
-					$msg[$MsgBloc] .= "\n" ;
-					($message->getAction() != "") ? $msg[$MsgBloc] .= " (Action : ".$message->getAction().")" : null;
-					$msg[$MsgBloc] .= " ".$message->getMessage()."\n";
-					$msg[$MsgBloc] .= "\n" ;
-					$msg[$MsgBloc] = html_entity_decode($msg[$MsgBloc], ENT_QUOTES | ENT_HTML5);
-				}
-
-				// Message selon le nombre de messages
-				if ($nbMsg == 0){
-					$i=1;
-					$msg = "*Le centre de message est vide !*";
-					$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-					$_options = array('Titre'=>':clipboard: CENTRE DE MESSAGES :clipboard:', 'description'=> $msg, 'colors'=> '#ff8040', 'footer'=> 'By Jcamus86');
-					$cmd->execCmd($_options);
-				}else{
-					$i=0;
-					foreach ($msg as $value){
-						$i++;
-						$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-						$_options = array('Titre'=>':clipboard: CENTRE DE MESSAGES '.$i.'/'.count($msg).' :clipboard:', 'description'=> $value, 'colors'=> '#ff8040', 'footer'=> 'By Jcamus86');
-						$cmd->execCmd($_options);
-					}
-				}
-
-			return 'truesendwithembed';
-		}
-
-		public function build_LastUser($_options = array()) {
-			$result = discordMsg::LastUser();
-			if (isset($_options['cron']) && !$result['cronOk']) return 'truesendwithembed';
-			$message=str_replace("|","\n",$result['Message']);
-			$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-			$_options = array('Titre'=>$result['Titre'], 'description'=> $message, 'colors'=> '#ff00ff', 'footer'=> 'By Yasu et Jcamus86');
-			$cmd->execCmd($_options);
-			return 'truesendwithembed';
-		}
-
-		public function build_CovidSend($_options = array()) {
-
-			$motif = "travail";
-			$datesortie = "Maintenant";
-			$heuresortie = "Maintenant";
-
-			$users = config::byKey('user', 'discordlink');
-			$user = $_options['user'];
-			$user = $users[$user];
-			log::add('discordlink', 'debug', 'Users '.json_encode($users));
-			log::add('discordlink', 'debug', 'User '.json_encode($user));
-
-			$nom = $user['nomUser'];
-			$prenom = $user['prenomUser'];
-			$datenaissance = $user['dateNaissanceUser'];
-			$villenaissance = $user['villeNaissanceUser'];
-
-			if (("" != ($_options['motif']))) $motif = $_options['motif'];
-			if (("" != ($_options['datesortie']))) $datesortie = $_options['datesortie'];
-			if (("" != ($_options['heuresortie']))) $heuresortie = $_options['heuresortie'];
-
-			$result = discordlinkCovid::generateCovid($prenom,$nom,$datenaissance,$villenaissance,$motif,$datesortie,$heuresortie);
-			$message=str_replace("|","\n","[Attestation Covid]($result)");
-
-			$fields = array(
-				array("name"=> "Nom", "value" => $nom, "inline" => 1),
-				array("name"=> "Prénom", "value" => $prenom, "inline" => 1),
-				array("name"=> "Motif", "value" => $motif, "inline" => 0),
-				array("name"=> "Date", "value" => $datesortie, "inline" => 0),
-				array("name"=> "Heure", "value" => $heuresortie, "inline" => 0)
-			);
-
-			$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-			$_options = array('Titre'=>"Votre attestation Covid", 'description'=> $message, 'colors'=> '#ff00ff', 'footer'=> 'By Noodom & Thibaut', 'field'=> $fields);
-			$cmd->execCmd($_options);
-			return 'truesendwithembed';
-		}
-
-		public function getWidgetTemplateCode($_version = 'dashboard', $_clean = true, $_widgetName = '') {
-			$data = null;
-			if ($_version != 'scenario') return parent::getWidgetTemplateCode($_version, $_clean, $_widgetName);
-			
-			list($command, ) = explode('?', $this->getConfiguration('request'), 2);
-			if ($command == 'sendMsg')
-				$data = getTemplate('core', 'scenario', 'cmd.sendMsg', 'discordlink');
-			if ($command == 'sendMsgTTS')
-				$data = getTemplate('core', 'scenario', 'cmd.sendMsgtts', 'discordlink');
-			if ($command == 'sendEmbed')
-				$data = getTemplate('core', 'scenario', 'cmd.sendEmbed', 'discordlink');
-			if ($command == 'sendFile')
-				$data = getTemplate('core', 'scenario', 'cmd.sendFile', 'discordlink');
-			if ($command == 'covidSend')
-				$data = getTemplate('core', 'scenario', 'cmd.covidSend', 'discordlink');
-			
-			$defaultColor = $this->getEqLogic()->getDefaultColor();
-			$replace = [
-				'#defaultColor#'  => $defaultColor,
-				'#defaultTitle#' => '',
-				'#defaultDescription#' => '',
-				'#defaultUrl#' => '',	
-				'#defaultFooter#' => '',	
-			 ] ;
-			$data = str_replace(array_keys($replace), array_values($replace), $data);
-			
-			if (!is_null($data)) {
-				if (version_compare(jeedom::version(),'4.2.0','>=')) {
-					 if(!is_array($data)) return array('template' => $data, 'isCoreWidget' => false);
-				} else return $data;
-			}
-			return parent::getWidgetTemplateCode($_version, $_clean, $_widgetName);
-		}
-
-		/*     * **********************Getteur Setteur*************************** */
+		return false;
 	}
-?>
+
+	private function buildRequest($_options = array()) {
+		if ($this->getType() != 'action') return $this->getConfiguration('request');
+
+		$cmdAndArg = explode('?', $this->getConfiguration('request'), 2);
+		$command = $cmdAndArg[0];
+
+		$commandMap = array(
+			'sendMsg' => 'buildMessageRequest',
+			'sendMsgTTS' => 'buildMessageRequest',
+			'sendEmbed' => 'buildEmbedRequest',
+			'sendFile' => 'buildFileRequest',
+			'daemonInfo' => 'buildDaemonInfo',
+			'dependencyInfo' => 'buildDependencyInfo',
+			'globalSummary' => 'buildGlobalSummary',
+			'batteryInfo' => 'buildGlobalBattery',
+			'objectSummary' => 'buildObjectSummary',
+			'messageCenter' => 'buildMessageCenter',
+			'lastUser' => 'buildLastUser',
+			'deleteMessage' => 'clearChannel?'
+		);
+
+		if (isset($commandMap[$command])) {
+			$request = is_callable(array($this, $commandMap[$command]))
+				? $this->{$commandMap[$command]}($_options)
+				: $commandMap[$command];
+		} else {
+			$request = '';
+		}
+
+		if ($request == 'requestHandledInternally') return $request;
+
+		$request = scenarioExpression::setTags($request);
+		if (trim($request) == '') {
+			throw new Exception(__('Commande inconnue ou requête vide : ', __FILE__) . print_r($this, true));
+		}
+
+		$channelID = str_replace('_player', '', $this->getEqLogic()->getConfiguration('channelId'));
+		return discordlink::getDaemonBaseURL() . '/' . $request . '&channelID=' . $channelID;
+	}
+
+	private function buildMessageRequest($_options = array(), $default = "Une erreur est survenue") {
+		$message = isset($_options['message']) && $_options['message'] != '' ? $_options['message'] : $default;
+		$message = str_replace('|', "\n", $message);
+		$request = str_replace('#message#', urlencode(self::decodeRandomText($message)), $this->getConfiguration('request'));
+		log::add('discordlink', 'info', 'Final Request :: ' . $request);
+		return $request;
+	}
+
+	private function buildFileRequest($_options = array(), $default = "Une erreur est survenu") {
+		$patch = "null";
+		$fileName = "null";
+		$message = "null";
+
+		$request = $this->getConfiguration('request');
+		if ((isset($_options['path'])) && ($_options['path'] == "")) $_options['path'] = $default;
+		if (!(isset($_options['path']))) $_options['path'] = "";
+
+		if (isset($_options['files']) && is_array($_options['files'])) {
+			foreach ($_options['files'] as $file) {
+				if (version_compare(phpversion(), '5.5.0', '>=')) {
+					$filePath = $file;
+					$files = new CurlFile($file);
+					$fileNameParts = explode('.', $files->getFilename());
+					log::add('discordlink', 'info', $_options['title'] . ' taille : ' . $fileNameParts[sizeof($fileNameParts) - 1]);
+					$fileDisplay = (isset($_options['title']) ? $_options['title'] . '.' . $fileNameParts[sizeof($fileNameParts) - 1] : $files->getFilename());
+				}
+			}
+			$message = $_options['message'];
+		} else {
+			$filePath = $_options['path'];
+			$fileDisplay = $_options['displayName'];
+		}
+
+		$request = str_replace(
+			array('#message#'),
+			array(urlencode(self::decodeRandomText($message))),
+			$request
+		);
+		$request = str_replace(
+			array('#name#'),
+			array(urlencode(self::decodeRandomText($fileDisplay))),
+			$request
+		);
+		$request = str_replace(
+			array('#patch#'),
+			array(urlencode(self::decodeRandomText($filePath))),
+			$request
+		);
+
+		log::add('discordlink', 'info', 'Final Request :: ' . $request);
+		return $request;
+	}
+
+	private function buildEmbedRequest($_options = array(), $default = "Une erreur est survenue") {
+
+		$request = $this->getConfiguration('request');
+
+		// Initialisation de toutes les variables à chaîne vide
+		$title = "";
+		$url = "";
+		$description = "";
+		$footer = "";
+		$colors = "";
+		$field = "";
+		$timeout = "";
+		$countanswer = "";
+		$quickreply = "";
+
+		/** @var discordlink $eqLogic */
+		$eqLogic = $this->getEqLogic();
+		$defaultColor = $eqLogic->getDefaultColor();
+
+		if (isset($_options['answer'])) {
+			if (("" != ($_options['title']))) $title = $_options['title'];
+			$colors = "#1100FF";
+
+			if ($_options['answer'][0] != "") {
+				$answer = $_options['answer'];
+				$timeout = $_options['timeout'];
+				$description = "";
+
+				$a = 0;
+				$url = "[";
+				$choices = [":regional_indicator_a:", ":regional_indicator_b:", ":regional_indicator_c:", ":regional_indicator_d:", ":regional_indicator_e:", ":regional_indicator_f:", ":regional_indicator_g:", ":regional_indicator_h:", ":regional_indicator_i:", ":regional_indicator_j:", ":regional_indicator_k:", ":regional_indicator_l:", ":regional_indicator_m:", ":regional_indicator_n:", ":regional_indicator_o:", ":regional_indicator_p:", ":regional_indicator_q:", ":regional_indicator_r:", ":regional_indicator_s:", ":regional_indicator_t:", ":regional_indicator_u:", ":regional_indicator_v:", ":regional_indicator_w:", ":regional_indicator_x:", ":regional_indicator_y:", ":regional_indicator_z:"];
+				while ($a < count($answer)) {
+					$description .= $choices[$a] . " : " . $answer[$a];
+					$description .= "
+";
+					$url .= '"' . $answer[$a] . '",';
+					$a++;
+				}
+				$url = rtrim($url, ',');
+				$url .= ']';
+				$countanswer = count($answer);
+			} else {
+				$timeout = $_options['timeout'];
+				$countanswer = 0;
+				$description = "Votre prochain message sera la réponse.";
+				$url = "text";
+			}
+		} else {
+			if (!empty($_options['title'])) $title = $_options['title'];
+			if (!empty($_options['url'])) $url = $_options['url'];
+			if (!empty($_options['description'])) $description = $_options['description'];
+			// Support du champ 'message' comme alias de 'description' (pour le bouton test dashboard)
+			if (!empty($_options['message']) && empty($description)) $description = $_options['message'];
+			if (!empty($_options['footer'])) $footer = $_options['footer'];
+			if (!empty($_options['colors'])) $colors = $_options['colors'];
+			if (!empty($_options['field'])) $field = json_encode($_options['field']);
+			if (!empty($_options['quickreply'])) $quickreply = $_options['quickreply'];
+		}
+
+		$description = discordlink::emojiConvert($description);
+		log::add('discordlink', 'debug', 'description : ' . $description);
+		$description = str_replace('|', "\n", $description);
+
+		// Si aucune couleur n'est définie, utiliser la couleur par défaut
+		if (empty($colors)) {
+			$colors = $defaultColor;
+		}
+
+		// Remplacement des variables
+		$replacements = array(
+			'#title#' => $title,
+			'#url#' => $url,
+			'#description#' => $description,
+			'#footer#' => $footer,
+			'#countanswer#' => $countanswer,
+			'#field#' => $field,
+			'#color#' => $colors,
+			'#timeout#' => $timeout,
+			'#quickreply#' => $quickreply
+		);
+
+		foreach ($replacements as $key => $value) {
+			$request = str_replace($key, urlencode(self::decodeRandomText($value)), $request);
+		}
+
+		log::add('discordlink', 'info', 'Final Request :: ' . $request);
+		return $request;
+	}
+
+	public static function decodeRandomText($_text) {
+		$return = $_text;
+		if (strpos($_text, '|') !== false && strpos($_text, '[') !== false && strpos($_text, ']') !== false) {
+			$replies = interactDef::generateTextVariant($_text);
+			$random = rand(0, count($replies) - 1);
+			$return = $replies[$random];
+		}
+		preg_match_all('/{\((.*?)\) \?(.*?):(.*?)}/', $return, $matches, PREG_SET_ORDER, 0);
+		$replace = array();
+		if (is_array($matches) && count($matches) > 0) {
+			foreach ($matches as $match) {
+				if (count($match) != 4) {
+					continue;
+				}
+				$replace[$match[0]] = (jeedom::evaluateExpression($match[1])) ? trim($match[2]) : trim($match[3]);
+			}
+		}
+		return str_replace(array_keys($replace), $replace, $return);
+	}
+
+	public function buildDaemonInfo($_options = array()) {
+		$message = '';
+		$colors = '#00ff08';
+
+		foreach (plugin::listPlugin(true) as $plugin) {
+			if ($plugin->getHasOwnDeamon() && config::byKey('deamonAutoMode', $plugin->getId(), 1) == 1) {
+				$daemonInfo = $plugin->deamon_info();
+				if ($daemonInfo['state'] != 'ok') {
+					$message .= '|' . discordlink::getIcon("deamon_nok") . $plugin->getName() . ' (' . $plugin->getId() . ')';
+					if ($colors != '#ff0000') $colors = '#ff0000';
+				} else {
+					$message .= '|' . discordlink::getIcon("deamon_ok") . $plugin->getName() . ' (' . $plugin->getId() . ')';
+				}
+			}
+		}
+
+		if (isset($_options['cron']) and $colors == '#00ff08') {
+			log::add('discordlink', 'debug', 'Vérification démons pour ' . $this->getEqLogic()->getName() . ' : Tous les démons sont OK, pas de notification Discord');
+			return 'requestHandledInternally';
+		}
+		$message = str_replace("|", "\n", $message);
+		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
+		$_options = array('title' => 'Etat des démons', 'description' => $message, 'colors' => $colors, 'footer' => 'By DiscordLink');
+		$cmd->execCmd($_options);
+		return 'requestHandledInternally';
+	}
+
+	public function buildDependencyInfo($_options = array()) {
+		$message = '';
+		$colors = '#00ff08';
+
+		foreach (plugin::listPlugin(true) as $plugin) {
+			if ($plugin->getHasDependency()) {
+				$dependencyInfo = $plugin->dependancy_info();
+				if ($dependencyInfo['state'] == 'ok') {
+					$message .= '|' . discordlink::getIcon("dep_ok") . $plugin->getName() . ' (' . $plugin->getId() . ')';
+				} elseif ($dependencyInfo['state'] == 'in_progress') {
+					$message .= '|' . discordlink::getIcon("dep_progress") . $plugin->getName() . ' (' . $plugin->getId() . ')';
+					if ($colors == '#00ff08') $colors = '#ffae00';
+				} else {
+					$message .= '|' . discordlink::getIcon("dep_nok") . ' (' . $plugin->getId() . ')';
+					if ($colors != '#ff0000') $colors = '#ff0000';
+				}
+			}
+		}
+
+		if (isset($_options['cron']) && $colors == '#00ff08') {
+			log::add('discordlink', 'debug', 'Vérification dépendances pour ' . $this->getEqLogic()->getName() . ' : Toutes les dépendances sont OK, pas de notification Discord');
+			return 'requestHandledInternally';
+		}
+		$message = str_replace("|", "\n", $message);
+		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
+		$_options = array('title' => 'Etat des dépendances', 'description' => $message, 'colors' => $colors, 'footer' => 'By DiscordLink');
+		$cmd->execCmd($_options);
+		return 'requestHandledInternally';
+	}
+
+	public function buildGlobalSummary($_options = array()) {
+
+		$objects = jeeObject::all();
+		$def = config::byKey('object:summary');
+		if (!is_array($def)) {
+			log::add('discordlink', 'error', 'Configuration object:summary invalide ou non définie');
+			$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
+			$_options = array('title' => 'Erreur', 'description' => '⚠️ Configuration des résumés non initialisée. Veuillez vérifier votre configuration Jeedom.', 'colors' => '#ff0000');
+			$cmd->execCmd($_options);
+			return 'requestHandledInternally';
+		}
+		$values = array();
+		$message = '';
+		foreach ($def as $key => $value) {
+			$result = '';
+			$result = jeeObject::getGlobalSummary($key);
+			if ($result == '') continue;
+			$message .= '|' . discordlink::getIcon($key) . ' *** ' . $result . ' ' . $def[$key]['unit'] . ' ***		(' . $def[$key]['name'] . ')';
+		}
+		$message = str_replace("|", "\n", $message);
+		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
+		$_options = array('title' => 'Résumé général', 'description' => $message, 'colors' => '#0033ff', 'footer' => 'By DiscordLink');
+		$cmd->execCmd($_options);
+
+		return 'requestHandledInternally';
+	}
+
+	public function buildGlobalBattery($_options = array()) {
+		$message = 'null';
+		$colors = '#00ff08';
+		$alertThreshold = 30;
+		$criticalThreshold = 10;
+		$alertCount = 0;
+		$criticalCount = 0;
+		$batteryCount = 0;
+		$totalCount = 0;
+		$maxLength = 1800; // Limite Discord ~2000, on garde une marge
+
+		$eqLogics = eqLogic::all(true);
+		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
+
+		$batteryList = '';
+		foreach ($eqLogics as $eqLogic) {
+			$totalCount++;
+			$battery = $eqLogic->getStatus('battery');
+
+			if (!is_numeric($battery)) continue;
+
+			$batteryCount++;
+			$name = substr($eqLogic->getHumanName(), strrpos($eqLogic->getHumanName(), '[', -1) + 1, -1);
+
+			if ($battery <= $criticalThreshold) {
+				$line = "\n" . discordlink::getIcon("batterie_nok") . $name . ' => __***' . $battery . "%***__";
+				$criticalCount++;
+				$colors = '#ff0000';
+			} elseif ($battery <= $alertThreshold) {
+				$line = "\n" . discordlink::getIcon("batterie_progress") . $name . ' =>  __***' . $battery . "%***__";
+				$alertCount++;
+				if ($colors == '#00ff08') $colors = '#ffae00';
+			} else {
+				$line = "\n" . discordlink::getIcon("batterie_ok") . $name . ' =>  __***' . $battery . "%***__";
+			}
+
+			// Vérifier si l'ajout de cette ligne dépasserait la limite
+			if (strlen($batteryList . $line) > $maxLength) {
+				$_options = array('title' => 'Résumé Batteries : ', 'description' => str_replace("|", "\n", $batteryList), 'colors' => $colors, 'footer' => 'By DiscordLink');
+				$cmd->execCmd($_options);
+				$batteryList = '';
+			}
+
+			$batteryList .= $line;
+		}
+
+		$_options = array('title' => 'Résumé Batteries : ', 'description' => str_replace("|", "\n", $batteryList), 'colors' => $colors, 'footer' => 'By DiscordLink');
+		$cmd->execCmd($_options);
+
+		$message2 = "Batterie en alerte : __***" . $alertCount . "***__\n Batterie critique : __***" . $criticalCount . "***__";
+		$_options2 = array('title' => 'Résumé Batterie', 'description' => str_replace("|", "\n", $message2), 'colors' => $colors, 'footer' => 'By DiscordLink');
+		$cmd->execCmd($_options2);
+
+		return 'requestHandledInternally';
+	}
+
+	public function buildObjectSummary($_options = array()) {
+		$objectId = $_options['select'];
+		log::add('discordlink', 'debug', 'objectId : ' . $objectId);
+		$object = jeeObject::byId($objectId);
+		$def = config::byKey('object:summary');
+		if (!is_array($def)) {
+			log::add('discordlink', 'error', 'Configuration object:summary invalide ou non définie');
+			$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
+			$_options = array('title' => 'Erreur', 'description' => '⚠️ Configuration des résumés non initialisée. Veuillez vérifier votre configuration Jeedom.', 'colors' => '#ff0000');
+			$cmd->execCmd($_options);
+			return 'requestHandledInternally';
+		}
+		$message = '';
+		foreach ($def as $key => $value) {
+			$result = '';
+			$result = $object->getSummary($key);
+			if ($result == '') continue;
+			$message .= '|' . discordlink::getIcon($key) . ' *** ' . $result . ' ' . $def[$key]['unit'] . ' ***		(' . $def[$key]['name'] . ')';
+		}
+		$message = str_replace("|", "\n", $message);
+		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
+		$_options = array('title' => 'Résumé : ' . $object->getName(), 'description' => $message, 'colors' => '#0033ff', 'footer' => 'By DiscordLink');
+		$cmd->execCmd($_options);
+
+		return 'requestHandledInternally';
+	}
+
+	public function buildMessageCenter($_options = array()) {
+		// Parcours de tous les Updates
+		$updateList = "";
+		$updateCount = 0;
+		$blockedMsg = "";
+		$blockedUpdateCount = 0;
+		foreach (update::all() as $update) {
+			$updateName = $update->getName();
+			$statusUpdate = strtolower($update->getStatus());
+			$updateConfig = $update->getConfiguration('doNotUpdate');
+
+			if ($updateConfig == 1) {
+				$updateConfig = " **(MaJ bloquée)**";
+				$blockedUpdateCount++;
+			} else {
+				$updateConfig = "";
+			}
+
+			if ($statusUpdate == "update") {
+				$updateCount++;
+				$updateList .= ($updateList == "" ? "" : "\n") . $updateCount . "- " . $updateName . $updateConfig;
+			}
+		}
+
+		// Message de blocage
+		$blockedMsg = $blockedUpdateCount == 0 ? "" : " (dont **" . $blockedUpdateCount . "** bloquée" . ($blockedUpdateCount > 1 ? "s" : "") . ")";
+
+		// Message selon le nombre de mises à jour
+		if ($updateCount == 0) {
+			$msg = "*Vous n'avez pas de mises à jour en attente !*";
+		} else {
+			$pluriel = $updateCount > 1 ? "s" : "";
+			$msg = "*Vous avez **" . $updateCount . "** mise" . $pluriel . " à jour en attente" . $blockedMsg . " :*\n" . $updateList;
+		}
+
+		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
+		$_options = array('title' => ':gear: CENTRE DE MISES A JOUR :gear:', 'description' => $msg, 'colors' => '#ff0000', 'footer' => 'By DiscordLink');
+		$cmd->execCmd($_options);
+
+		// -------------------------------------------------------------------------------------- //
+		$msg = array();
+		$messageCount = 0;
+		$maxMessagesPerBatch = 5;		//Nombre de messages par bloc de notification
+		$batchNumber = 1;
+		$messageList = message::all();
+		foreach ($messageList as $message) {
+			$messageCount++;
+			if (!($messageCount <= $maxMessagesPerBatch)) {
+				$messageCount = 1;
+				$batchNumber = $batchNumber + 1;
+			}
+
+			$msg[$batchNumber] .= "[" . $message->getDate() . "]";
+			$msg[$batchNumber] .= " (" . $message->getPlugin() . ") :";
+			$msg[$batchNumber] .= "\n";
+			($message->getAction() != "") ? $msg[$batchNumber] .= " (Action : " . $message->getAction() . ")" : null;
+			$msg[$batchNumber] .= " " . $message->getMessage() . "\n";
+			$msg[$batchNumber] .= "\n";
+			$msg[$batchNumber] = html_entity_decode($msg[$batchNumber], ENT_QUOTES | ENT_HTML5);
+		}
+
+		if ($messageCount == 0) {
+			$_options = array('title' => ':clipboard: CENTRE DE MESSAGES :clipboard:', 'description' => "*Le centre de message est vide !*", 'colors' => '#ff8040', 'footer' => 'By DiscordLink');
+			$cmd->execCmd($_options);
+		} else {
+			$i = 0;
+			foreach ($msg as $value) {
+				$i++;
+				$_options = array('title' => ':clipboard: CENTRE DE MESSAGES ' . $i . '/' . count($msg) . ' :clipboard:', 'description' => $value, 'colors' => '#ff8040', 'footer' => 'By DiscordLink');
+				$cmd->execCmd($_options);
+			}
+		}
+
+		return 'requestHandledInternally';
+	}
+
+	public function buildLastUser($_options = array()) {
+		$result = discordlink::getLastUserConnections();
+		if (isset($_options['cron']) && !$result['cronOk']) return 'requestHandledInternally';
+
+		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
+		$_options = array('title' => $result['title'], 'description' => str_replace("|", "\n", $result['message']), 'colors' => '#ff00ff', 'footer' => 'By DiscordLink');
+		$cmd->execCmd($_options);
+		return 'requestHandledInternally';
+	}
+
+	public function getWidgetTemplateCode($_version = 'dashboard', $_clean = true, $_widgetName = '') {
+		if ($_version != 'scenario') return parent::getWidgetTemplateCode($_version, $_clean, $_widgetName);
+
+		list($command,) = explode('?', $this->getConfiguration('request'), 2);
+		$data = '';
+		if ($command == 'sendMsg')
+			$data = getTemplate('core', 'scenario', 'cmd.sendMsg', 'discordlink');
+		if ($command == 'sendMsgTTS')
+			$data = getTemplate('core', 'scenario', 'cmd.sendMsgtts', 'discordlink');
+		if ($command == 'sendEmbed')
+			$data = getTemplate('core', 'scenario', 'cmd.sendEmbed', 'discordlink');
+		if ($command == 'sendFile')
+			$data = getTemplate('core', 'scenario', 'cmd.sendFile', 'discordlink');
+
+		if (preg_match_all('/{{(.*?)}}/', $data, $matches)) {
+			foreach ($matches[1] as $match) {
+				$data = str_replace('{{' . $match . '}}', __($match, __FILE__), $data);
+			}
+		}
+
+		/** @var discordlink $eqLogic */
+		$eqLogic = $this->getEqLogic();
+		$defaultColor = $eqLogic->getDefaultColor();
+		$replace = [
+			'#defaultColor#' => $defaultColor,
+			'#defaultTitle#' => '',
+			'#defaultUrl#' => '',
+			'#defaultDescription#' => '',
+			'#defaultFooter#' => '',
+			'#defaultPath#' => '',
+			'#defaultDisplayName#' => '',
+		];
+		$data = str_replace(array_keys($replace), array_values($replace), $data);
+
+		if (!is_null($data)) {
+			if (!is_array($data)) return array('template' => $data, 'isCoreWidget' => false);
+		}
+		return parent::getWidgetTemplateCode($_version, $_clean, $_widgetName);
+	}
+	/*     * ********************** Getter Setter *************************** */
+}

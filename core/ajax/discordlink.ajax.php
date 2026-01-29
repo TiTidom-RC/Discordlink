@@ -20,79 +20,84 @@ try {
     require_once dirname(__FILE__) . '/../../../../core/php/core.inc.php';
     include_file('core', 'authentification', 'php');
 
-//    if (!isConnect('admin')) {
-//        throw new Exception(__('401 - Accès non autorisé', __FILE__));
-//    }
+    if (!isConnect('admin')) {
+        throw new Exception(__('401 - Accès non autorisé', __FILE__));
+    }
     ajax::init();
-    
-    if (init('action') == 'saveemojy') {
 
-        $arrayemojy = init('arrayemojy');
-        $emojyconfig = array();
-
-        foreach ($arrayemojy as $emojy) {
-            $key = $emojy['keyEmojy'];
-            $emojyconfig[$key] = $emojy['codeEmojy'];
+    if (init('action') == 'saveEmoji') {
+        
+        // Handle JSON string input 
+        $rawEmoji = init('arrayEmoji');
+        if (is_string($rawEmoji)) {
+             $arrayEmoji = json_decode($rawEmoji, true);
+        } else {
+             $arrayEmoji = $rawEmoji;
         }
-        //$emojy = json_encode($emojyconfig);
-        config::save('emojy', $emojyconfig, 'discordlink');
+
+        if (!is_array($arrayEmoji)) {
+             log::add('discordlink', 'error', 'AJAX saveEmoji: Data is not an array.');
+             ajax::error('Data format error');
+        }
+        
+        $emojiConfig = array();
+
+        foreach ($arrayEmoji as $emoji) {
+            $key = $emoji['keyEmoji'];
+            $emojiConfig[$key] = $emoji['codeEmoji'];
+        }
+        
+        config::save('emoji', $emojiConfig, 'discordlink');
         ajax::success();
     }
 
-    if (init('action') == 'saveUser') {
-        $arrayUser = init('arrayUser');
-        $userConfig = array();
-
-        foreach ($arrayUser as $user) {
-            $key = $user['prenomUser']."_".$user['nomUser'];
-            $userConfig[$key] = $user;
+    if (init('action') == 'getChannels') {
+        if (discordlink::deamon_info()['state'] != 'ok') {
+            throw new Exception('Le démon n\'est pas démarré. Veuillez le démarrer avant de rafraîchir les channels.');
         }
 
-        config::save('user', $userConfig, 'discordlink');
-        ajax::success();
-    }
-
-    if (init('action') == 'getemojy') {
-        $emojyarray = config::byKey('emojy', 'discordlink');
-        $emojycommandetable = array();
-        foreach ($emojyarray as $key => $emojy) {
-            $emojycmdligne = array('keyEmojy' => $key, 'codeEmojy' => $emojy);
-            array_push($emojycommandetable,  $emojycmdligne);
+        $channels = discordlink::getChannel();
+        // Force IDs to string to avoid snowflake precision issues in JSON/JS
+        foreach ($channels as &$channel) {
+            $channel['id'] = (string)$channel['id'];
         }
-        $emojy = $emojycommandetable;
-        ajax::success($emojy);
-    }
+        unset($channel); // Break reference
 
-    if (init('action') == 'getuser') {
-        /** @var array $users **/
-        $users = config::byKey('user', 'discordlink', array());
-        $userscommandetable = array();
-
-        foreach ($users as $user) {
-            array_push($userscommandetable, $user);
+        $result = array('channels' => $channels);
+        
+        $id = init('id');
+        if (!empty($id) && is_numeric($id)) {
+            $eqLogic = eqLogic::byId($id);
+            if (is_object($eqLogic)) {
+                $result['current'] = (string)$eqLogic->getConfiguration('channelId');
+            }
         }
-
-        ajax::success($userscommandetable);
+        
+        ajax::success($result);
     }
 
-    if (init('action') == 'getuserArray') {
-        $users = config::byKey('user', 'discordlink');
-
-        ajax::success($users);
+    if (init('action') == 'getEmoji') {
+        $emojiArray = config::byKey('emoji', 'discordlink');
+        if (!is_array($emojiArray)) {
+            ajax::success(array());
+            return;
+        }
+        $emojiCommandTable = array();
+        foreach ($emojiArray as $key => $emoji) {
+            $emojiCmdLine = array('keyEmoji' => $key, 'codeEmoji' => $emoji);
+            array_push($emojiCommandTable,  $emojiCmdLine);
+        }
+        $emoji = $emojiCommandTable;
+        ajax::success($emoji);
     }
 
-    if (init('action') == 'getinvite') {
-        $invite = discordlink::getinvite();
-        ajax::success($invite);
-    }
-
-    if (init('action') == 'resetemojy') {
-        discordlink::setemojy(1);
+    if (init('action') == 'resetEmoji') {
+        discordlink::setEmoji(1);
         ajax::success();
     }
 
     throw new Exception(__('Aucune méthode correspondante à : ', __FILE__) . init('action'));
-    /*     * *********Catch exeption*************** */
+    /*     * ***** Catch exception ***** */
 } catch (Exception $e) {
     ajax::error(displayException($e), $e->getCode());
 }

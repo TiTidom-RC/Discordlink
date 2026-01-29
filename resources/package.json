@@ -1,30 +1,30 @@
 {
-  "name": "Jeedom_DiscordLink",
-  "version": "1.0.0",
+  "name": "jeedom-discord",
+  "version": "2.0.0",
   "private": true,
-  "description": "Ceci est le bot relié au plugin Discord Link sur Jeedom",
+  "description": "Bot Discord pour le plugin Discord Link sur Jeedom - Migré vers Discord.js v14",
   "main": "discordlink.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node discordlink.js"
   },
-  "author": "Thibaut Trarbach",
-  "license": "ISC",
+  "author": "TiTidom",
+  "license": "GPL-3.0",
   "dependencies": {
-    "discord.js": "^12.5.3",
-    "express": "^4.17.1",
+    "discord.js": "^14.16.3",
+    "express": "^4.19.2",
     "extend": "^3.0.2",
-    "http-proxy-middleware": "^1.2.0",
-    "http-proxy-response-rewrite": "0.0.1",
-    "https": "^1.0.0",
-    "node-fetch": "^2.6.1",
-    "querystring": "^0.2.1"
+    "http-proxy-middleware": "^2.0.6",
+    "http-proxy-response-rewrite": "0.0.1"
+  },
+  "optionalDependencies": {
+    "bufferutil": "^4.0.8",
+    "utf-8-validate": "^6.0.4"
+  },
+  "engines": {
+    "node": ">=22.0.0"
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/trmaud/discordlink.git"
-  },
-  "optionalDependencies": {
-    "bufferutil": "^4.0.3",
-    "utf-8-validate": "^5.0.4"
+    "url": "git://github.com/TiTidom-RC/plugin-discordlink.git"
   }
 }

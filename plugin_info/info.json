@@ -1,23 +1,49 @@
 {
-	"id" : "discordlink",
-	"name" : "Discord Link",
-	"description" : "Le plugin Discord Link permet d’envoyer des messages sur son serveur Discord : - Messages Classiques - Messages Evolués - Messages TTS - Gestion des Channels ( Salon ) - Fonction ASK Fonction - Envoi de Fichiers - Compatible avec les interactions de Jeedom - Fonction Etat des Démons de Jeedom - Fonction Etat des Dépendances des plugins Jeedom - Fonction Etat du résumé global.",
-	"licence" : "AGPL",
-	"author" : "Thibaut Trarbach",
-	"require" : "4.3",
-	"category" : "communication",
-	"hasDependency" : true,
-	"hasOwnDeamon" : true,
-	"maxDependancyInstallTime" : 600,
-    "os": {
-      "min":11
-    },
-	"changelog" : "https://domotechdiscord.github.io/Docs/discordlink/fr_FR/changelog",
-	"documentation" : "https://domotechdiscord.github.io/Docs/discordlink/fr_FR/",
-	"link" : {
-		"forum":"https://community.jeedom.com/t/plugin-tiers-discord-link-actualites/26528?u=titi_titi",
-		"video" : "https://www.youtube.com/watch?v=DinkR8TcGes"
+	"id": "discordlink",
+	"name": "Discord Link",
+	"pluginVersion": "2.0.9",
+	"description": {
+		"fr_FR": "Le plugin DiscordLink permet d'envoyer des messages sur son serveur Discord : messages standards, évolués, TTS - Gestion des Channels (Salons) - Fonction ASK - Envoi de Fichiers - Compatible avec les interactions de Jeedom - Fonction état des Démons de Jeedom - Fonction état des Dépendances des plugins Jeedom - Fonction état du résumé global.",
+		"en_US": "The DiscordLink plugin allows you to send messages to your Discord server: standard messages, advanced messages, TTS - Channel management - ASK function - File sending - Compatible with Jeedom interactions - Jeedom Daemon status function - Jeedom plugin dependency status function - Global summary status function.",
+		"es_ES": "El complemento DiscordLink permite enviar mensajes a su servidor Discord: mensajes estándar, avanzados, TTS - Gestión de canales (salas) - Función ASK - Envío de archivos - Compatible con las interacciones de Jeedom - Función de estado de los demonios de Jeedom - Función de estado de las dependencias de los complementos de Jeedom - Función de estado del resumen global.",
+		"de_DE": "Mit dem Plugin DiscordLink können Nachrichten an den Discord-Server gesendet werden: Standardnachrichten, erweiterte Nachrichten, TTS – Verwaltung von Kanälen (Chatrooms) – ASK-Funktion – Senden von Dateien – Kompatibel mit Jeedom-Interaktionen – Statusfunktion der Jeedom-Daemons – Statusfunktion der Abhängigkeiten der Jeedom-Plugins – Statusfunktion der globalen Zusammenfassung.",
+		"it_IT": "Il plugin DiscordLink consente di inviare messaggi sul proprio server Discord: messaggi standard, avanzati, TTS - Gestione dei canali (salotti) - Funzione ASK - Invio di file - Compatibile con le interazioni di Jeedom - Funzione stato dei demoni di Jeedom - Funzione stato delle dipendenze dei plugin Jeedom - Funzione stato del riepilogo globale.",
+		"pt_PT": "O plugin DiscordLink permite enviar mensagens para o seu servidor Discord: mensagens padrão, avançadas, TTS - Gestão de Canais (Salas) - Função ASK - Envio de Ficheiros - Compatível com as interações do Jeedom - Função de estado dos Daemons do Jeedom - Função de estado das Dependências dos plugins Jeedom - Função de estado do resumo global."
 	},
-	"language" : ["fr_FR"],
-	"compatibility" : ["atlas","smart","rpi","docker","diy", "v4"]
+	"utilization": "Ce plugin nécessite la création d'une 'Application' Discord et d'un 'Bot' associé depuis le portail développeur Discord.",
+	"licence": "AGPL",
+	"author": "TiTidom",
+	"require": "4.4.2",
+	"category": "communication",
+	"hasDependency": true,
+	"hasOwnDeamon": true,
+	"maxDependancyInstallTime": 600,
+	"os": {
+		"min": 11
+	},
+	"changelog": "https://titidom-rc.github.io/Documentation/fr_FR/DiscordLink/changelog",
+	"changelog_beta": "https://titidom-rc.github.io/Documentation/fr_FR/DiscordLink/beta/changelog",
+	"documentation": "https://titidom-rc.github.io/Documentation/fr_FR/DiscordLink/index",
+	"documentation_beta": "https://titidom-rc.github.io/Documentation/fr_FR/DiscordLink/index",
+	"link": {
+		"forum": "https://community.jeedom.com/tag/plugin-discordlink",
+		"video": ""
+	},
+	"language": [
+		"de_DE",
+		"en_US",
+		"es_ES",
+		"fr_FR",
+		"it_IT",
+		"pt_PT"
+	],
+	"compatibility": [
+		"atlas",
+		"smart",
+		"rpi",
+		"docker",
+		"diy",
+		"mobile",
+		"v4"
+	]
 }

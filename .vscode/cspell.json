@@ -1,0 +1,45 @@
+{
+  "version": "0.2",
+  "language": "en,fr",
+  "enableFiletypes": [
+    "php",
+    "javascript",
+    "json",
+    "markdown"
+  ],
+  "words": [
+    "ajax",
+    "commandtab",
+    "countanswer",
+    "DEFINI",
+    "discordlink",
+    "Eqlogic",
+    "eqlogictab",
+    "esversion",
+    "Etat",
+    "getchannel",
+    "Hexa",
+    "interrobang",
+    "isset",
+    "jeediscordlink",
+    "Msgtts",
+    "nohup",
+    "pgrep",
+    "pkill",
+    "quickreply",
+    "Reponse"
+  ],
+  "ignoreWords": [],
+  "ignoreRegExpList": [
+    "/\\\\x\\{[0-9A-F]+\\}/gi",
+    "/0x[0-9A-F]+/gi",
+    "/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi"
+  ],
+  "ignorePaths": [
+    "node_modules/**",
+    ".git/**",
+    "resources/node_modules/**",
+    "**/*.min.js",
+    "**/*.min.css"
+  ]
+}

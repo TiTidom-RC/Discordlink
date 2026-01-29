@@ -1,0 +1,117 @@
+{
+    "plugins\/discordlink\/core\/ajax\/discordlink.ajax.php": {
+        "401 - Accès non autorisé": "401 - Acesso não autorizado",
+        "Aucune méthode correspondante à : ": "Nenhum método correspondente a: "
+    },
+    "plugins\/discordlink\/core\/class\/discordlink.class.php": {
+        "' . $match . '": "' . $match . '",
+        "(.*?)": "(.*?)",
+        "Commande inconnue ou requête vide : ": "Comando desconhecido ou pedido vazio: ",
+        "Expression cron non valide pour ": "Expressão cron inválida para ",
+        "Serveur injoignable": "Servidor inacessível",
+        "Veuillez vérifier la configuration": "Verifique a configuração"
+    },
+    "plugins\/discordlink\/core\/php\/jeediscordlink.php": {
+        "Vous n\\'êtes pas autorisé à effectuer cette action": "Não tem permissão para realizar esta ação"
+    },
+    "plugins\/discordlink\/core\/template\/scenario\/cmd.sendEmbed.html": {
+        "Sélectionner la commande": "Selecionar o comando"
+    },
+    "plugins\/discordlink\/core\/template\/scenario\/cmd.sendFile.html": {
+        "Sélectionner la commande": "Selecionar o comando"
+    },
+    "plugins\/discordlink\/core\/template\/scenario\/cmd.sendMsg.html": {
+        "Sélectionner la commande": "Selecionar o comando"
+    },
+    "plugins\/discordlink\/core\/template\/scenario\/cmd.sendMsgtts.html": {
+        "Sélectionner la commande": "Selecionar o comando"
+    },
+    "plugins\/discordlink\/desktop\/js\/discordlink.js": {
+        "Afficher": "Exibir",
+        "Choisir une icône": "Escolher um ícone",
+        "Emojis": "Emojis",
+        "Historiser": "Historizar",
+        "Inverser": "Inverter",
+        "Max": "Max",
+        "Min": "Min",
+        "Nom de la commande": "Nome do comando",
+        "Supprimer la commande": "Remover o comando",
+        "Tester": "Testar",
+        "Unité": "Unidade"
+    },
+    "plugins\/discordlink\/desktop\/modal\/emoji.discordlink.php": {
+        "401 - Accès non autorisé": "401 - Acesso não autorizado",
+        "Actions": "Ações",
+        "Ajouter Emoji": "Adicionar Emoji",
+        "Cle Emoji": "Chave Emoji",
+        "Code Emoji": "Código Emoji",
+        "Reset Emoji": "Redefinir Emoji",
+        "Sauvegarder": "Guardar"
+    },
+    "plugins\/discordlink\/desktop\/php\/discordlink.php": {
+        "401 - Accès non autorisé": "401 - Acesso não autorizado",
+        "Actions": "Ações",
+        "Activer": "Ativar",
+        "Activer la Vérification": "Ativar a verificação",
+        "Ajouter": "Adicionar",
+        "Ajouter une commande": "Adicionar um comando",
+        "Annonce sur Discord les connexions des utilisateurs Jeedom": "Anúncio no Discord das ligações dos utilizadores Jeedom",
+        "Annoncer les connexions": "Anunciar ligações",
+        "Aucun": "Nenhuma",
+        "Catégorie": "Categoria",
+        "Channel": "Canal",
+        "Commandes": "Comandos",
+        "Configuration": "Configuração",
+        "Configuration Discord": "Configuração do Discord",
+        "Configuration avancée": "Configuração avançada",
+        "Connexions": "Ligações",
+        "Conserve les messages des 2 derniers jours et efface automatiquement les plus anciens": "Guarda as mensagens dos últimos 2 dias e apaga automaticamente as mais antigas",
+        "Couleur par défaut": "Cor padrão",
+        "Couleur que prendra un message enrichi par défaut": "Cor que uma mensagem enriquecida assumirá por predefinição",
+        "Cron": "Cron",
+        "Cron de vérification": "Cron de verificação",
+        "Description": "Descrição",
+        "DiscordLink": "DiscordLink",
+        "Dupliquer": "Duplicar",
+        "Démons": "Demónios",
+        "Dépendances": "Dependências",
+        "Emojis": "Emojis",
+        "Etat": "Estado",
+        "Fréquence de vérification des démons (format cron)": "Frequência de verificação dos daemons (formato cron)",
+        "Fréquence de vérification des dépendances (format cron)": "Frequência de verificação das dependências (formato cron)",
+        "Gestion": "Gestão",
+        "Informations": "Informações",
+        "Interactions avec Jeedom": "Interações com Jeedom",
+        "Mes Channels": "Os meus canais",
+        "Nettoyage": "Limpeza",
+        "Nettoyage automatique": "Limpeza automática",
+        "Nom": "Nome",
+        "Nom de l'équipement": "Nome do equipamento",
+        "Nom du channel": "Nome do canal",
+        "Notifications": "Notificações",
+        "Objet parent": "Objeto pai",
+        "Options": "Opções",
+        "Paramètres généraux": "Parâmetros gerais",
+        "Personnalisation": "Personalização",
+        "Rafraîchir les channels": "Atualizar os canais",
+        "Rechercher": "Pesquisar",
+        "Sauvegarder": "Guardar",
+        "Supprimer": "Remover",
+        "Surveille l'installation des dépendances de tous les plugins Jeedom et envoie un état des lieux": "Monitoriza a instalação das dependências de todos os plugins Jeedom e envia um relatório do estado atual",
+        "Surveille l'état de tous les démons Jeedom et envoie un état des lieux": "Monitoriza o estado de todos os daemons Jeedom e envia um relatório da situação",
+        "Visible": "Visível"
+    },
+    "plugins\/discordlink\/plugin_info\/configuration.php": {
+        "Discord": "Discord",
+        "Démon": "Demónio",
+        "Joue à : ": "Jogue em: ",
+        "Le démon devra être redémarré après la modification de ce paramètre": "O daemon deverá ser reiniciado após a alteração deste parâmetro.",
+        "Ne pas afficher le message de mise à jour": "Não exibir a mensagem de atualização",
+        "Plugin": "Plugin",
+        "Port Socket Interne": "Porta interna",
+        "Token : ": "Token: ",
+        "Version Plugin": "Versão Plugin",
+        "Version du Plugin (A indiquer sur Community)": "Versão do Plugin (A indicar na Comunidade)",
+        "[ATTENTION] Ne changez ce paramètre qu'en cas de nécessité. (Défaut = 3466)": "[ATENÇÃO] Altere esta configuração apenas se necessário. (Padrão = 3466)"
+    }
+}
