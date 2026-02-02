@@ -854,6 +854,7 @@ const startServer = () => {
 
   client.login(config.token).catch((err) => {
     config.logger("FATAL ERROR Login :: " + err.message, "ERROR");
+    process.exit(1);
   });
 
   server = app.listen(config.listeningPort, () => {
