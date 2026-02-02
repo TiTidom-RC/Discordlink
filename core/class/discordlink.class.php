@@ -1218,7 +1218,6 @@ class discordlinkCmd extends cmd {
 			$msg[$batchNumber] .= "[" . $message->getDate() . "]";
 			$msg[$batchNumber] .= " (" . $message->getPlugin() . ") :";
 			$msg[$batchNumber] .= "\n";
-			($message->getAction() != "") ? $msg[$batchNumber] .= " (Action : " . $message->getAction() . ")" : null;
 			$msg[$batchNumber] .= " " . $message->getMessage() . "\n";
 			$msg[$batchNumber] .= "\n";
 			$msg[$batchNumber] = html_entity_decode($msg[$batchNumber], ENT_QUOTES | ENT_HTML5);
