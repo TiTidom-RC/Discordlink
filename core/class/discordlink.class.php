@@ -740,6 +740,12 @@ class discordlink extends eqLogic {
 		);
 	}
 
+	public static function createQuickReplyFile() {
+		$str = '{"hello":{"emoji":"👋","text":"Bonjour à toi !","timeout":60},"bye":{"emoji":"👋","text":"Au revoir !"}}';
+		$path = dirname(__FILE__) . '/../../data/quickreply.json';
+		file_put_contents($path, json_encode(json_decode($str), JSON_PRETTY_PRINT));
+	}
+
 	/*     * ********************** Getter Setter *************************** */
 }
 class discordlinkCmd extends cmd {
