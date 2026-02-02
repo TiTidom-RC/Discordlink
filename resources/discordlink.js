@@ -27,7 +27,11 @@ const client = new Client({
     GatewayIntentBits.GuildPresences,
     GatewayIntentBits.GuildMembers,
   ],
-  partials: [Partials.Message, Partials.Channel, Partials.Reaction],
+  partials: [
+    Partials.Message,
+    Partials.Channel,
+    Partials.Reaction
+  ],
 });
 
 const token = process.argv[3];
@@ -36,6 +40,10 @@ const logLevelLimit = parseInt(process.argv[4]) || 2000; // Par défaut : Aucun 
 const pluginKey = process.argv[6];
 const activityStatus = decodeURI(process.argv[7]);
 const listeningPort = process.argv[8] || 3466;
+
+// Save bot info
+let botName;
+let botAvatar;
 
 /**
  * Helper to get current timestamp in Jeedom format (YYYY-MM-DD HH:MM:SS)
@@ -119,7 +127,7 @@ config.logger("Arguments reçus:", "DEBUG");
 config.logger(" - argv[2] (jeedomURL): " + jeedomURL, "DEBUG");
 config.logger(
   " - argv[3] (token): " +
-    (token ? `[PRESENT - ${token.length} caractères]` : "[ABSENT]"),
+  (token ? `[PRESENT - ${token.length} caractères]` : "[ABSENT]"),
   "DEBUG",
 );
 config.logger(" - argv[4] (logLevel): " + logLevelLimit, "DEBUG");
@@ -358,14 +366,18 @@ app.get("/sendEmbed", async (req, res) => {
     let userResponse = "null";
 
     // Ajout QuickReply
-    let quickEmoji = null;
-    let quickText = null;
-    let quickTimeout = 120;
-
-    if (quickreply && quickreplyConf[quickreply]) {
-      quickEmoji = quickreplyConf[quickreply].emoji;
-      quickText = quickreplyConf[quickreply].text;
-      quickTimeout = quickreplyConf[quickreply].timeout || 120;
+    let quickReplies = [];
+    if (quickreply && quickreply !== "null") {
+      quickReplies = quickreply
+        .split(',')
+        .map(q => q.trim())
+        .filter(q => {
+          if (!quickreplyConf[q]) {
+            config.logger(`QuickReply "${q}" non trouvé dans quickreply.json`, "WARNING");
+            return false;
+          }
+          return true;
+        });
     }
 
     // Normaliser les valeurs vides ou "null"
@@ -429,32 +441,48 @@ app.get("/sendEmbed", async (req, res) => {
     const m = await channel.send({ embeds: [Embed] });
 
     // Gestion QuickReply
-    if (quickEmoji) {
-      await m.react(quickEmoji);
+    // Ajout de tous les emojis quickreply demandés
+    for (const q of quickReplies) {
+      const conf = quickreplyConf[q];
+      if (!conf) continue;
+
+      const emoji = conf.emoji;
+      const quickText = conf.text;
+      let timeout = parseInt(conf.timeout, 10);
+      if (isNaN(timeout) || timeout <= 0) timeout = 120;
+
+      await m.react(emoji);
 
       const filter = (reaction, user) =>
-        reaction.emoji.name === quickEmoji && !user.bot;
+        reaction.emoji.name === emoji && !user.bot;
 
-      if (!quickTimeout || isNaN(quickTimeout) || quickTimeout <= 0) {
-        quickTimeout = 120;
-      }
-
-      // Discord.js v14: createReactionCollector prend un objet options
       const collector = m.createReactionCollector({
         filter,
         max: 1,
-        time: quickTimeout * 1000,
+        time: timeout * 1000,
       });
 
-      collector.on("collect", (reaction, user) => {
-        m.channel.send(quickText);
+      collector.on('collect', async () => {
+        const webhook = await getWebhook(m.channel);
+        if (!webhook) return;
+
+        await webhook.send({
+          content: quickText,
+          username: botName,
+          avatarURL: botAvatar,
+          allowedMentions: { parse: [] },
+        });
       });
 
-      collector.on("end", (collected, reason) => {
-        if (reason === "time") {
-          const reaction = m.reactions.cache.get(quickEmoji);
+      collector.on('end', (collected, reason) => {
+        if (reason === 'time') {
+          const reaction = m.reactions.cache.find(r =>
+            (r.emoji.id && r.emoji.id === emoji) ||
+            (r.emoji.name === emoji)
+          );
+
           if (reaction) {
-            reaction.remove().catch(() => {});
+            reaction.users.remove(client.user.id).catch(() => { });
           }
         }
       });
@@ -559,7 +587,7 @@ app.get("/sendEmbed", async (req, res) => {
             });
           })
           .catch(() => {
-            m.delete().catch(() => {});
+            m.delete().catch(() => { });
           });
       } else {
         // Réponse textuelle
@@ -575,7 +603,7 @@ app.get("/sendEmbed", async (req, res) => {
           .then((collected) => {
             let msg = collected.first();
             userResponse = msg.content;
-            msg.react("✅").catch(() => {});
+            msg.react("✅").catch(() => { });
 
             httpPost("ASK", {
               channelId: m.channel.id,
@@ -584,7 +612,7 @@ app.get("/sendEmbed", async (req, res) => {
             });
           })
           .catch(() => {
-            m.delete().catch(() => {});
+            m.delete().catch(() => { });
           });
       }
     } else {
@@ -630,9 +658,9 @@ app.get("/clearChannel", async (req, res) => {
     } catch (error) {
       config.logger(
         "Erreur lors du nettoyage du channel " +
-          channelID +
-          ": " +
-          error.message,
+        channelID +
+        ": " +
+        error.message,
         "ERROR",
       );
     }
@@ -730,16 +758,16 @@ const deleteOldChannelMessages = async (channel) => {
           } catch (e) {
             config.logger(
               "Impossible de supprimer le message " +
-                message.id +
-                ": " +
-                e.message,
+              message.id +
+              ": " +
+              e.message,
               "WARNING",
             );
           }
         }
         config.logger(
           deletedInThisBatch +
-            " vieux messages (>14j) supprimés individuellement",
+          " vieux messages (>14j) supprimés individuellement",
           "DEBUG",
         );
       }
@@ -753,7 +781,7 @@ const deleteOldChannelMessages = async (channel) => {
     );
     config.logger(
       "- Messages supprimés individuellement (>14j) : " +
-        totalIndividualDeleted,
+      totalIndividualDeleted,
       "INFO",
     );
     config.logger("- TOTAL supprimés : " + totalDeleted, "INFO");
@@ -777,12 +805,18 @@ client.on("clientReady", async () => {
 
   // Discord.js v14: setActivity prend un objet options
   await client.user.setActivity(activityStatus, { type: 0 }); // 0 = Playing
+
+  botName = client.user.username;
+  botAvatar = client.user.displayAvatarURL({ format: 'png', dynamic: true });
 });
 
 // Discord.js v14: 'message' → 'messageCreate'
 client.on("messageCreate", (receivedMessage) => {
-  if (receivedMessage.author === client.user) return;
-  if (receivedMessage.author.bot) return;
+  // if (receivedMessage.author === client.user) return;
+  if (receivedMessage.author?.bot && !receivedMessage.webhookId) {
+    // config.logger('⛔ message bot NON autorisé webhookID → ignoré', "DEBUG");
+    return;
+  }
 
   httpPost("messageReceived", {
     channelId: receivedMessage.channel.id,
@@ -825,8 +859,8 @@ const startServer = () => {
   server = app.listen(config.listeningPort, () => {
     config.logger(
       "***** Démon :: OK - Listening on port :: " +
-        server.address().port +
-        " *****",
+      server.address().port +
+      " *****",
       "INFO",
     );
   });
@@ -870,9 +904,9 @@ const httpPost = async (name, jsonData) => {
     if (!res.ok) {
       config.logger(
         "Erreur lors du contact de votre Jeedom: " +
-          res.status +
-          " " +
-          res.statusText,
+        res.status +
+        " " +
+        res.statusText,
         "ERROR",
       );
     }
@@ -880,6 +914,26 @@ const httpPost = async (name, jsonData) => {
     config.logger("Erreur fetch Jeedom: " + error.message, "ERROR");
   }
 };
+
+// Crée ou récupère un webhook dans un salon
+async function getWebhook(channel) {
+  if (!botAvatar || !botName) {
+    setLog('⚠️ Bot pas encore prêt, impossible de créer le webhook');
+    return null;
+  }
+
+  const webhooks = await channel.fetchWebhooks();
+  let webhook = webhooks.find(w => w.name === 'BotWebhook');
+
+  if (!webhook) {
+    webhook = await channel.createWebhook({
+      name: 'BotWebhook',
+      avatar: botAvatar,
+    });
+  }
+
+  return webhook;
+}
 
 /* Lancement effectif du serveur */
 startServer();
