@@ -1203,35 +1203,37 @@ class discordlinkCmd extends cmd {
 		$cmd->execCmd($_options);
 
 		// -------------------------------------------------------------------------------------- //
-		$msg = array();
-		$messageCount = 0;
-		$maxMessagesPerBatch = 5;		//Nombre de messages par bloc de notification
-		$batchNumber = 1;
+		$msgArray = array();
 		$messageList = message::all();
 		foreach ($messageList as $message) {
-			$messageCount++;
-			if (!($messageCount <= $maxMessagesPerBatch)) {
-				$messageCount = 1;
-				$batchNumber = $batchNumber + 1;
-			}
-
-			$msg[$batchNumber] .= "[" . $message->getDate() . "]";
-			$msg[$batchNumber] .= " (" . $message->getPlugin() . ") :";
-			$msg[$batchNumber] .= "\n";
-			$msg[$batchNumber] .= " " . $message->getMessage() . "\n";
-			$msg[$batchNumber] .= "\n";
-			$msg[$batchNumber] = html_entity_decode($msg[$batchNumber], ENT_QUOTES | ENT_HTML5);
+			$msgBloc = "[" . $message->getDate() . "] (" . $message->getPlugin() . ") :\n";
+			$msgBloc .= " " . $message->getMessage() . "\n\n";
+			$msgArray[] = html_entity_decode($msgBloc, ENT_QUOTES | ENT_HTML5);
 		}
 
-		if ($messageCount == 0) {
-			$_options = array('title' => ':clipboard: CENTRE DE MESSAGES :clipboard:', 'description' => "*Le centre de message est vide !*", 'colors' => '#ff8040', 'footer' => 'By DiscordLink');
+		if (count($msgArray) == 0) {
+			$_options = array(
+				'title' => ':clipboard: CENTRE DE MESSAGES :clipboard:',
+				'description' => "*Le centre de message est vide !*",
+				'colors' => '#ff8040',
+				'footer' => 'By DiscordLink'
+			);
 			$cmd->execCmd($_options);
 		} else {
-			$i = 0;
-			foreach ($msg as $value) {
-				$i++;
-				$_options = array('title' => ':clipboard: CENTRE DE MESSAGES ' . $i . '/' . count($msg) . ' :clipboard:', 'description' => $value, 'colors' => '#ff8040', 'footer' => 'By DiscordLink');
+
+			$groupedMessages = self::groupMessagesByCountAndLength($msgArray, 5);
+
+			$index = 1;
+			foreach ($groupedMessages as $msg) {
+				$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
+				$_options = array(
+					'title' => ':clipboard: CENTRE DE MESSAGES ' . ($index) . '/' . count($groupedMessages) . ' :clipboard:',
+					'description' => $msg,
+					'colors' => '#ff8040',
+					'footer' => 'By DiscordLink'
+				);
 				$cmd->execCmd($_options);
+				$index++;
 			}
 		}
 
@@ -1286,6 +1288,43 @@ class discordlinkCmd extends cmd {
 			if (!is_array($data)) return array('template' => $data, 'isCoreWidget' => false);
 		}
 		return parent::getWidgetTemplateCode($_version, $_clean, $_widgetName);
+	}
+
+	/**
+	 * Regroupe les messages par blocs de X messages max et Y caractères max.
+	 * @param array $messages Tableau de messages (chaînes)
+	 * @param int $maxMsg Nombre max de messages par bloc
+	 * @param int $maxChars Nombre max de caractères par bloc
+	 * @return array Tableau de blocs concaténés
+	 */
+	function groupMessagesByCountAndLength(array $messages, int $maxMsg, int $maxChars = 4096) {
+		$result = [];
+		$currentBlock = [];
+		$currentLength = 0;
+
+		foreach ($messages as $msg) {
+			$msgLength = mb_strlen($msg);
+
+			// Si ajouter ce message dépasse une des limites, on commence un nouveau bloc
+			if (
+				count($currentBlock) >= $maxMsg ||
+				($currentLength > 0 && $currentLength + $msgLength + 1 > $maxChars) // +1 pour le \n
+			) {
+				$result[] = implode("\n", $currentBlock);
+				$currentBlock = [];
+				$currentLength = 0;
+			}
+
+			$currentBlock[] = $msg;
+			$currentLength += $msgLength + ($currentLength > 0 ? 1 : 0); // +1 pour le \n si pas premier
+		}
+
+		// Ajoute le dernier bloc s'il reste des messages
+		if (!empty($currentBlock)) {
+			$result[] = implode("\n", $currentBlock);
+		}
+
+		return $result;
 	}
 	/*     * ********************** Getter Setter *************************** */
 }
