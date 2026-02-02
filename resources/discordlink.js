@@ -630,6 +630,7 @@ app.get("/sendEmbed", async (req, res) => {
 app.get("/clearChannel", async (req, res) => {
   try {
     const channelID = req.query.channelID;
+    const dayToKeep = req.query.dayToKeep;
 
     if (!channelID) {
       return res.status(400).json({ error: "channelID manquant" });
@@ -650,7 +651,7 @@ app.get("/clearChannel", async (req, res) => {
 
     // Effectuer le nettoyage en arrière-plan
     try {
-      await deleteOldChannelMessages(channel);
+      await deleteOldChannelMessages(channel, dayToKeep);
       config.logger(
         "Nettoyage du channel " + channelID + " terminé avec succès",
         "INFO",
@@ -674,31 +675,38 @@ app.get("/clearChannel", async (req, res) => {
  * Delete messages older than 24 hours in a channel
  * Keeps messages from today and yesterday
  * @param {Object} channel - The Discord channel object
+ * @param {number} dayToKeep - The number of days to keep messages
  * @returns {Promise<void>}
  */
-const deleteOldChannelMessages = async (channel) => {
+const deleteOldChannelMessages = async (channel, dayToKeep) => {
   try {
     // Constantes de durée
     const ONE_DAY_MS = 86400000;
     const FOURTEEN_DAYS_MS = 14 * ONE_DAY_MS;
 
     // Timestamps de référence (minuit aujourd'hui en heure locale)
+    const nowTimestamp = new Date();
     const todayTimestamp = new Date().setHours(0, 0, 0, 0);
-    const yesterdayTimestamp = todayTimestamp - ONE_DAY_MS;
     const fourteenDaysAgoTimestamp = todayTimestamp - FOURTEEN_DAYS_MS;
+    const dayToKeepTimestamp = dayToKeep == -1 ? nowTimestamp : todayTimestamp - (dayToKeep * ONE_DAY_MS);
 
     let totalDeleted = 0;
     let totalBulkDeleted = 0;
     let totalIndividualDeleted = 0;
 
-    const formattedDate = getTimestamp(new Date(yesterdayTimestamp));
+    const formattedDate = getTimestamp(new Date(dayToKeepTimestamp));
 
     config.logger("Début du nettoyage du channel " + channel.id, "INFO");
-    config.logger("Suppression des messages avant " + formattedDate, "INFO");
-    config.logger(
-      "Conservation : messages d'aujourd'hui + d'hier (jours calendaires)",
-      "INFO",
-    );
+    if (dayToKeep == -1) {
+      config.logger("Suppression de tous les messages", "INFO",);
+    }
+    else {
+      config.logger("Suppression des messages avant " + formattedDate, "INFO");
+      config.logger(
+        "Conservation : messages d'aujourd'hui jusqu'à " + dayToKeep + " jours avant aujourd'hui (jours calendaires)",
+        "INFO",
+      );
+    }
 
     while (true) {
       // Récupérer les 100 derniers messages
@@ -711,6 +719,7 @@ const deleteOldChannelMessages = async (channel) => {
       if (messages.size === 0) {
         break;
       }
+      config.logger("Traitement de " + messages.size + " messages", "DEBUG");
 
       const recentMessages = []; // Avant-hier jusqu'à -14j : suppression en masse
       const ancientMessages = []; // > 14 jours : suppression individuelle
@@ -718,7 +727,7 @@ const deleteOldChannelMessages = async (channel) => {
       for (const [msgId, message] of messages) {
         // Supprimer uniquement les messages d'avant-hier et plus anciens
         if (
-          message.createdTimestamp < yesterdayTimestamp &&
+          message.createdTimestamp < dayToKeepTimestamp &&
           message.deletable
         ) {
           if (message.createdTimestamp > fourteenDaysAgoTimestamp) {
@@ -734,7 +743,7 @@ const deleteOldChannelMessages = async (channel) => {
         break;
       }
 
-      // Suppression en masse (messages avant-hier jusqu'à -14j)
+      // Suppression en masse (messages de X jours jusqu'à -14j)
       if (recentMessages.length > 0) {
         await channel.bulkDelete(recentMessages);
         totalBulkDeleted += recentMessages.length;
@@ -771,6 +780,10 @@ const deleteOldChannelMessages = async (channel) => {
           "DEBUG",
         );
       }
+
+      // Pause de 2 secondes entre les batches pour laisser le temps à la suppression de se propager
+      await new Promise(r => setTimeout(r, 2000));
+
     }
 
     config.logger("========================================", "INFO");
@@ -785,10 +798,6 @@ const deleteOldChannelMessages = async (channel) => {
       "INFO",
     );
     config.logger("- TOTAL supprimés : " + totalDeleted, "INFO");
-    config.logger(
-      "- Conservés : aujourd'hui + hier (jours calendaires)",
-      "INFO",
-    );
     config.logger("========================================", "INFO");
   } catch (error) {
     config.logger(
