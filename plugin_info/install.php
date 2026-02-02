@@ -29,6 +29,7 @@ function discordlink_install() {
     discordlink::createCmd();
     discordlink::setEmoji();
     discordlink::updateObject();
+    discordlink::createQuickReplyFile();
 }
 
 function discordlink_update() {
@@ -58,7 +59,8 @@ function discordlink_update() {
         '/resources/install_nodejs.sh',
         '/resources/yarn.lock',
         '/resources/dependance.lib',
-        '/resources/i18n'
+        '/resources/i18n',
+        '/resources/quickreply.json',
     );
 
     foreach ($pathsToRemove as $resource) {
@@ -110,6 +112,17 @@ function discordlink_update() {
                     }
                 }
             }
+
+            $cmdsToRemove = array(
+                'covidSend',
+            );
+            // Suppression des commandes obsolètes
+            foreach ($eqLogic->getCmd() as $cmd) {
+                if (in_array($cmd->getLogicalId(), $cmdsToRemove)) {
+                    log::add('discordlink', 'info', '[Migration] Suppression commande obsolète: ' . $cmd->getName() . ' (' . $cmd->getLogicalId() . ')');
+                    $cmd->remove();
+                }
+            }
         }
     } catch (Exception $e) {
         // En cas d'erreur de migration, on continue
@@ -118,14 +131,6 @@ function discordlink_update() {
 
     if (config::byKey('disableUpdateMessage', 'discordlink', 0) == 0) {
         message::add('discordlink', 'Le plugin DiscordLink a été mis à jour en version ' . $version);
-    }
-
-    // Suppression de l'ancien fichier quickreply.json dans resources/
-    // Le nouveau fichier est automatiquement copié dans data/ lors de la mise à jour
-    $oldQuickreplyPath = dirname(__FILE__) . '/../resources/quickreply.json';
-    if (file_exists($oldQuickreplyPath)) {
-        unlink($oldQuickreplyPath);
-        log::add('discordlink', 'info', 'Suppression ancien fichier quickreply.json dans resources/');
     }
 
     // Migration de la clé de configuration globale emojy → emoji

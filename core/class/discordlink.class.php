@@ -89,13 +89,13 @@ class discordlink extends eqLogic {
 			} catch (Exception $e) {
 				log::add('discordlink', 'debug', 'Tentative ' . ($attempt + 1) . '/' . $maxRetries . ' échouée: ' . $e->getMessage());
 			}
-			
+
 			$attempt++;
 			if ($attempt < $maxRetries) {
 				usleep($delayMs * 1000); // Pause avant la prochaine tentative
 			}
 		}
-		
+
 		log::add('discordlink', 'error', 'Impossible de récupérer les channels depuis le daemon après ' . $maxRetries . ' tentatives');
 		return array();
 	}
@@ -156,7 +156,7 @@ class discordlink extends eqLogic {
 			$existing = config::byKey('emoji', 'discordlink', array());
 			$emojiArray = array_merge($default, is_array($existing) ? $existing : array());
 		}
-		
+
 		config::save('emoji', $emojiArray, 'discordlink');
 	}
 
@@ -479,7 +479,7 @@ class discordlink extends eqLogic {
 				'objectSummary' => array('requiredPlugin' => '0', 'label' => 'Résumé par objet', 'type' => 'action', 'subType' => 'select', 'request' => 'objectSummary?null', 'visible' => 1),
 				'lastMessage' => array('requiredPlugin' => '0', 'label' => 'Dernier message', 'type' => 'info', 'subType' => 'string', 'visible' => 1),
 				'previousMessage1' => array('requiredPlugin' => '0', 'label' => 'Avant dernier message', 'type' => 'info', 'subType' => 'string', 'visible' => 1),
-				'previousMessage2' => array('requiredPlugin' => '0', 'label' => 'Avant Avant dernier message', 'type' => 'info', 'subType' => 'string', 'visible' => 1)
+				'previousMessage2' => array('requiredPlugin' => '0', 'label' => 'Avant avant dernier message', 'type' => 'info', 'subType' => 'string', 'visible' => 1)
 			);
 			$order = 0;
 			foreach ($commandsConfig as $cmdKey => $cmdConfig) {
@@ -740,6 +740,12 @@ class discordlink extends eqLogic {
 		);
 	}
 
+	public static function createQuickReplyFile() {
+		$str = '{"hello":{"emoji":"👋","text":"Bonjour à toi !","timeout":60},"bye":{"emoji":"👋","text":"Au revoir !"}}';
+		$path = dirname(__FILE__) . '/../../data/quickreply.json';
+		file_put_contents($path, json_encode(json_decode($str), JSON_PRETTY_PRINT));
+	}
+
 	/*     * ********************** Getter Setter *************************** */
 }
 class discordlinkCmd extends cmd {
@@ -902,7 +908,7 @@ class discordlinkCmd extends cmd {
 
 		if (isset($_options['answer'])) {
 			if (("" != ($_options['title']))) $title = $_options['title'];
-			$colors = "#1100FF";
+			$colors = $defaultColor;
 
 			if ($_options['answer'][0] != "") {
 				$answer = $_options['answer'];
@@ -1075,56 +1081,59 @@ class discordlinkCmd extends cmd {
 	}
 
 	public function buildGlobalBattery($_options = array()) {
-		$message = 'null';
 		$colors = '#00ff08';
-		$alertThreshold = 30;
-		$criticalThreshold = 10;
+		$alertThreshold = config::byKey('battery::warning', 'core', 30);
+		$criticalThreshold = config::byKey('battery::danger', 'core', 10);
 		$alertCount = 0;
 		$criticalCount = 0;
-		$batteryCount = 0;
-		$totalCount = 0;
-		$maxLength = 1800; // Limite Discord ~2000, on garde une marge
 
 		$eqLogics = eqLogic::all(true);
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
 
-		$batteryList = '';
+		$batteryList = array();
 		foreach ($eqLogics as $eqLogic) {
-			$totalCount++;
-			$battery = $eqLogic->getStatus('battery');
+			if ((is_numeric(eqLogic::byId($eqLogic->getId())->getStatus('battery')) == 1)) {
+				if (eqLogic::byId($eqLogic->getId())->getStatus('battery') <= $alertThreshold) {
+					if (eqLogic::byId($eqLogic->getId())->getStatus('battery') <= $criticalThreshold) {
+						$icon = "batterie_nok";
+						$criticalCount++;
+						if ($colors != '#ff0000') $colors = '#ff0000';
+					} else {
+						$icon = "batterie_progress";
+						$alertCount++;
+						if ($colors == '#00ff08') $colors = '#ffae00';
+					}
+				} else {
+					$icon = "batterie_ok";
+				}
 
-			if (!is_numeric($battery)) continue;
-
-			$batteryCount++;
-			$name = substr($eqLogic->getHumanName(), strrpos($eqLogic->getHumanName(), '[', -1) + 1, -1);
-
-			if ($battery <= $criticalThreshold) {
-				$line = "\n" . discordlink::getIcon("batterie_nok") . $name . ' => __***' . $battery . "%***__";
-				$criticalCount++;
-				$colors = '#ff0000';
-			} elseif ($battery <= $alertThreshold) {
-				$line = "\n" . discordlink::getIcon("batterie_progress") . $name . ' =>  __***' . $battery . "%***__";
-				$alertCount++;
-				if ($colors == '#00ff08') $colors = '#ffae00';
-			} else {
-				$line = "\n" . discordlink::getIcon("batterie_ok") . $name . ' =>  __***' . $battery . "%***__";
+				$batteryList[] = discordlink::geticon($icon) . $eqLogic->getObject()?->getName() . '/' . $eqLogic->getName() . ' => __***' . eqLogic::byId($eqLogic->getId())->getStatus('battery') . "%***__";
 			}
-
-			// Vérifier si l'ajout de cette ligne dépasserait la limite
-			if (strlen($batteryList . $line) > $maxLength) {
-				$_options = array('title' => 'Résumé Batteries : ', 'description' => str_replace("|", "\n", $batteryList), 'colors' => $colors, 'footer' => 'By DiscordLink');
-				$cmd->execCmd($_options);
-				$batteryList = '';
-			}
-
-			$batteryList .= $line;
 		}
 
-		$_options = array('title' => 'Résumé Batteries : ', 'description' => str_replace("|", "\n", $batteryList), 'colors' => $colors, 'footer' => 'By DiscordLink');
-		$cmd->execCmd($_options);
+		$groupedMessages = self::groupMessagesByCountAndLength($batteryList, 20);
+
+		$index = 1;
+		foreach ($groupedMessages as $msg) {
+			$message = str_replace("|", "\n", $msg);
+			$_options = array(
+				'title' => 'Résumé Batteries : (' . $index . '/' . count($groupedMessages) . ')',
+				'description' => $message,
+				'colors' => $colors,
+				'footer' => 'By DiscordLink'
+			);
+			$cmd->execCmd($_options);
+			$index++;
+		}
 
 		$message2 = "Batterie en alerte : __***" . $alertCount . "***__\n Batterie critique : __***" . $criticalCount . "***__";
-		$_options2 = array('title' => 'Résumé Batterie', 'description' => str_replace("|", "\n", $message2), 'colors' => $colors, 'footer' => 'By DiscordLink');
+
+		$_options2 = array(
+			'title' => 'Résumé Batterie',
+			'description' => $message2,
+			'colors' => $colors,
+			'footer' => 'By DiscordLink'
+		);
 		$cmd->execCmd($_options2);
 
 		return 'requestHandledInternally';
@@ -1197,36 +1206,37 @@ class discordlinkCmd extends cmd {
 		$cmd->execCmd($_options);
 
 		// -------------------------------------------------------------------------------------- //
-		$msg = array();
-		$messageCount = 0;
-		$maxMessagesPerBatch = 5;		//Nombre de messages par bloc de notification
-		$batchNumber = 1;
+		$msgArray = array();
 		$messageList = message::all();
 		foreach ($messageList as $message) {
-			$messageCount++;
-			if (!($messageCount <= $maxMessagesPerBatch)) {
-				$messageCount = 1;
-				$batchNumber = $batchNumber + 1;
-			}
-
-			$msg[$batchNumber] .= "[" . $message->getDate() . "]";
-			$msg[$batchNumber] .= " (" . $message->getPlugin() . ") :";
-			$msg[$batchNumber] .= "\n";
-			($message->getAction() != "") ? $msg[$batchNumber] .= " (Action : " . $message->getAction() . ")" : null;
-			$msg[$batchNumber] .= " " . $message->getMessage() . "\n";
-			$msg[$batchNumber] .= "\n";
-			$msg[$batchNumber] = html_entity_decode($msg[$batchNumber], ENT_QUOTES | ENT_HTML5);
+			$msgBloc = "[" . $message->getDate() . "] (" . $message->getPlugin() . ") :\n";
+			$msgBloc .= " " . $message->getMessage() . "\n\n";
+			$msgArray[] = html_entity_decode($msgBloc, ENT_QUOTES | ENT_HTML5);
 		}
 
-		if ($messageCount == 0) {
-			$_options = array('title' => ':clipboard: CENTRE DE MESSAGES :clipboard:', 'description' => "*Le centre de message est vide !*", 'colors' => '#ff8040', 'footer' => 'By DiscordLink');
+		if (count($msgArray) == 0) {
+			$_options = array(
+				'title' => ':clipboard: CENTRE DE MESSAGES :clipboard:',
+				'description' => "*Le centre de message est vide !*",
+				'colors' => '#ff8040',
+				'footer' => 'By DiscordLink'
+			);
 			$cmd->execCmd($_options);
 		} else {
-			$i = 0;
-			foreach ($msg as $value) {
-				$i++;
-				$_options = array('title' => ':clipboard: CENTRE DE MESSAGES ' . $i . '/' . count($msg) . ' :clipboard:', 'description' => $value, 'colors' => '#ff8040', 'footer' => 'By DiscordLink');
+
+			$groupedMessages = self::groupMessagesByCountAndLength($msgArray, 5);
+
+			$index = 1;
+			foreach ($groupedMessages as $msg) {
+				$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
+				$_options = array(
+					'title' => ':clipboard: CENTRE DE MESSAGES ' . ($index) . '/' . count($groupedMessages) . ' :clipboard:',
+					'description' => $msg,
+					'colors' => '#ff8040',
+					'footer' => 'By DiscordLink'
+				);
 				$cmd->execCmd($_options);
+				$index++;
 			}
 		}
 
@@ -1281,6 +1291,43 @@ class discordlinkCmd extends cmd {
 			if (!is_array($data)) return array('template' => $data, 'isCoreWidget' => false);
 		}
 		return parent::getWidgetTemplateCode($_version, $_clean, $_widgetName);
+	}
+
+	/**
+	 * Regroupe les messages par blocs de X messages max et Y caractères max.
+	 * @param array $messages Tableau de messages (chaînes)
+	 * @param int $maxMsg Nombre max de messages par bloc
+	 * @param int $maxChars Nombre max de caractères par bloc
+	 * @return array Tableau de blocs concaténés
+	 */
+	function groupMessagesByCountAndLength(array $messages, int $maxMsg, int $maxChars = 4096) {
+		$result = [];
+		$currentBlock = [];
+		$currentLength = 0;
+
+		foreach ($messages as $msg) {
+			$msgLength = mb_strlen($msg);
+
+			// Si ajouter ce message dépasse une des limites, on commence un nouveau bloc
+			if (
+				count($currentBlock) >= $maxMsg ||
+				($currentLength > 0 && $currentLength + $msgLength + 1 > $maxChars) // +1 pour le \n
+			) {
+				$result[] = implode("\n", $currentBlock);
+				$currentBlock = [];
+				$currentLength = 0;
+			}
+
+			$currentBlock[] = $msg;
+			$currentLength += $msgLength + ($currentLength > 0 ? 1 : 0); // +1 pour le \n si pas premier
+		}
+
+		// Ajoute le dernier bloc s'il reste des messages
+		if (!empty($currentBlock)) {
+			$result[] = implode("\n", $currentBlock);
+		}
+
+		return $result;
 	}
 	/*     * ********************** Getter Setter *************************** */
 }
