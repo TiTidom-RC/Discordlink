@@ -16,25 +16,43 @@ $eqLogics = eqLogic::byType($plugin->getId());
 </style>
 
 <div class="row row-overflow">
-    <div class="col-xs-12 eqLogicThumbnailDisplay">
-        <legend><i class="fas fa-cog"></i> {{Gestion}}</legend>
-        <div class="eqLogicThumbnailContainer">
-            <div class="cursor eqLogicAction logoPrimary" data-action="add">
-                <i class="fas fa-plus-circle"></i>
-                <br>
-                <span>{{Ajouter}}</span>
+    <div class="col-sm-12 eqLogicThumbnailDisplay">
+        <div class="row">
+            <div class="col-sm-10">
+                <legend><i class="fas fa-cog"></i> {{Gestion}}</legend>
+                <div class="eqLogicThumbnailContainer">
+                    <div class="cursor eqLogicAction logoPrimary" data-action="add">
+                        <i class="fas fa-plus-circle"></i>
+                        <br>
+                        <span>{{Ajouter}}</span>
+                    </div>
+                    <div class="cursor eqLogicAction logoSecondary" data-action="gotoPluginConf">
+                        <i class="fas fa-wrench"></i>
+                        <br>
+                        <span>{{Configuration}}</span>
+                    </div>
+                    <div class="cursor eqLogicAction logoSecondary" data-action="emojiSettings">
+                        <i class="fab fa-discord icon_blue"></i>
+                        <br>
+                        <span>{{Emojis}}</span>
+                    </div>
+                </div>
             </div>
-            <div class="cursor eqLogicAction logoSecondary" data-action="gotoPluginConf">
-                <i class="fas fa-wrench"></i>
-                <br>
-                <span>{{Configuration}}</span>
+
+            <div class="col-sm-2">
+                <legend><i class=" fas fa-comments"></i> {{Community}}</legend>
+                <div class="eqLogicThumbnailContainer">
+                    <div class="cursor eqLogicAction logoSecondary" data-action="createCommunityPost">
+                        <i class="fas fa-ambulance icon_blue"></i>
+                        <br>
+                        <span style="color:var(--txt-color)">{{Créer un post Community}}</span>
+                    </div>
+                </div>
             </div>
-            <div class="cursor eqLogicAction logoSecondary" data-action="emojiSettings">
-                <i class="fab fa-discord icon_blue"></i>
-                <br>
-                <span>{{Emojis}}</span>
-            </div>
+
         </div>
+
+
         <legend><i class="fas fa-table"></i> {{Mes Channels}}</legend>
         <!-- Champ de recherche -->
         <div class="input-group" style="margin:5px;">

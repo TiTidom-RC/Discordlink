@@ -747,6 +747,38 @@ class discordlink extends eqLogic {
 		file_put_contents($path, json_encode(json_decode($str), JSON_PRETTY_PRINT));
 	}
 
+
+	public static function getConfigForCommunity() {
+
+		$pluginType = self::isBeta(true);
+		$info = discordlink::getInfo();
+
+		$pluginInfo = '<b>Version </b> : ' . $info['pluginVersion'] . ' ' . $pluginType  . '<br/>';
+
+		$pluginInfo .= '<b>Version OS</b> : ' .  system::getDistrib() . ' ' . system::getOsVersion() . '<br/>';
+
+		$pluginInfo .= '<b>Version PHP</b> : ' . phpversion() . '<br/>';
+
+		$pluginInfo = '<br/>```<br/>' . str_replace(array('<b>', '</b>', '&nbsp;'), array('', '', ' '), $pluginInfo) . '<br/>```<br/>';
+
+		return $pluginInfo;
+	}
+
+	public static function isBeta($text = false) {
+		$plugin = plugin::byId(__CLASS__);
+		$update = $plugin->getUpdate();
+		$isBeta = false;
+		if (is_object($update)) {
+			$version = $update->getConfiguration('version');
+			$isBeta = ($version && $version != 'stable');
+		}
+
+		if ($text) {
+			return $isBeta ? 'beta' : 'stable';
+		}
+		return $isBeta;
+	}
+
 	/*     * ********************** Getter Setter *************************** */
 }
 class discordlinkCmd extends cmd {
