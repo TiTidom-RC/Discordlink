@@ -24,8 +24,8 @@ const client = new Client({
     GatewayIntentBits.MessageContent, // OBLIGATOIRE pour lire les messages
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.DirectMessages,
-    GatewayIntentBits.GuildPresences,
-    GatewayIntentBits.GuildMembers,
+    // GatewayIntentBits.GuildPresences,
+    // GatewayIntentBits.GuildMembers,
   ],
   partials: [
     Partials.Message,
