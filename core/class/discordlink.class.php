@@ -479,7 +479,7 @@ class discordlink extends eqLogic {
 				'objectSummary' => array('requiredPlugin' => '0', 'label' => 'Résumé par objet', 'type' => 'action', 'subType' => 'select', 'request' => 'objectSummary?null', 'visible' => 1),
 				'lastMessage' => array('requiredPlugin' => '0', 'label' => 'Dernier message', 'type' => 'info', 'subType' => 'string', 'visible' => 1),
 				'previousMessage1' => array('requiredPlugin' => '0', 'label' => 'Avant dernier message', 'type' => 'info', 'subType' => 'string', 'visible' => 1),
-				'previousMessage2' => array('requiredPlugin' => '0', 'label' => 'Avant Avant dernier message', 'type' => 'info', 'subType' => 'string', 'visible' => 1)
+				'previousMessage2' => array('requiredPlugin' => '0', 'label' => 'Avant avant dernier message', 'type' => 'info', 'subType' => 'string', 'visible' => 1)
 			);
 			$order = 0;
 			foreach ($commandsConfig as $cmdKey => $cmdConfig) {
