@@ -89,13 +89,13 @@ class discordlink extends eqLogic {
 			} catch (Exception $e) {
 				log::add('discordlink', 'debug', 'Tentative ' . ($attempt + 1) . '/' . $maxRetries . ' échouée: ' . $e->getMessage());
 			}
-			
+
 			$attempt++;
 			if ($attempt < $maxRetries) {
 				usleep($delayMs * 1000); // Pause avant la prochaine tentative
 			}
 		}
-		
+
 		log::add('discordlink', 'error', 'Impossible de récupérer les channels depuis le daemon après ' . $maxRetries . ' tentatives');
 		return array();
 	}
@@ -156,7 +156,7 @@ class discordlink extends eqLogic {
 			$existing = config::byKey('emoji', 'discordlink', array());
 			$emojiArray = array_merge($default, is_array($existing) ? $existing : array());
 		}
-		
+
 		config::save('emoji', $emojiArray, 'discordlink');
 	}
 
@@ -902,7 +902,7 @@ class discordlinkCmd extends cmd {
 
 		if (isset($_options['answer'])) {
 			if (("" != ($_options['title']))) $title = $_options['title'];
-			$colors = "#1100FF";
+			$colors = $defaultColor;
 
 			if ($_options['answer'][0] != "") {
 				$answer = $_options['answer'];
