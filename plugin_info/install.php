@@ -112,6 +112,17 @@ function discordlink_update() {
                     }
                 }
             }
+
+            $cmdsToRemove = array(
+                'covidSend',
+            );
+            // Suppression des commandes obsolètes
+            foreach ($eqLogic->getCmd() as $cmd) {
+                if (in_array($cmd->getLogicalId(), $cmdsToRemove)) {
+                    log::add('discordlink', 'info', '[Migration] Suppression commande obsolète: ' . $cmd->getName() . ' (' . $cmd->getLogicalId() . ')');
+                    $cmd->remove();
+                }
+            }
         }
     } catch (Exception $e) {
         // En cas d'erreur de migration, on continue
