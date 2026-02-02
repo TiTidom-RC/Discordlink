@@ -1081,56 +1081,59 @@ class discordlinkCmd extends cmd {
 	}
 
 	public function buildGlobalBattery($_options = array()) {
-		$message = 'null';
 		$colors = '#00ff08';
-		$alertThreshold = 30;
-		$criticalThreshold = 10;
+		$alertThreshold = config::byKey('battery::warning', 'core', 30);
+		$criticalThreshold = config::byKey('battery::danger', 'core', 10);
 		$alertCount = 0;
 		$criticalCount = 0;
-		$batteryCount = 0;
-		$totalCount = 0;
-		$maxLength = 1800; // Limite Discord ~2000, on garde une marge
 
 		$eqLogics = eqLogic::all(true);
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
 
-		$batteryList = '';
+		$batteryList = array();
 		foreach ($eqLogics as $eqLogic) {
-			$totalCount++;
-			$battery = $eqLogic->getStatus('battery');
+			if ((is_numeric(eqLogic::byId($eqLogic->getId())->getStatus('battery')) == 1)) {
+				if (eqLogic::byId($eqLogic->getId())->getStatus('battery') <= $alertThreshold) {
+					if (eqLogic::byId($eqLogic->getId())->getStatus('battery') <= $criticalThreshold) {
+						$icon = "batterie_nok";
+						$criticalCount++;
+						if ($colors != '#ff0000') $colors = '#ff0000';
+					} else {
+						$icon = "batterie_progress";
+						$alertCount++;
+						if ($colors == '#00ff08') $colors = '#ffae00';
+					}
+				} else {
+					$icon = "batterie_ok";
+				}
 
-			if (!is_numeric($battery)) continue;
-
-			$batteryCount++;
-			$name = substr($eqLogic->getHumanName(), strrpos($eqLogic->getHumanName(), '[', -1) + 1, -1);
-
-			if ($battery <= $criticalThreshold) {
-				$line = "\n" . discordlink::getIcon("batterie_nok") . $name . ' => __***' . $battery . "%***__";
-				$criticalCount++;
-				$colors = '#ff0000';
-			} elseif ($battery <= $alertThreshold) {
-				$line = "\n" . discordlink::getIcon("batterie_progress") . $name . ' =>  __***' . $battery . "%***__";
-				$alertCount++;
-				if ($colors == '#00ff08') $colors = '#ffae00';
-			} else {
-				$line = "\n" . discordlink::getIcon("batterie_ok") . $name . ' =>  __***' . $battery . "%***__";
+				$batteryList[] = discordlink::geticon($icon) . $eqLogic->getObject()?->getName() . '/' . $eqLogic->getName() . ' => __***' . eqLogic::byId($eqLogic->getId())->getStatus('battery') . "%***__";
 			}
-
-			// Vérifier si l'ajout de cette ligne dépasserait la limite
-			if (strlen($batteryList . $line) > $maxLength) {
-				$_options = array('title' => 'Résumé Batteries : ', 'description' => str_replace("|", "\n", $batteryList), 'colors' => $colors, 'footer' => 'By DiscordLink');
-				$cmd->execCmd($_options);
-				$batteryList = '';
-			}
-
-			$batteryList .= $line;
 		}
 
-		$_options = array('title' => 'Résumé Batteries : ', 'description' => str_replace("|", "\n", $batteryList), 'colors' => $colors, 'footer' => 'By DiscordLink');
-		$cmd->execCmd($_options);
+		$groupedMessages = self::groupMessagesByCountAndLength($batteryList, 20);
+
+		$index = 1;
+		foreach ($groupedMessages as $msg) {
+			$message = str_replace("|", "\n", $msg);
+			$_options = array(
+				'title' => 'Résumé Batteries : (' . $index . '/' . count($groupedMessages) . ')',
+				'description' => $message,
+				'colors' => $colors,
+				'footer' => 'By DiscordLink'
+			);
+			$cmd->execCmd($_options);
+			$index++;
+		}
 
 		$message2 = "Batterie en alerte : __***" . $alertCount . "***__\n Batterie critique : __***" . $criticalCount . "***__";
-		$_options2 = array('title' => 'Résumé Batterie', 'description' => str_replace("|", "\n", $message2), 'colors' => $colors, 'footer' => 'By DiscordLink');
+
+		$_options2 = array(
+			'title' => 'Résumé Batterie',
+			'description' => $message2,
+			'colors' => $colors,
+			'footer' => 'By DiscordLink'
+		);
 		$cmd->execCmd($_options2);
 
 		return 'requestHandledInternally';
