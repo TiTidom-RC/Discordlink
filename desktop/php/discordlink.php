@@ -9,31 +9,50 @@ $eqLogics = eqLogic::byType($plugin->getId());
 
 <style>
     /* Décalage des options liées (fréquence) vers la droite */
-    .daemon_freq .form-group, .dependency_freq .form-group {
+    .daemon_freq .form-group,
+    .dependency_freq .form-group {
         margin-left: 10px;
     }
 </style>
 
 <div class="row row-overflow">
-    <div class="col-xs-12 eqLogicThumbnailDisplay">
-        <legend><i class="fas fa-cog"></i> {{Gestion}}</legend>
-        <div class="eqLogicThumbnailContainer">
-            <div class="cursor eqLogicAction logoPrimary" data-action="add">
-                <i class="fas fa-plus-circle"></i>
-                <br>
-                <span>{{Ajouter}}</span>
+    <div class="col-sm-12 eqLogicThumbnailDisplay">
+        <div class="row">
+            <div class="col-sm-10">
+                <legend><i class="fas fa-cog"></i> {{Gestion}}</legend>
+                <div class="eqLogicThumbnailContainer">
+                    <div class="cursor eqLogicAction logoPrimary" data-action="add">
+                        <i class="fas fa-plus-circle"></i>
+                        <br>
+                        <span>{{Ajouter}}</span>
+                    </div>
+                    <div class="cursor eqLogicAction logoSecondary" data-action="gotoPluginConf">
+                        <i class="fas fa-wrench"></i>
+                        <br>
+                        <span>{{Configuration}}</span>
+                    </div>
+                    <div class="cursor eqLogicAction logoSecondary" data-action="emojiSettings">
+                        <i class="fab fa-discord icon_blue"></i>
+                        <br>
+                        <span>{{Emojis}}</span>
+                    </div>
+                </div>
             </div>
-            <div class="cursor eqLogicAction logoSecondary" data-action="gotoPluginConf">
-                <i class="fas fa-wrench"></i>
-                <br>
-                <span>{{Configuration}}</span>
+
+            <div class="col-sm-2">
+                <legend><i class=" fas fa-comments"></i> {{Community}}</legend>
+                <div class="eqLogicThumbnailContainer">
+                    <div class="cursor eqLogicAction logoSecondary" data-action="createCommunityPost">
+                        <i class="fas fa-ambulance icon_blue"></i>
+                        <br>
+                        <span style="color:var(--txt-color)">{{Créer un post Community}}</span>
+                    </div>
+                </div>
             </div>
-            <div class="cursor eqLogicAction logoSecondary" data-action="emojiSettings">
-                <i class="fab fa-discord icon_blue"></i>
-                <br>
-                <span>{{Emojis}}</span>
-            </div>
+
         </div>
+
+
         <legend><i class="fas fa-table"></i> {{Mes Channels}}</legend>
         <!-- Champ de recherche -->
         <div class="input-group" style="margin:5px;">
@@ -125,32 +144,32 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                 <div class="form-group">
                                     <label class="col-sm-4 control-label">{{Channel}}</label>
                                     <div class="col-sm-6">
-                                    <div class="input-group">
-                                        <select class="form-control eqLogicAttr roundedLeft" data-l1key="configuration" data-l2key="channelId">
-                                            <?php
-                                            $channels = config::byKey('channels', 'discordlink', 'null');
-                                            $deamon = discordlink::deamon_info();
-                                            $i = 0;
-                                            if ($deamon['state'] == 'ok') {
-                                                $channels = discordlink::getChannel();
-                                                foreach ($channels as $channel) {
-                                                    echo '<option value="' . $channel['id'] . '">(' . $channel['guildName'] . ') ' . $channel['name'] . '</option>';
-                                                    $i++;
+                                        <div class="input-group">
+                                            <select class="form-control eqLogicAttr roundedLeft" data-l1key="configuration" data-l2key="channelId">
+                                                <?php
+                                                $channels = config::byKey('channels', 'discordlink', 'null');
+                                                $deamon = discordlink::deamon_info();
+                                                $i = 0;
+                                                if ($deamon['state'] == 'ok') {
+                                                    $channels = discordlink::getChannel();
+                                                    foreach ($channels as $channel) {
+                                                        echo '<option value="' . $channel['id'] . '">(' . $channel['guildName'] . ') ' . $channel['name'] . '</option>';
+                                                        $i++;
+                                                    }
                                                 }
-                                            }
 
-                                            if ($i == 0) {
-                                                echo '<option value="null">Pas de channel disponible</option>';
-                                            }
-                                            ?>
-                                        </select>
-                                        <span class="input-group-btn">
-                                            <a class="btn btn-default cursor roundedRight" id="bt_refreshChannels" title="{{Rafraîchir les channels}}">
-                                                <i class="fas fa-sync"></i>
-                                            </a>
-                                        </span>
+                                                if ($i == 0) {
+                                                    echo '<option value="null">Pas de channel disponible</option>';
+                                                }
+                                                ?>
+                                            </select>
+                                            <span class="input-group-btn">
+                                                <a class="btn btn-default cursor roundedRight" id="bt_refreshChannels" title="{{Rafraîchir les channels}}">
+                                                    <i class="fas fa-sync"></i>
+                                                </a>
+                                            </span>
+                                        </div>
                                     </div>
-                                </div>
                             </fieldset>
 
                             <fieldset>
@@ -221,10 +240,18 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                 <legend><i class="fas fa-broom"></i> {{Nettoyage}}</legend>
                                 <div class="form-group">
                                     <label class="col-sm-4 control-label">{{Nettoyage automatique}}
-                                        <sup><i class="fas fa-question-circle" title="{{Conserve les messages des 2 derniers jours et efface automatiquement les plus anciens}}"></i></sup>
+                                        <sup><i class="fas fa-question-circle" title="{{Efface automatiquement les messages trop anciens}}"></i></sup>
                                     </label>
                                     <div class="col-sm-6">
                                         <label class="checkbox-inline"><input id="clearChannel" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="clearChannel" />{{Activer}}</label>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="col-sm-4 control-label">{{Conserver les messages pendant}}
+                                        <sup><i class="fas fa-question-circle" title="{{Lors du nettoyage, conserve les messages des X derniers jours<br/>-1 permet de tout supprimer}}"></i></sup>
+                                    </label>
+                                    <div class="col-sm-6">
+                                        <input id="dayToKeep" type="number" class="eqLogicAttr" min="-1" data-l1key="configuration" data-l2key="dayToKeep" />
                                     </div>
                                 </div>
                             </fieldset>
@@ -238,10 +265,10 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                             <i class="fas fa-question-circle" title="{{Couleur que prendra un message enrichi par défaut}}"></i>
                                         </sup>
                                     </label>
-                                <div class="col-sm-6">
-                                    <input type="color" class="eqLogicAttr form-control input-sm cursor" data-l1key="configuration" data-l2key="defaultColor" data-type="background-color" style="width: 80px; display: inline-block;" value="#ff0000">
+                                    <div class="col-sm-6">
+                                        <input type="color" class="eqLogicAttr form-control input-sm cursor" data-l1key="configuration" data-l2key="defaultColor" data-type="background-color" style="width: 80px; display: inline-block;" value="#ff0000">
+                                    </div>
                                 </div>
-                            </div>
                             </fieldset>
                         </div>
 
@@ -282,5 +309,5 @@ $eqLogics = eqLogic::byType($plugin->getId());
     </div>
 </div>
 
-            <?php include_file('desktop', 'discordlink', 'js', 'discordlink'); ?>
-            <?php include_file('core', 'plugin.template', 'js'); ?>
+<?php include_file('desktop', 'discordlink', 'js', 'discordlink'); ?>
+<?php include_file('core', 'plugin.template', 'js'); ?>
