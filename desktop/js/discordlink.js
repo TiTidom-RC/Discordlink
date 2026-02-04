@@ -108,6 +108,29 @@
    * Event Delegation pour l'ensemble du plugin
    */
   document.body.addEventListener('click', function (e) {
+
+    if (e.target.closest('[data-action="createCommunityPost"]')) {
+      jeedom.plugin.createCommunityPost({
+        type: eqType,
+        error: function (error) {
+          domUtils.hideLoading();
+          jeedomUtils.showAlert({
+            message: error.message,
+            level: 'danger'
+          });
+        },
+        success: function (data) {
+          const link = document.createElement('a');
+          link.href = data.url;
+          link.target = '_blank';
+          link.style.display = 'none';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      })
+    };
+
     // Emoji Settings
     if (e.target.closest('[data-action="emojiSettings"]')) {
       jeeDialog.dialog({
@@ -117,7 +140,7 @@
         width: '90%',
         height: '80%',
         top: '10vh',
-        onClose: function() {
+        onClose: function () {
           if (typeof cleanupEmoji === 'function') {
             cleanupEmoji();
           }
@@ -151,53 +174,53 @@
       const icon = refreshBtn.querySelector('i');
       if (icon) icon.classList.add('fa-spin');
 
-        domUtils.ajax({
-          type: "POST",
-          url: AJAX_URL,
-          data: {
-            action: "getChannels",
-            id: eqId
-          },
-          dataType: 'json',
-          error: function (request, status, error) {
-            handleAjaxError(request, status, error);
-            if (icon) icon.classList.remove('fa-spin');
-          },
-          success: function (data) {
-            if (icon) icon.classList.remove('fa-spin');
+      domUtils.ajax({
+        type: "POST",
+        url: AJAX_URL,
+        data: {
+          action: "getChannels",
+          id: eqId
+        },
+        dataType: 'json',
+        error: function (request, status, error) {
+          handleAjaxError(request, status, error);
+          if (icon) icon.classList.remove('fa-spin');
+        },
+        success: function (data) {
+          if (icon) icon.classList.remove('fa-spin');
 
-            const select = document.querySelector('select[data-l2key=channelId]');
-            if (data.result && data.result.channels && select) {
-              const currentVal = select.value;
-              select.innerHTML = ''; // Clear options
+          const select = document.querySelector('select[data-l2key=channelId]');
+          if (data.result && data.result.channels && select) {
+            const currentVal = select.value;
+            select.innerHTML = ''; // Clear options
 
-              if (data.result.channels.length > 0) {
-                data.result.channels.forEach(channel => {
-                  const option = document.createElement('option');
-                  option.value = channel.id;
-                  option.text = `(${channel.guildName}) ${channel.name}`;
-                  select.appendChild(option);
-                });
-              } else {
+            if (data.result.channels.length > 0) {
+              data.result.channels.forEach(channel => {
                 const option = document.createElement('option');
-                option.value = 'null';
-                option.text = 'Pas de channel disponible';
+                option.value = channel.id;
+                option.text = `(${channel.guildName}) ${channel.name}`;
                 select.appendChild(option);
-              }
-
-              if (data.result.current) {
-                select.value = String(data.result.current);
-              } else if (currentVal && currentVal !== 'null' && select.querySelector(`option[value="${currentVal}"]`)) {
-                select.value = currentVal;
-              }
-            } else {
-              jeedomUtils.showAlert({
-                message: 'Impossible de récupérer les channels.',
-                level: 'danger'
               });
+            } else {
+              const option = document.createElement('option');
+              option.value = 'null';
+              option.text = 'Pas de channel disponible';
+              select.appendChild(option);
             }
+
+            if (data.result.current) {
+              select.value = String(data.result.current);
+            } else if (currentVal && currentVal !== 'null' && select.querySelector(`option[value="${currentVal}"]`)) {
+              select.value = currentVal;
+            }
+          } else {
+            jeedomUtils.showAlert({
+              message: 'Impossible de récupérer les channels.',
+              level: 'danger'
+            });
           }
-        });
+        }
+      });
     }
   });
 
