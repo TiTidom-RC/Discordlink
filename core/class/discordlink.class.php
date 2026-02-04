@@ -76,15 +76,22 @@ class discordlink extends eqLogic {
 		while ($attempt < $maxRetries) {
 			try {
 				$requestHttp = new com_http(self::getDaemonBaseURL() . '/getchannel');
+				$requestHttp->setNoReportError(true);
 				$response = $requestHttp->exec(10, 2);
-				if ($response !== false && !empty($response)) {
-					$channels = json_decode($response, true);
-					if (is_array($channels)) {
-						if ($attempt > 0) {
-							log::add('discordlink', 'debug', 'Channels récupérés après ' . ($attempt + 1) . ' tentative(s)');
+				$httpCode = $requestHttp->getHttpCode();
+
+				if ($httpCode == 200) {
+					if ($response !== false && !empty($response)) {
+						$channels = json_decode($response, true);
+						if (is_array($channels)) {
+							log::add('discordlink', 'debug', 'Channels récupérés (' . count($channels) .') après ' . ($attempt + 1) . ' tentative(s)');
+							return $channels;
 						}
-						return $channels;
 					}
+				} elseif ($httpCode == 503) {
+					log::add('discordlink', 'debug', 'Tentative ' . ($attempt + 1) . '/' . $maxRetries . ' : Le démon n\'est pas encore prêt (503 Service Unavailable)');
+				} else {
+					log::add('discordlink', 'debug', 'Tentative ' . ($attempt + 1) . '/' . $maxRetries . ' : Code HTTP inattendu ' . $httpCode);
 				}
 			} catch (Exception $e) {
 				log::add('discordlink', 'debug', 'Tentative ' . ($attempt + 1) . '/' . $maxRetries . ' échouée: ' . $e->getMessage());

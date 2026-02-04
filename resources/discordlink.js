@@ -221,6 +221,13 @@ app.get("/heartbeat", (req, res) => {
 app.get("/getchannel", async (req, res) => {
   try {
     res.type("json");
+
+    // Vérifier si le client Discord est prêt
+    if (!client.isReady()) {
+      config.logger("GetChannel demandé mais Client Discord NON PRÊT", "WARNING");
+      return res.status(503).json({ error: "Discord client not ready yet" });
+    }
+
     let toReturn = [];
 
     config.logger("GetChannel", "DEBUG");
@@ -240,6 +247,7 @@ app.get("/getchannel", async (req, res) => {
       }
     }
 
+    config.logger("GetChannel : " + toReturn.length + " channel(s) trouvé(s)", "DEBUG");
     res.status(200).json(toReturn);
   } catch (error) {
     config.logger("DiscordLink ERROR getchannel: " + error.message, "ERROR");
