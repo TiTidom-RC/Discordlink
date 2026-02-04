@@ -248,7 +248,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                 </div>
                                 <div class="form-group">
                                     <label class="col-sm-4 control-label">{{Historique à conserver}}
-                                        <sup><i class="fas fa-question-circle" title="{{Indique le nombre de jours d'historique de messages à conserver (en jours)<br/>Valeur -1 pour tout supprimer}}"></i></sup>
+                                        <sup><i class="fas fa-question-circle" title="{{Indique le nombre de jours d'historique de messages à conserver<br/>Valeur -1 pour tout supprimer}}"></i></sup>
                                     </label>
                                     <div class="col-sm-6">
                                         <input id="daysToKeep" type="number" class="eqLogicAttr" min="-1" data-l1key="configuration" data-l2key="daysToKeep" />
