@@ -240,15 +240,15 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                 <legend><i class="fas fa-broom"></i> {{Nettoyage}}</legend>
                                 <div class="form-group">
                                     <label class="col-sm-4 control-label">{{Nettoyage automatique}}
-                                        <sup><i class="fas fa-question-circle" title="{{Efface automatiquement les messages trop anciens}}"></i></sup>
+                                        <sup><i class="fas fa-question-circle" title="{{Efface automatiquement les anciens messages (toutes les nuits)}}"></i></sup>
                                     </label>
                                     <div class="col-sm-6">
                                         <label class="checkbox-inline"><input id="clearChannel" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="clearChannel" />{{Activer}}</label>
                                     </div>
                                 </div>
                                 <div class="form-group">
-                                    <label class="col-sm-4 control-label">{{Conserver les messages pendant}}
-                                        <sup><i class="fas fa-question-circle" title="{{Lors du nettoyage, conserve les messages des X derniers jours<br/>-1 permet de tout supprimer}}"></i></sup>
+                                    <label class="col-sm-4 control-label">{{Historique à conserver}}
+                                        <sup><i class="fas fa-question-circle" title="{{Indique le nombre de jours d'historique de messages à conserver (en jours)<br/>Valeur -1 pour tout supprimer}}"></i></sup>
                                     </label>
                                     <div class="col-sm-6">
                                         <input id="daysToKeep" type="number" class="eqLogicAttr" min="-1" data-l1key="configuration" data-l2key="daysToKeep" />
