@@ -1151,7 +1151,11 @@ class discordlinkCmd extends cmd {
 					$icon = "batterie_ok";
 				}
 
-				$batteryList[] = discordlink::geticon($icon) . $eqLogic->getObject()?->getName() . '/' . $eqLogic->getName() . ' => __***' . eqLogic::byId($eqLogic->getId())->getStatus('battery') . "%***__";
+				// TODO: Remettre cette syntaxe quand PHP 8 sera le minimum requis (Nullsafe operator)
+				// $batteryList[] = discordlink::getIcon($icon) . $eqLogic->getObject()?->getName() . '/' . $eqLogic->getName() . ' => __***' . eqLogic::byId($eqLogic->getId())->getStatus('battery') . "%***__";
+				$obj = $eqLogic->getObject();
+				$objName = is_object($obj) ? $obj->getName() : '';
+				$batteryList[] = discordlink::getIcon($icon) . $objName . '/' . $eqLogic->getName() . ' => __***' . eqLogic::byId($eqLogic->getId())->getStatus('battery') . "%***__";
 			}
 		}
 
