@@ -630,7 +630,7 @@ app.get("/sendEmbed", async (req, res) => {
 app.get("/clearChannel", async (req, res) => {
   try {
     const channelID = req.query.channelID;
-    const dayToKeep = req.query.dayToKeep;
+    const daysToKeep = req.query.daysToKeep;
 
     if (!channelID) {
       return res.status(400).json({ error: "channelID manquant" });
@@ -651,7 +651,7 @@ app.get("/clearChannel", async (req, res) => {
 
     // Effectuer le nettoyage en arrière-plan
     try {
-      await deleteOldChannelMessages(channel, dayToKeep);
+      await deleteOldChannelMessages(channel, daysToKeep);
       config.logger(
         "Nettoyage du channel " + channelID + " terminé avec succès",
         "INFO",
@@ -675,59 +675,78 @@ app.get("/clearChannel", async (req, res) => {
  * Delete messages older than 24 hours in a channel
  * Keeps messages from today and yesterday
  * @param {Object} channel - The Discord channel object
- * @param {number} dayToKeep - The number of days to keep messages
+ * @param {number} daysToKeep - The number of days to keep messages
  * @returns {Promise<void>}
  */
-const deleteOldChannelMessages = async (channel, dayToKeep) => {
+const deleteOldChannelMessages = async (channel, daysToKeep) => {
   try {
+    // Sécurisation du type (int) : Base 10, valeur par défaut 2
+    daysToKeep = parseInt(daysToKeep, 10);
+
     // Constantes de durée
     const ONE_DAY_MS = 86400000;
     const FOURTEEN_DAYS_MS = 14 * ONE_DAY_MS;
 
     // Timestamps de référence (minuit aujourd'hui en heure locale)
-    const nowTimestamp = new Date();
+    const nowTimestamp = Date.now();
     const todayTimestamp = new Date().setHours(0, 0, 0, 0);
-    const fourteenDaysAgoTimestamp = todayTimestamp - FOURTEEN_DAYS_MS;
-    const dayToKeepTimestamp = dayToKeep == -1 ? nowTimestamp : todayTimestamp - (dayToKeep * ONE_DAY_MS);
+    
+    // Pour bulkDelete, la limite est de 14 jours EXACTS par rapport à maintenant, non pas minuit.
+    // On prend une marge de sécurité de 1 minute pour éviter les effets de bord temps réseau.
+    const fourteenDaysAgoTimestamp = nowTimestamp - FOURTEEN_DAYS_MS + 60000;
+
+    // Si daysToKeep == -1 (tout effacer) : on prend nowTimestamp comme limite
+    // Sinon calcul classique (ex: 1 -> hier minuit)
+    const daysToKeepTimestamp = daysToKeep == -1 ? nowTimestamp : todayTimestamp - (daysToKeep * ONE_DAY_MS);
 
     let totalDeleted = 0;
     let totalBulkDeleted = 0;
     let totalIndividualDeleted = 0;
+    let lastMessageId = null; // Curseur pour la pagination
 
-    const formattedDate = getTimestamp(new Date(dayToKeepTimestamp));
+    const formattedDate = getTimestamp(new Date(daysToKeepTimestamp));
 
     config.logger("Début du nettoyage du channel " + channel.id, "INFO");
-    if (dayToKeep == -1) {
-      config.logger("Suppression de tous les messages", "INFO",);
-    }
-    else {
+
+    if (daysToKeep == -1) {
+      config.logger("Suppression de tous les messages", "INFO");
+    } else {
       config.logger("Suppression des messages avant " + formattedDate, "INFO");
       config.logger(
-        "Conservation : messages d'aujourd'hui jusqu'à " + dayToKeep + " jours avant aujourd'hui (jours calendaires)",
+        "Conservation : messages de la journée en cours et des " + daysToKeep + " jours précédents (calendaires)",
         "INFO",
       );
     }
 
     while (true) {
-      // Récupérer les 100 derniers messages
-      const messages = await channel.messages.fetch({
-        limit: 100,
-        cache: false,
-      });
+      // Options de récupération
+      const fetchOptions = { limit: 100, cache: false };
+      // Si on a déjà récupéré un lot, on demande la suite (messages plus vieux que le dernier vu)
+      if (lastMessageId) {
+        fetchOptions.before = lastMessageId;
+      }
 
-      // Si plus de messages, on arrête
+      // Récupérer les messages
+      const messages = await channel.messages.fetch(fetchOptions);
+
+      // Si Discord ne renvoie plus rien, on a atteint la fin du salon (ou le début de l'histoire)
       if (messages.size === 0) {
+        config.logger("Fin de l'historique du salon atteinte.", "DEBUG");
         break;
       }
+
       config.logger("Traitement de " + messages.size + " messages", "DEBUG");
 
-      const recentMessages = []; // Avant-hier jusqu'à -14j : suppression en masse
+      // On met à jour le curseur pour le prochain tour (le plus vieux message de ce lot)
+      lastMessageId = messages.last().id;
+
+      const recentMessages = []; // Messages récents à supprimer en masse
       const ancientMessages = []; // > 14 jours : suppression individuelle
 
       for (const [msgId, message] of messages) {
-        // Supprimer uniquement les messages d'avant-hier et plus anciens
+        // Supprimer uniquement les messages plus vieux que le timestamp limite
         if (
-          message.createdTimestamp < dayToKeepTimestamp &&
+          message.createdTimestamp < daysToKeepTimestamp &&
           message.deletable
         ) {
           if (message.createdTimestamp > fourteenDaysAgoTimestamp) {
@@ -738,20 +757,22 @@ const deleteOldChannelMessages = async (channel, dayToKeep) => {
         }
       }
 
-      // Aucun message à supprimer dans ce batch
-      if (recentMessages.length === 0 && ancientMessages.length === 0) {
-        break;
-      }
+      // Note : On ne 'break' plus si les tableaux sont vides.
+      // On continue la boucle pour aller chercher les messages plus anciens (batch suivant).
 
-      // Suppression en masse (messages de X jours jusqu'à -14j)
+      // Suppression en masse (messages récents mais à supprimer)
       if (recentMessages.length > 0) {
-        await channel.bulkDelete(recentMessages);
-        totalBulkDeleted += recentMessages.length;
-        totalDeleted += recentMessages.length;
-        config.logger(
-          recentMessages.length + " messages supprimés en masse",
-          "DEBUG",
-        );
+        try {
+          const deleted = await channel.bulkDelete(recentMessages);
+          totalBulkDeleted += deleted.size;
+          totalDeleted += deleted.size;
+          config.logger(
+            deleted.size + " messages supprimés en masse",
+            "DEBUG",
+          );
+        } catch (e) {
+          config.logger("Erreur bulkDelete: " + e.message, "WARNING");
+        }
       }
 
       // Suppression individuelle (messages > 14 jours)
@@ -759,51 +780,26 @@ const deleteOldChannelMessages = async (channel, dayToKeep) => {
         let deletedInThisBatch = 0;
         for (const message of ancientMessages) {
           try {
-            // Discord.js gère automatiquement le Rate Limit (429) en mettant en pause les requêtes
             await message.delete();
             deletedInThisBatch++;
             totalIndividualDeleted++;
             totalDeleted++;
           } catch (e) {
-            config.logger(
-              "Impossible de supprimer le message " +
-              message.id +
-              ": " +
-              e.message,
-              "WARNING",
-            );
+            config.logger("Echec suppression message " + message.id + ": " + e.message, "WARNING");
           }
         }
-        config.logger(
-          deletedInThisBatch +
-          " vieux messages (>14j) supprimés individuellement",
-          "DEBUG",
-        );
+        config.logger(deletedInThisBatch + " vieux messages (>14j) supprimés un par un", "DEBUG");
       }
-
-      // Pause de 2 secondes entre les batches pour laisser le temps à la suppression de se propager
-      await new Promise(r => setTimeout(r, 2000));
-
     }
 
     config.logger("========================================", "INFO");
     config.logger("Nettoyage terminé - Récapitulatif :", "INFO");
-    config.logger(
-      "- Messages supprimés en masse : " + totalBulkDeleted,
-      "INFO",
-    );
-    config.logger(
-      "- Messages supprimés individuellement (>14j) : " +
-      totalIndividualDeleted,
-      "INFO",
-    );
+    config.logger("- Messages supprimés en masse : " + totalBulkDeleted, "INFO");
+    config.logger("- Messages supprimés individuellement (>14j) : " + totalIndividualDeleted, "INFO");
     config.logger("- TOTAL supprimés : " + totalDeleted, "INFO");
     config.logger("========================================", "INFO");
   } catch (error) {
-    config.logger(
-      "Erreur lors de la suppression des messages: " + error.message,
-      "ERROR",
-    );
+    config.logger("Erreur critique lors du nettoyage : " + error.message, "ERROR");
     throw error;
   }
 };

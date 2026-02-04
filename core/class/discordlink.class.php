@@ -430,7 +430,7 @@ class discordlink extends eqLogic {
 
 	public function preInsert() {
 		$this->setConfiguration('defaultColor', self::DEFAULT_COLOR);
-		$this->setConfiguration('dayToKeep', 2);
+		$this->setConfiguration('daysToKeep', 2);
 		$this->setIsEnable(1);
 	}
 
@@ -833,7 +833,7 @@ class discordlinkCmd extends cmd {
 		$cmdAndArg = explode('?', $this->getConfiguration('request'), 2);
 		$command = $cmdAndArg[0];
 
-		$dayToKeep = $this->getEqLogic()->getConfiguration('dayToKeep', 2);
+		$daysToKeep = $this->getEqLogic()->getConfiguration('daysToKeep', 2);
 
 		$commandMap = array(
 			'sendMsg' => 'buildMessageRequest',
@@ -847,7 +847,7 @@ class discordlinkCmd extends cmd {
 			'objectSummary' => 'buildObjectSummary',
 			'messageCenter' => 'buildMessageCenter',
 			'lastUser' => 'buildLastUser',
-			'deleteMessage' => 'clearChannel?dayToKeep=' . ($dayToKeep >= -1 ? $dayToKeep : 2)
+			'deleteMessage' => 'clearChannel?daysToKeep=' . ($daysToKeep >= -1 ? $daysToKeep : 2)
 		);
 
 		if (isset($commandMap[$command])) {

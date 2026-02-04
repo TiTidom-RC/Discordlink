@@ -251,7 +251,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                         <sup><i class="fas fa-question-circle" title="{{Lors du nettoyage, conserve les messages des X derniers jours<br/>-1 permet de tout supprimer}}"></i></sup>
                                     </label>
                                     <div class="col-sm-6">
-                                        <input id="dayToKeep" type="number" class="eqLogicAttr" min="-1" data-l1key="configuration" data-l2key="dayToKeep" />
+                                        <input id="daysToKeep" type="number" class="eqLogicAttr" min="-1" data-l1key="configuration" data-l2key="daysToKeep" />
                                     </div>
                                 </div>
                             </fieldset>
