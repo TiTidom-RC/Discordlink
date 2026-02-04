@@ -713,7 +713,7 @@ const deleteOldChannelMessages = async (channel, daysToKeep) => {
     } else {
       config.logger("Suppression des messages avant " + formattedDate, "INFO");
       config.logger(
-        "Conservation : messages de la journée en cours et des " + daysToKeep + " jours précédents (calendaires)",
+        "Conservation : Aujourd'hui + les " + daysToKeep + " derniers jours",
         "INFO",
       );
     }
