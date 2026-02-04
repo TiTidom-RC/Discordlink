@@ -147,11 +147,9 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                         <div class="input-group">
                                             <select class="form-control eqLogicAttr roundedLeft" data-l1key="configuration" data-l2key="channelId">
                                                 <?php
-                                                $channels = config::byKey('channels', 'discordlink', 'null');
-                                                $deamon = discordlink::deamon_info();
+                                                $channels = config::byKey('channels', 'discordlink', array());                                                
                                                 $i = 0;
-                                                if ($deamon['state'] == 'ok') {
-                                                    $channels = discordlink::getChannel();
+                                                if (is_array($channels)) {
                                                     foreach ($channels as $channel) {
                                                         echo '<option value="' . $channel['id'] . '">(' . $channel['guildName'] . ') ' . $channel['name'] . '</option>';
                                                         $i++;
