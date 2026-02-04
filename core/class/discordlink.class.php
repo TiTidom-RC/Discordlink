@@ -71,7 +71,7 @@ class discordlink extends eqLogic {
 		return self::$_daemonBaseURL;
 	}
 
-	public static function getChannel($maxRetries = 3, $delayMs = 500) {
+	public static function getChannel($maxRetries = 6, $delayMs = 2000) {
 		$attempt = 0;
 		while ($attempt < $maxRetries) {
 			try {
@@ -99,7 +99,9 @@ class discordlink extends eqLogic {
 
 			$attempt++;
 			if ($attempt < $maxRetries) {
-				usleep($delayMs * 1000); // Pause avant la prochaine tentative
+				// Backoff progressif : on augmente le délai à chaque tentative
+				usleep($delayMs * 1000); 
+				$delayMs += 2000; // +2s à chaque échec (2s, 4s, 6s, 8s, 10s = 30s total)
 			}
 		}
 
