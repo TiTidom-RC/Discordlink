@@ -84,7 +84,7 @@ class discordlink extends eqLogic {
 					if ($response !== false && !empty($response)) {
 						$channels = json_decode($response, true);
 						if (is_array($channels)) {
-							log::add('discordlink', 'debug', 'Channels récupérés (' . count($channels) .') après ' . ($attempt + 1) . ' tentative(s)');
+							log::add('discordlink', 'debug', 'Channels récupérés (' . count($channels) . ') après ' . ($attempt + 1) . ' tentative(s)');
 							return $channels;
 						}
 					}
@@ -100,7 +100,7 @@ class discordlink extends eqLogic {
 			$attempt++;
 			if ($attempt < $maxRetries) {
 				// Backoff progressif : on augmente le délai à chaque tentative
-				usleep($delayMs * 1000); 
+				usleep($delayMs * 1000);
 				$delayMs += 2000; // +2s à chaque échec (2s, 4s, 6s, 8s, 10s = 30s total)
 			}
 		}
