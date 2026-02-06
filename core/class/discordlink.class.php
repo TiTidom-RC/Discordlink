@@ -762,7 +762,7 @@ class discordlink extends eqLogic {
 		$pluginType = self::isBeta(true);
 		$info = discordlink::getInfo();
 
-		$pluginInfo = '<b>Version </b> : ' . $info['pluginVersion'] . ' ' . $pluginType  . '<br/>';
+		$pluginInfo = '<b>Version </b> : ' . $info['pluginVersion'] . ' (' . $pluginType  . ')<br/>';
 
 		$pluginInfo .= '<b>Version OS</b> : ' .  system::getDistrib() . ' ' . system::getOsVersion() . '<br/>';
 
