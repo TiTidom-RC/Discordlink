@@ -906,7 +906,8 @@ const startServer = () => {
           const channelFetchPromises = Array.from(client.guilds.cache.values()).map(
             guild => guild.channels.fetch()
               .then(() => {
-                preloadState.channelsLoaded += guild.channels.cache.size;
+                // Compter uniquement les channels texte
+                preloadState.channelsLoaded += guild.channels.cache.filter(c => c.type === ChannelType.GuildText).size;
               })
               .catch(err => {
                 config.logger(`Erreur fetch channels ${guild.name}: ${err.message}`, "DEBUG");
@@ -931,10 +932,11 @@ const startServer = () => {
         
         await Promise.race([preloadPromise, timeoutPromise]);
         
-        const totalChannels = Array.from(client.guilds.cache.values())
-          .reduce((acc, guild) => acc + guild.channels.cache.size, 0);
+        // Compte les channels texte chargés dans le cache
+        const totalTextChannels = Array.from(client.guilds.cache.values())
+          .reduce((acc, guild) => acc + guild.channels.cache.filter(c => c.type === ChannelType.GuildText).size, 0);
         
-        config.logger(`Guilds & channels préchargés (${totalChannels} channels)`, "DEBUG");
+        config.logger(`Guilds & channels préchargés (${totalTextChannels} channels texte)`, "DEBUG");
         
       } catch (e) {
         // Gestion par errorType pour différencier timeout vs autres erreurs
@@ -943,7 +945,7 @@ const startServer = () => {
           let message = `Timeout préchargement (${e.duration}ms) pendant "${state.phase}"`;
           
           if (state.guildsLoaded > 0) {
-            message += ` - ${state.guildsLoaded} guilds, ${state.channelsLoaded} channels chargés`;
+            message += ` - ${state.guildsLoaded} guilds, ${state.channelsLoaded} channels texte chargés`;
           } else {
             message += ` - Chargement initial en cours`;
           }
