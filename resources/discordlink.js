@@ -53,6 +53,9 @@ const listeningPort = process.argv[8] || 3466;
 let botName;
 let botAvatar;
 
+// Flag pour indiquer si le client Discord est prêt (évite les erreurs getChannel avant ready)
+let discordReady = false;
+
 /**
  * Helper to get current timestamp in Jeedom format (YYYY-MM-DD HH:MM:SS)
  * Using 'sv-SE' locale hack to get ISO 8601 like format
@@ -859,7 +862,6 @@ process.on("uncaughtException", (error) => {
  * Initialize the Discord client and start the Express server
  */
 const startServer = () => {
-  lastServerStart = Date.now();
   discordReady = false;
 
   config.logger("***** Lancement BOT Discord.js v14 *****", "INFO");
@@ -886,15 +888,70 @@ const startServer = () => {
       botName = client.user.username;
       botAvatar = client.user.displayAvatarURL({ format: "png", dynamic: true });
 
-      // Pré-chargement des guilds & channels (important pour getChannel)
+      // Pré-chargement des guilds & channels (important pour getChannel) 
+      // ... Avec timeout pour éviter de bloquer le bot indéfiniment en cas de gros serveur ou de problème réseau
       try {
-        await client.guilds.fetch();
-        for (const guild of client.guilds.cache.values()) {
-          await guild.channels.fetch();
-        }
-        config.logger("Guilds & channels préchargés", "DEBUG");
+        const PRELOAD_TIMEOUT = 15000; // 15 secondes max
+        let preloadState = { phase: 'starting', guildsLoaded: 0, channelsLoaded: 0 };
+        
+        const preloadPromise = (async () => {
+          preloadState.phase = 'fetching_guilds';
+          await client.guilds.fetch();
+          preloadState.guildsLoaded = client.guilds.cache.size;
+          preloadState.phase = 'fetching_channels';
+          
+          config.logger(`${client.guilds.cache.size} guilds récupérées`, "DEBUG");
+          
+          // Paralléliser les fetch de channels
+          const channelFetchPromises = Array.from(client.guilds.cache.values()).map(
+            guild => guild.channels.fetch()
+              .then(() => {
+                preloadState.channelsLoaded += guild.channels.cache.size;
+              })
+              .catch(err => {
+                config.logger(`Erreur fetch channels ${guild.name}: ${err.message}`, "DEBUG");
+                return null; // Continue même si un serveur échoue
+              })
+          );
+          
+          await Promise.all(channelFetchPromises);
+          preloadState.phase = 'completed';
+        })();
+        
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => {
+            const err = new Error('Timeout préchargement');
+            err.errorType = 'PRELOAD_TIMEOUT';
+            err.duration = PRELOAD_TIMEOUT;
+            // Capturer l'état au moment exact du timeout
+            err.state = { ...preloadState };
+            reject(err);
+          }, PRELOAD_TIMEOUT);
+        });
+        
+        await Promise.race([preloadPromise, timeoutPromise]);
+        
+        const totalChannels = Array.from(client.guilds.cache.values())
+          .reduce((acc, guild) => acc + guild.channels.cache.size, 0);
+        
+        config.logger(`Guilds & channels préchargés (${totalChannels} channels)`, "DEBUG");
+        
       } catch (e) {
-        config.logger("Erreur preload channels: " + e.message, "WARNING");
+        // Gestion par errorType pour différencier timeout vs autres erreurs
+        if (e.errorType === 'PRELOAD_TIMEOUT') {
+          const state = e.state;
+          let message = `Timeout préchargement (${e.duration}ms) pendant "${state.phase}"`;
+          
+          if (state.guildsLoaded > 0) {
+            message += ` - ${state.guildsLoaded} guilds, ${state.channelsLoaded} channels chargés`;
+          } else {
+            message += ` - Chargement initial en cours`;
+          }
+          
+          config.logger(message, "WARNING");
+        } else {
+          config.logger(`Erreur preload channels: ${e.message}`, "WARNING");
+        }
       }
     });
 
@@ -909,8 +966,10 @@ const startServer = () => {
       config.logger("Login Discord OK (intents privilégiés)", "INFO");
     })
     .catch((err) => {
+      // Discord.js utilise le code 'DisallowedIntents' pour indiquer que le bot a demandé des intents qui ne sont pas activés dans le portail Discord Developer.
+      const isIntentError = err.code === 'DisallowedIntents' || (err.message && err.message.toLowerCase().includes('disallowed intents'));
 
-      if (err.message == "Used disallowed intents") {
+      if (isIntentError) {
         // en ERREUR pour que ca remonte dans les messages d'erreur de Jeedom
         httpPost("createJeedomMessage", {
           msg: "Login échoué avec intents privilégiés :: " + err.message
