@@ -14,25 +14,33 @@ const {
   Partials,
   EmbedBuilder,
   ChannelType,
+  Events,
 } = require("discord.js");
 
-// Initialisation du client avec les Intents obligatoires
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent, // OBLIGATOIRE pour lire les messages
-    GatewayIntentBits.GuildMessageReactions,
-    GatewayIntentBits.DirectMessages,
-    // GatewayIntentBits.GuildPresences,
-    // GatewayIntentBits.GuildMembers,
-  ],
-  partials: [
-    Partials.Message,
-    Partials.Channel,
-    Partials.Reaction
-  ],
-});
+const BASE_INTENTS = [
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildMessages,
+  GatewayIntentBits.MessageContent,
+  GatewayIntentBits.GuildMessageReactions,
+  GatewayIntentBits.DirectMessages,
+];
+
+const PRIVILEGED_INTENTS = [
+  GatewayIntentBits.GuildMembers,
+  GatewayIntentBits.GuildPresences,
+];
+
+let client;
+
+const createClient = (intents) =>
+  new Client({
+    intents,
+    partials: [
+      Partials.Message,
+      Partials.Channel,
+      Partials.Reaction,
+    ],
+  });
 
 const token = process.argv[3];
 const jeedomURL = process.argv[2];
@@ -44,6 +52,9 @@ const listeningPort = process.argv[8] || 3466;
 // Save bot info
 let botName;
 let botAvatar;
+
+// Flag pour indiquer si le client Discord est prêt (évite les erreurs getChannel avant ready)
+let discordReady = false;
 
 /**
  * Helper to get current timestamp in Jeedom format (YYYY-MM-DD HH:MM:SS)
@@ -146,8 +157,6 @@ try {
   config.logger("Erreur chargement quickreply.json: " + e.message, "WARNING");
 }
 
-let lastServerStart = 0;
-
 if (!token) {
   config.logger("Config: ***** TOKEN NON DEFINI *****", "ERROR");
 }
@@ -223,9 +232,9 @@ app.get("/getchannel", async (req, res) => {
     res.type("json");
 
     // Vérifier si le client Discord est prêt
-    if (!client.isReady()) {
-      config.logger("GetChannel demandé mais Client Discord NON PRÊT", "WARNING");
-      return res.status(503).json({ error: "Discord client not ready yet" });
+    if (!discordReady) {
+      config.logger("GetChannel demandé mais Discord pas encore prêt", "WARNING");
+      return res.status(503).json({ error: "Discord not ready yet" });
     }
 
     let toReturn = [];
@@ -698,7 +707,7 @@ const deleteOldChannelMessages = async (channel, daysToKeep) => {
     // Timestamps de référence (minuit aujourd'hui en heure locale)
     const nowTimestamp = Date.now();
     const todayTimestamp = new Date().setHours(0, 0, 0, 0);
-    
+
     // Pour bulkDelete, la limite est de 14 jours EXACTS par rapport à maintenant, non pas minuit.
     // On prend une marge de sécurité de 1 minute pour éviter les effets de bord temps réseau.
     const fourteenDaysAgoTimestamp = nowTimestamp - FOURTEEN_DAYS_MS + 60000;
@@ -812,37 +821,29 @@ const deleteOldChannelMessages = async (channel, daysToKeep) => {
   }
 };
 
-/* Gestionnaires d'événements Discord - À définir AVANT client.login() */
-client.on("clientReady", async () => {
-  config.logger(`Bot connecté :: ${client.user.tag}`, "INFO");
+const attachDiscordEvents = () => {
+  // Discord.js v14: 'message' → 'messageCreate'
+  client.on("messageCreate", (receivedMessage) => {
+    // if (receivedMessage.author === client.user) return;
+    if (receivedMessage.author?.bot && !receivedMessage.webhookId) {
+      // config.logger('⛔ message bot NON autorisé webhookID → ignoré', "DEBUG");
+      return;
+    }
 
-  // Discord.js v14: setActivity prend un objet options
-  await client.user.setActivity(activityStatus, { type: 0 }); // 0 = Playing
-
-  botName = client.user.username;
-  botAvatar = client.user.displayAvatarURL({ format: 'png', dynamic: true });
-});
-
-// Discord.js v14: 'message' → 'messageCreate'
-client.on("messageCreate", (receivedMessage) => {
-  // if (receivedMessage.author === client.user) return;
-  if (receivedMessage.author?.bot && !receivedMessage.webhookId) {
-    // config.logger('⛔ message bot NON autorisé webhookID → ignoré', "DEBUG");
-    return;
-  }
-
-  httpPost("messageReceived", {
-    channelId: receivedMessage.channel.id,
-    message: receivedMessage.content,
-    userId: receivedMessage.author.id,
+    httpPost("messageReceived", {
+      channelId: receivedMessage.channel.id,
+      message: receivedMessage.content,
+      userId: receivedMessage.author.id,
+    });
   });
-});
 
-// Gestion des erreurs
-client.on("error", (error) => {
-  config.logger("Client ERROR :: " + error.message, "ERROR");
-  console.error(error);
-});
+  // Gestion des erreurs
+  client.on("error", (error) => {
+    config.logger("Client ERROR :: " + error.message, "ERROR");
+    console.error(error);
+  });
+
+};
 
 process.on("unhandledRejection", (error) => {
   config.logger("Unhandled promise rejection: " + error.message, "ERROR");
@@ -861,15 +862,146 @@ process.on("uncaughtException", (error) => {
  * Initialize the Discord client and start the Express server
  */
 const startServer = () => {
-  lastServerStart = Date.now();
+  discordReady = false;
 
   config.logger("***** Lancement BOT Discord.js v14 *****", "INFO");
 
-  client.login(config.token).catch((err) => {
-    config.logger("FATAL ERROR Login :: " + err.message, "ERROR");
-    process.exit(1);
-  });
+  /**
+   * Helper interne pour créer + connecter le client
+   */
+  const loginClient = async (intents, label) => {
+    client = createClient(intents);
+    attachDiscordEvents();
 
+    // READY = SEUL MOMENT FIABLE
+    client.once(Events.ClientReady, async () => {
+      discordReady = true;
+
+      config.logger(`Bot READY (${label}) :: ${client.user.tag}`, "INFO");
+
+      try {
+        await client.user.setActivity(activityStatus, { type: 0 });
+      } catch (e) {
+        config.logger("Erreur setActivity: " + e.message, "WARNING");
+      }
+
+      botName = client.user.username;
+      botAvatar = client.user.displayAvatarURL({ format: "png", dynamic: true });
+
+      // Pré-chargement des guilds & channels (important pour getChannel) 
+      // ... Avec timeout pour éviter de bloquer le bot indéfiniment en cas de gros serveur ou de problème réseau
+      try {
+        const PRELOAD_TIMEOUT = 15000; // 15 secondes max
+        let preloadState = { phase: 'starting', guildsLoaded: 0, channelsLoaded: 0 };
+        
+        const preloadPromise = (async () => {
+          preloadState.phase = 'fetching_guilds';
+          await client.guilds.fetch();
+          preloadState.guildsLoaded = client.guilds.cache.size;
+          preloadState.phase = 'fetching_channels';
+          
+          config.logger(`${client.guilds.cache.size} guilds récupérées`, "DEBUG");
+          
+          // Paralléliser les fetch de channels
+          const channelFetchPromises = Array.from(client.guilds.cache.values()).map(
+            guild => guild.channels.fetch()
+              .then(() => {
+                // Compter uniquement les channels texte
+                preloadState.channelsLoaded += guild.channels.cache.filter(c => c.type === ChannelType.GuildText).size;
+              })
+              .catch(err => {
+                config.logger(`Erreur fetch channels ${guild.name}: ${err.message}`, "DEBUG");
+                return null; // Continue même si un serveur échoue
+              })
+          );
+          
+          await Promise.all(channelFetchPromises);
+          preloadState.phase = 'completed';
+        })();
+        
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => {
+            const err = new Error('Timeout préchargement');
+            err.errorType = 'PRELOAD_TIMEOUT';
+            err.duration = PRELOAD_TIMEOUT;
+            // Capturer l'état au moment exact du timeout
+            err.state = { ...preloadState };
+            reject(err);
+          }, PRELOAD_TIMEOUT);
+        });
+        
+        await Promise.race([preloadPromise, timeoutPromise]);
+        
+        // Compte les channels texte chargés dans le cache
+        const totalTextChannels = Array.from(client.guilds.cache.values())
+          .reduce((acc, guild) => acc + guild.channels.cache.filter(c => c.type === ChannelType.GuildText).size, 0);
+        
+        config.logger(`Guilds & channels préchargés (${totalTextChannels} channels texte)`, "DEBUG");
+        
+      } catch (e) {
+        // Gestion par errorType pour différencier timeout vs autres erreurs
+        if (e.errorType === 'PRELOAD_TIMEOUT') {
+          const state = e.state;
+          let message = `Timeout préchargement (${e.duration}ms) pendant "${state.phase}"`;
+          
+          if (state.guildsLoaded > 0) {
+            message += ` - ${state.guildsLoaded} guilds, ${state.channelsLoaded} channels texte chargés`;
+          } else {
+            message += ` - Chargement initial en cours`;
+          }
+          
+          config.logger(message, "WARNING");
+        } else {
+          config.logger(`Erreur preload channels: ${e.message}`, "WARNING");
+        }
+      }
+    });
+
+    await client.login(config.token);
+  };
+
+  /**
+   * Tentative 1 : avec intents privilégiés
+   */
+  loginClient([...BASE_INTENTS, ...PRIVILEGED_INTENTS], "avec intents privilégiés")
+    .then(() => {
+      config.logger("Login Discord OK (intents privilégiés)", "INFO");
+    })
+    .catch((err) => {
+      // Discord.js utilise le code 'DisallowedIntents' pour indiquer que le bot a demandé des intents qui ne sont pas activés dans le portail Discord Developer.
+      const isIntentError = err.code === 'DisallowedIntents' || (err.message && err.message.toLowerCase().includes('disallowed intents'));
+
+      if (isIntentError) {
+        // en ERREUR pour que ca remonte dans les messages d'erreur de Jeedom
+        httpPost("createJeedomMessage", {
+          msg: "Login échoué avec intents privilégiés :: " + err.message
+        });
+      }
+
+      config.logger(
+        "Login échoué avec intents privilégiés :: " + err.message,
+        "WARNING",
+      );
+
+      /**
+       * Tentative 2 : sans intents privilégiés
+       */
+      loginClient(BASE_INTENTS, "sans intents privilégiés")
+        .then(() => {
+          config.logger("Login Discord OK (sans intents)", "INFO");
+        })
+        .catch((err) => {
+          config.logger(
+            "FATAL ERROR Login Discord :: " + err.message,
+            "ERROR",
+          );
+          process.exit(1);
+        });
+    });
+
+  /**
+   * Lancement du serveur HTTP (indépendant de Discord)
+   */
   server = app.listen(config.listeningPort, () => {
     config.logger(
       "***** Démon :: OK - Listening on port :: " +
