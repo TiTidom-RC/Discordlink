@@ -71,7 +71,7 @@ class discordlink extends eqLogic {
 		return self::$_daemonBaseURL;
 	}
 
-	public static function getChannel($maxRetries = 6, $delayMs = 2000) {
+	public static function getChannel($maxRetries = 5, $delayMs = 2000) {
 		$attempt = 0;
 		while ($attempt < $maxRetries) {
 			try {
@@ -84,7 +84,7 @@ class discordlink extends eqLogic {
 					if ($response !== false && !empty($response)) {
 						$channels = json_decode($response, true);
 						if (is_array($channels)) {
-							log::add('discordlink', 'debug', 'Channels récupérés (' . count($channels) .') après ' . ($attempt + 1) . ' tentative(s)');
+							log::add('discordlink', 'debug', 'Channels récupérés (' . count($channels) . ') après ' . ($attempt + 1) . ' tentative(s)');
 							return $channels;
 						}
 					}
@@ -97,12 +97,12 @@ class discordlink extends eqLogic {
 				log::add('discordlink', 'debug', 'Tentative ' . ($attempt + 1) . '/' . $maxRetries . ' échouée: ' . $e->getMessage());
 			}
 
-			$attempt++;
 			if ($attempt < $maxRetries) {
 				// Backoff progressif : on augmente le délai à chaque tentative
-				usleep($delayMs * 1000); 
+				usleep($delayMs * 1000);
 				$delayMs += 2000; // +2s à chaque échec (2s, 4s, 6s, 8s, 10s = 30s total)
 			}
+			$attempt++;
 		}
 
 		log::add('discordlink', 'error', 'Impossible de récupérer les channels depuis le daemon après ' . $maxRetries . ' tentatives');
