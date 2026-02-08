@@ -121,9 +121,19 @@ class discordlink extends eqLogic {
 	}
 
 	private static function removeEmoji($text) {
-		// Supprime tous les emoji Unicode (PHP 7.4+) - Property Emoji couvre tous les emoji modernes
-		// Inclut: emoticons, symboles, drapeaux, ZWJ sequences, variations, skin tones
-		return preg_replace('/\p{Emoji}/u', '', $text);
+		// Remplacement manuel des symboles spéciaux courants qui ont une équivalence texte
+		$replacements = array(
+			'©' => 'c',
+			'®' => 'r',
+			'™' => 'tm',
+			'‼' => '!!',
+			'⁉' => '!?',
+		);
+		$text = strtr($text, $replacements);
+
+		// Supprime les emoji Unicode tout en préservant les caractères ASCII (0-9, #, *)
+		// On utilise un lookahead négatif pour exclure les chiffres et symboles standards
+		return preg_replace('/(?:(?![0-9#*])\p{Emoji})+/u', '', $text);
 	}
 
 	public static function setEmoji($reset = 0) {
