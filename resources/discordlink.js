@@ -14,21 +14,36 @@ const {
   Partials,
   EmbedBuilder,
   ChannelType,
+  Events,
 } = require("discord.js");
 
-// Initialisation du client avec les Intents obligatoires
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent, // OBLIGATOIRE pour lire les messages
-    GatewayIntentBits.GuildMessageReactions,
-    GatewayIntentBits.DirectMessages,
-    GatewayIntentBits.GuildPresences,
-    GatewayIntentBits.GuildMembers,
-  ],
-  partials: [Partials.Message, Partials.Channel, Partials.Reaction],
-});
+const BASE_INTENTS = [
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildMessages,
+  GatewayIntentBits.GuildMessageReactions,
+  GatewayIntentBits.DirectMessages,
+];
+
+const PRIVILEGED_INTENTS = [
+  GatewayIntentBits.GuildMembers,
+  GatewayIntentBits.GuildPresences,
+];
+
+const MESSAGE_CONTENT_INTENT = [
+  GatewayIntentBits.MessageContent,
+];
+
+let client;
+
+const createClient = (intents) =>
+  new Client({
+    intents,
+    partials: [
+      Partials.Message,
+      Partials.Channel,
+      Partials.Reaction,
+    ],
+  });
 
 const token = process.argv[3];
 const jeedomURL = process.argv[2];
@@ -36,6 +51,13 @@ const logLevelLimit = parseInt(process.argv[4]) || 2000; // Par défaut : Aucun 
 const pluginKey = process.argv[6];
 const activityStatus = decodeURI(process.argv[7]);
 const listeningPort = process.argv[8] || 3466;
+
+// Save bot info
+let botName;
+let botAvatar;
+
+// Flag pour indiquer si le client Discord est prêt (évite les erreurs getChannel avant ready)
+let discordReady = false;
 
 /**
  * Helper to get current timestamp in Jeedom format (YYYY-MM-DD HH:MM:SS)
@@ -119,7 +141,7 @@ config.logger("Arguments reçus:", "DEBUG");
 config.logger(" - argv[2] (jeedomURL): " + jeedomURL, "DEBUG");
 config.logger(
   " - argv[3] (token): " +
-    (token ? `[PRESENT - ${token.length} caractères]` : "[ABSENT]"),
+  (token ? `[PRESENT - ${token.length} caractères]` : "[ABSENT]"),
   "DEBUG",
 );
 config.logger(" - argv[4] (logLevel): " + logLevelLimit, "DEBUG");
@@ -137,8 +159,6 @@ try {
 } catch (e) {
   config.logger("Erreur chargement quickreply.json: " + e.message, "WARNING");
 }
-
-let lastServerStart = 0;
 
 if (!token) {
   config.logger("Config: ***** TOKEN NON DEFINI *****", "ERROR");
@@ -213,6 +233,13 @@ app.get("/heartbeat", (req, res) => {
 app.get("/getchannel", async (req, res) => {
   try {
     res.type("json");
+
+    // Vérifier si le client Discord est prêt
+    if (!discordReady) {
+      config.logger("GetChannel demandé mais Discord pas encore prêt", "WARNING");
+      return res.status(503).json({ error: "Discord not ready yet" });
+    }
+
     let toReturn = [];
 
     config.logger("GetChannel", "DEBUG");
@@ -232,6 +259,7 @@ app.get("/getchannel", async (req, res) => {
       }
     }
 
+    config.logger("GetChannel : " + toReturn.length + " channel(s) trouvé(s)", "DEBUG");
     res.status(200).json(toReturn);
   } catch (error) {
     config.logger("DiscordLink ERROR getchannel: " + error.message, "ERROR");
@@ -358,14 +386,18 @@ app.get("/sendEmbed", async (req, res) => {
     let userResponse = "null";
 
     // Ajout QuickReply
-    let quickEmoji = null;
-    let quickText = null;
-    let quickTimeout = 120;
-
-    if (quickreply && quickreplyConf[quickreply]) {
-      quickEmoji = quickreplyConf[quickreply].emoji;
-      quickText = quickreplyConf[quickreply].text;
-      quickTimeout = quickreplyConf[quickreply].timeout || 120;
+    let quickReplies = [];
+    if (quickreply && quickreply !== "null") {
+      quickReplies = quickreply
+        .split(',')
+        .map(q => q.trim())
+        .filter(q => {
+          if (!quickreplyConf[q]) {
+            config.logger(`QuickReply "${q}" non trouvé dans quickreply.json`, "WARNING");
+            return false;
+          }
+          return true;
+        });
     }
 
     // Normaliser les valeurs vides ou "null"
@@ -429,32 +461,48 @@ app.get("/sendEmbed", async (req, res) => {
     const m = await channel.send({ embeds: [Embed] });
 
     // Gestion QuickReply
-    if (quickEmoji) {
-      await m.react(quickEmoji);
+    // Ajout de tous les emojis quickreply demandés
+    for (const q of quickReplies) {
+      const conf = quickreplyConf[q];
+      if (!conf) continue;
+
+      const emoji = conf.emoji;
+      const quickText = conf.text;
+      let timeout = parseInt(conf.timeout, 10);
+      if (isNaN(timeout) || timeout <= 0) timeout = 120;
+
+      await m.react(emoji);
 
       const filter = (reaction, user) =>
-        reaction.emoji.name === quickEmoji && !user.bot;
+        reaction.emoji.name === emoji && !user.bot;
 
-      if (!quickTimeout || isNaN(quickTimeout) || quickTimeout <= 0) {
-        quickTimeout = 120;
-      }
-
-      // Discord.js v14: createReactionCollector prend un objet options
       const collector = m.createReactionCollector({
         filter,
         max: 1,
-        time: quickTimeout * 1000,
+        time: timeout * 1000,
       });
 
-      collector.on("collect", (reaction, user) => {
-        m.channel.send(quickText);
+      collector.on('collect', async () => {
+        const webhook = await getWebhook(m.channel);
+        if (!webhook) return;
+
+        await webhook.send({
+          content: quickText,
+          username: botName,
+          avatarURL: botAvatar,
+          allowedMentions: { parse: [] },
+        });
       });
 
-      collector.on("end", (collected, reason) => {
-        if (reason === "time") {
-          const reaction = m.reactions.cache.get(quickEmoji);
+      collector.on('end', (collected, reason) => {
+        if (reason === 'time') {
+          const reaction = m.reactions.cache.find(r =>
+            (r.emoji.id && r.emoji.id === emoji) ||
+            (r.emoji.name === emoji)
+          );
+
           if (reaction) {
-            reaction.remove().catch(() => {});
+            reaction.users.remove(client.user.id).catch(() => { });
           }
         }
       });
@@ -541,9 +589,9 @@ app.get("/sendEmbed", async (req, res) => {
               "🇷": 17,
               "🇸": 18,
               "🇹": 19,
-              "�": 20,
+              "🇺": 20,
               "🇻": 21,
-              "�": 22,
+              "🇼": 22,
               "🇽": 23,
               "🇾": 24,
               "🇿": 25,
@@ -559,7 +607,7 @@ app.get("/sendEmbed", async (req, res) => {
             });
           })
           .catch(() => {
-            m.delete().catch(() => {});
+            m.delete().catch(() => { });
           });
       } else {
         // Réponse textuelle
@@ -575,7 +623,7 @@ app.get("/sendEmbed", async (req, res) => {
           .then((collected) => {
             let msg = collected.first();
             userResponse = msg.content;
-            msg.react("✅").catch(() => {});
+            msg.react("✅").catch(() => { });
 
             httpPost("ASK", {
               channelId: m.channel.id,
@@ -584,7 +632,7 @@ app.get("/sendEmbed", async (req, res) => {
             });
           })
           .catch(() => {
-            m.delete().catch(() => {});
+            m.delete().catch(() => { });
           });
       }
     } else {
@@ -602,6 +650,7 @@ app.get("/sendEmbed", async (req, res) => {
 app.get("/clearChannel", async (req, res) => {
   try {
     const channelID = req.query.channelID;
+    const daysToKeep = req.query.daysToKeep;
 
     if (!channelID) {
       return res.status(400).json({ error: "channelID manquant" });
@@ -622,7 +671,7 @@ app.get("/clearChannel", async (req, res) => {
 
     // Effectuer le nettoyage en arrière-plan
     try {
-      await deleteOldChannelMessages(channel);
+      await deleteOldChannelMessages(channel, daysToKeep);
       config.logger(
         "Nettoyage du channel " + channelID + " terminé avec succès",
         "INFO",
@@ -630,9 +679,9 @@ app.get("/clearChannel", async (req, res) => {
     } catch (error) {
       config.logger(
         "Erreur lors du nettoyage du channel " +
-          channelID +
-          ": " +
-          error.message,
+        channelID +
+        ": " +
+        error.message,
         "ERROR",
       );
     }
@@ -646,51 +695,78 @@ app.get("/clearChannel", async (req, res) => {
  * Delete messages older than 24 hours in a channel
  * Keeps messages from today and yesterday
  * @param {Object} channel - The Discord channel object
+ * @param {number} daysToKeep - The number of days to keep messages
  * @returns {Promise<void>}
  */
-const deleteOldChannelMessages = async (channel) => {
+const deleteOldChannelMessages = async (channel, daysToKeep) => {
   try {
+    // Sécurisation du type (int) : Base 10, valeur par défaut 2
+    daysToKeep = parseInt(daysToKeep, 10);
+
     // Constantes de durée
     const ONE_DAY_MS = 86400000;
     const FOURTEEN_DAYS_MS = 14 * ONE_DAY_MS;
 
     // Timestamps de référence (minuit aujourd'hui en heure locale)
+    const nowTimestamp = Date.now();
     const todayTimestamp = new Date().setHours(0, 0, 0, 0);
-    const yesterdayTimestamp = todayTimestamp - ONE_DAY_MS;
-    const fourteenDaysAgoTimestamp = todayTimestamp - FOURTEEN_DAYS_MS;
+
+    // Pour bulkDelete, la limite est de 14 jours EXACTS par rapport à maintenant, non pas minuit.
+    // On prend une marge de sécurité de 1 minute pour éviter les effets de bord temps réseau.
+    const fourteenDaysAgoTimestamp = nowTimestamp - FOURTEEN_DAYS_MS + 60000;
+
+    // Si daysToKeep == -1 (tout effacer) : on prend nowTimestamp comme limite
+    // Sinon calcul classique (ex: 1 -> hier minuit)
+    const daysToKeepTimestamp = daysToKeep == -1 ? nowTimestamp : todayTimestamp - (daysToKeep * ONE_DAY_MS);
 
     let totalDeleted = 0;
     let totalBulkDeleted = 0;
     let totalIndividualDeleted = 0;
+    let lastMessageId = null; // Curseur pour la pagination
 
-    const formattedDate = getTimestamp(new Date(yesterdayTimestamp));
+    const formattedDate = getTimestamp(new Date(daysToKeepTimestamp));
 
     config.logger("Début du nettoyage du channel " + channel.id, "INFO");
-    config.logger("Suppression des messages avant " + formattedDate, "INFO");
-    config.logger(
-      "Conservation : messages d'aujourd'hui + d'hier (jours calendaires)",
-      "INFO",
-    );
+
+    if (daysToKeep == -1) {
+      config.logger("Suppression de tous les messages", "INFO");
+    } else {
+      config.logger("Suppression des messages avant " + formattedDate, "INFO");
+      config.logger(
+        "Conservation : Aujourd'hui + les " + daysToKeep + " derniers jours",
+        "INFO",
+      );
+    }
 
     while (true) {
-      // Récupérer les 100 derniers messages
-      const messages = await channel.messages.fetch({
-        limit: 100,
-        cache: false,
-      });
+      // Options de récupération
+      const fetchOptions = { limit: 100, cache: false };
+      // Si on a déjà récupéré un lot, on demande la suite (messages plus vieux que le dernier vu)
+      if (lastMessageId) {
+        fetchOptions.before = lastMessageId;
+      }
 
-      // Si plus de messages, on arrête
+      // Récupérer les messages
+      const messages = await channel.messages.fetch(fetchOptions);
+
+      // Si Discord ne renvoie plus rien, on a atteint la fin du salon (ou le début de l'histoire)
       if (messages.size === 0) {
+        config.logger("Fin de l'historique du salon atteinte.", "DEBUG");
         break;
       }
 
-      const recentMessages = []; // Avant-hier jusqu'à -14j : suppression en masse
+      config.logger("Traitement de " + messages.size + " messages", "DEBUG");
+
+      // On met à jour le curseur pour le prochain tour (le plus vieux message de ce lot)
+      lastMessageId = messages.last().id;
+
+      const recentMessages = []; // Messages récents à supprimer en masse
       const ancientMessages = []; // > 14 jours : suppression individuelle
 
       for (const [msgId, message] of messages) {
-        // Supprimer uniquement les messages d'avant-hier et plus anciens
+        // Supprimer uniquement les messages plus vieux que le timestamp limite
         if (
-          message.createdTimestamp < yesterdayTimestamp &&
+          message.createdTimestamp < daysToKeepTimestamp &&
           message.deletable
         ) {
           if (message.createdTimestamp > fourteenDaysAgoTimestamp) {
@@ -701,20 +777,22 @@ const deleteOldChannelMessages = async (channel) => {
         }
       }
 
-      // Aucun message à supprimer dans ce batch
-      if (recentMessages.length === 0 && ancientMessages.length === 0) {
-        break;
-      }
+      // Note : On ne 'break' plus si les tableaux sont vides.
+      // On continue la boucle pour aller chercher les messages plus anciens (batch suivant).
 
-      // Suppression en masse (messages avant-hier jusqu'à -14j)
+      // Suppression en masse (messages récents mais à supprimer)
       if (recentMessages.length > 0) {
-        await channel.bulkDelete(recentMessages);
-        totalBulkDeleted += recentMessages.length;
-        totalDeleted += recentMessages.length;
-        config.logger(
-          recentMessages.length + " messages supprimés en masse",
-          "DEBUG",
-        );
+        try {
+          const deleted = await channel.bulkDelete(recentMessages);
+          totalBulkDeleted += deleted.size;
+          totalDeleted += deleted.size;
+          config.logger(
+            deleted.size + " messages supprimés en masse",
+            "DEBUG",
+          );
+        } catch (e) {
+          config.logger("Erreur bulkDelete: " + e.message, "WARNING");
+        }
       }
 
       // Suppression individuelle (messages > 14 jours)
@@ -722,80 +800,53 @@ const deleteOldChannelMessages = async (channel) => {
         let deletedInThisBatch = 0;
         for (const message of ancientMessages) {
           try {
-            // Discord.js gère automatiquement le Rate Limit (429) en mettant en pause les requêtes
             await message.delete();
             deletedInThisBatch++;
             totalIndividualDeleted++;
             totalDeleted++;
           } catch (e) {
-            config.logger(
-              "Impossible de supprimer le message " +
-                message.id +
-                ": " +
-                e.message,
-              "WARNING",
-            );
+            config.logger("Echec suppression message " + message.id + ": " + e.message, "WARNING");
           }
         }
-        config.logger(
-          deletedInThisBatch +
-            " vieux messages (>14j) supprimés individuellement",
-          "DEBUG",
-        );
+        config.logger(deletedInThisBatch + " vieux messages (>14j) supprimés un par un", "DEBUG");
       }
     }
 
     config.logger("========================================", "INFO");
     config.logger("Nettoyage terminé - Récapitulatif :", "INFO");
-    config.logger(
-      "- Messages supprimés en masse : " + totalBulkDeleted,
-      "INFO",
-    );
-    config.logger(
-      "- Messages supprimés individuellement (>14j) : " +
-        totalIndividualDeleted,
-      "INFO",
-    );
+    config.logger("- Messages supprimés en masse : " + totalBulkDeleted, "INFO");
+    config.logger("- Messages supprimés individuellement (>14j) : " + totalIndividualDeleted, "INFO");
     config.logger("- TOTAL supprimés : " + totalDeleted, "INFO");
-    config.logger(
-      "- Conservés : aujourd'hui + hier (jours calendaires)",
-      "INFO",
-    );
     config.logger("========================================", "INFO");
   } catch (error) {
-    config.logger(
-      "Erreur lors de la suppression des messages: " + error.message,
-      "ERROR",
-    );
+    config.logger("Erreur critique lors du nettoyage : " + error.message, "ERROR");
     throw error;
   }
 };
 
-/* Gestionnaires d'événements Discord - À définir AVANT client.login() */
-client.on("clientReady", async () => {
-  config.logger(`Bot connecté :: ${client.user.tag}`, "INFO");
+const attachDiscordEvents = () => {
+  // Discord.js v14: 'message' → 'messageCreate'
+  client.on("messageCreate", (receivedMessage) => {
+    // if (receivedMessage.author === client.user) return;
+    if (receivedMessage.author?.bot && !receivedMessage.webhookId) {
+      // config.logger('⛔ message bot NON autorisé webhookID → ignoré', "DEBUG");
+      return;
+    }
 
-  // Discord.js v14: setActivity prend un objet options
-  await client.user.setActivity(activityStatus, { type: 0 }); // 0 = Playing
-});
-
-// Discord.js v14: 'message' → 'messageCreate'
-client.on("messageCreate", (receivedMessage) => {
-  if (receivedMessage.author === client.user) return;
-  if (receivedMessage.author.bot) return;
-
-  httpPost("messageReceived", {
-    channelId: receivedMessage.channel.id,
-    message: receivedMessage.content,
-    userId: receivedMessage.author.id,
+    httpPost("messageReceived", {
+      channelId: receivedMessage.channel.id,
+      message: receivedMessage.content,
+      userId: receivedMessage.author.id,
+    });
   });
-});
 
-// Gestion des erreurs
-client.on("error", (error) => {
-  config.logger("Client ERROR :: " + error.message, "ERROR");
-  console.error(error);
-});
+  // Gestion des erreurs
+  client.on("error", (error) => {
+    config.logger("Client ERROR :: " + error.message, "ERROR");
+    console.error(error);
+  });
+
+};
 
 process.on("unhandledRejection", (error) => {
   config.logger("Unhandled promise rejection: " + error.message, "ERROR");
@@ -814,19 +865,170 @@ process.on("uncaughtException", (error) => {
  * Initialize the Discord client and start the Express server
  */
 const startServer = () => {
-  lastServerStart = Date.now();
+  discordReady = false;
 
   config.logger("***** Lancement BOT Discord.js v14 *****", "INFO");
 
-  client.login(config.token).catch((err) => {
-    config.logger("FATAL ERROR Login :: " + err.message, "ERROR");
-  });
+  /**
+   * Helper interne pour créer + connecter le client
+   */
+  const loginClient = async (intents, label) => {
+    client = createClient(intents);
+    attachDiscordEvents();
 
+    // READY = SEUL MOMENT FIABLE
+    client.once(Events.ClientReady, async () => {
+      discordReady = true;
+
+      config.logger(`Bot READY (${label}) :: ${client.user.tag}`, "INFO");
+
+      try {
+        await client.user.setActivity(activityStatus, { type: 0 });
+      } catch (e) {
+        config.logger("Erreur setActivity: " + e.message, "WARNING");
+      }
+
+      botName = client.user.username;
+      botAvatar = client.user.displayAvatarURL({ format: "png", dynamic: true });
+
+      // Pré-chargement des guilds & channels (important pour getChannel) 
+      // ... Avec timeout pour éviter de bloquer le bot indéfiniment en cas de gros serveur ou de problème réseau
+      try {
+        const PRELOAD_TIMEOUT = 15000; // 15 secondes max
+        let preloadState = { phase: 'starting', guildsLoaded: 0, channelsLoaded: 0 };
+        
+        const preloadPromise = (async () => {
+          preloadState.phase = 'fetching_guilds';
+          await client.guilds.fetch();
+          preloadState.guildsLoaded = client.guilds.cache.size;
+          preloadState.phase = 'fetching_channels';
+          
+          config.logger(`${client.guilds.cache.size} guilds récupérées`, "DEBUG");
+          
+          // Paralléliser les fetch de channels
+          const channelFetchPromises = Array.from(client.guilds.cache.values()).map(
+            guild => guild.channels.fetch()
+              .then(() => {
+                // Compter uniquement les channels texte
+                preloadState.channelsLoaded += guild.channels.cache.filter(c => c.type === ChannelType.GuildText).size;
+              })
+              .catch(err => {
+                config.logger(`Erreur fetch channels ${guild.name}: ${err.message}`, "DEBUG");
+                return null; // Continue même si un serveur échoue
+              })
+          );
+          
+          await Promise.all(channelFetchPromises);
+          preloadState.phase = 'completed';
+        })();
+        
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => {
+            const err = new Error('Timeout préchargement');
+            err.errorType = 'PRELOAD_TIMEOUT';
+            err.duration = PRELOAD_TIMEOUT;
+            // Capturer l'état au moment exact du timeout
+            err.state = { ...preloadState };
+            reject(err);
+          }, PRELOAD_TIMEOUT);
+        });
+        
+        await Promise.race([preloadPromise, timeoutPromise]);
+        
+        // Compte les channels texte chargés dans le cache
+        const totalTextChannels = Array.from(client.guilds.cache.values())
+          .reduce((acc, guild) => acc + guild.channels.cache.filter(c => c.type === ChannelType.GuildText).size, 0);
+        
+        config.logger(`Guilds & channels préchargés (${totalTextChannels} channels texte)`, "DEBUG");
+        
+      } catch (e) {
+        // Gestion par errorType pour différencier timeout vs autres erreurs
+        if (e.errorType === 'PRELOAD_TIMEOUT') {
+          const state = e.state;
+          let message = `Timeout préchargement (${e.duration}ms) pendant "${state.phase}"`;
+          
+          if (state.guildsLoaded > 0) {
+            message += ` - ${state.guildsLoaded} guilds, ${state.channelsLoaded} channels texte chargés`;
+          } else {
+            message += ` - Chargement initial en cours`;
+          }
+          
+          config.logger(message, "WARNING");
+        } else {
+          config.logger(`Erreur preload channels: ${e.message}`, "WARNING");
+        }
+      }
+    });
+
+    await client.login(config.token);
+  };
+
+  /**
+   * Tentative 1 : avec TOUS les intents (Membres + Présence + Contenu)
+   * Idéal pour un fonctionnement optimal
+   */
+  loginClient([...BASE_INTENTS, ...PRIVILEGED_INTENTS, ...MESSAGE_CONTENT_INTENT], "Full Intents")
+    .then(() => {
+      config.logger("[Login Discord] Connexion réussie :: Intents Standards & Privilégiés", "INFO");
+    })
+    .catch((err) => {
+      const isIntentError = err.code === 'DisallowedIntents' || (err.message && err.message.toLowerCase().includes('disallowed intents'));
+
+      if (!isIntentError) {
+        config.logger("[Login Discord] Echec critique (1) lors de la connexion (Token invalide ou erreur réseau) :: " + err.message, "ERROR");
+        process.exit(1);
+      }
+
+      config.logger("[Login Discord] Echec de la connexion (Intents privilégiés manquants ?). Tentative en mode dégradé...", "WARNING");
+      config.logger("[Login Discord] Détail erreur :: " + err.message, "DEBUG");
+
+      /**
+       * Tentative 2 : Standard + MessageContent (Sans Membres/Présence)
+       * Mode dégradé acceptable : on perd juste des infos utilisateurs mais le bot parle/écoute
+       */
+      loginClient([...BASE_INTENTS, ...MESSAGE_CONTENT_INTENT], "Standard + Content")
+        .then(() => {
+          config.logger("[Login Discord] Connexion (Mode dégradé) réussie :: Mode Standard + Content", "INFO");
+          const warningMsg = "ATTENTION : Connexion réussie mais certains intents privilégiés sont manquants. Le plugin fonctionne en mode dégradé. Voir la documentation.";
+          config.logger("[Login Discord] " + warningMsg, "WARNING");
+          httpPost("createJeedomMessage", { msg: warningMsg });
+        })
+        .catch((err2) => {
+          const isIntentError2 = err2.code === 'DisallowedIntents' || (err2.message && err2.message.toLowerCase().includes('disallowed intents'));
+
+          if (!isIntentError2) {
+             config.logger("[Login Discord] Echec critique (2) lors de la connexion (Token invalide ou erreur réseau) :: " + err2.message, "ERROR");
+             process.exit(1);
+          }
+
+          config.logger("[Login Discord] Echec de la connexion (Intent privilégié 'Message Content' manquant ?). Tentative en mode notifications...", "WARNING");
+          config.logger("[Login Discord] Détail erreur :: " + err2.message, "DEBUG");
+
+          /**
+           * Tentative 3 : Standard uniquement (Sans rien de privilégié)
+           * Mode Survie : Le bot peut envoyer des messages mais est sourd (ne lit pas les retours)
+           */
+          loginClient(BASE_INTENTS, "Mode Notifications")
+            .then(() => {
+              const diagMsg = "ATTENTION : Connexion réussie mais tous les intents privilégiés sont manquants. Le plugin fonctionne en mode notifications uniquement. Voir la documentation.";
+              config.logger("[Login Discord] " + diagMsg, "WARNING");
+              httpPost("createJeedomMessage", { msg: diagMsg });
+            })
+            .catch((err3) => {
+              config.logger("[Login Discord] Echec critique (3) lors de la connexion (Token invalide ou erreur réseau) :: " + err3.message, "ERROR");
+              process.exit(1);
+            });
+        });
+    });
+
+  /**
+   * Lancement du serveur HTTP (indépendant de Discord)
+   */
   server = app.listen(config.listeningPort, () => {
     config.logger(
       "***** Démon :: OK - Listening on port :: " +
-        server.address().port +
-        " *****",
+      server.address().port +
+      " *****",
       "INFO",
     );
   });
@@ -870,9 +1072,9 @@ const httpPost = async (name, jsonData) => {
     if (!res.ok) {
       config.logger(
         "Erreur lors du contact de votre Jeedom: " +
-          res.status +
-          " " +
-          res.statusText,
+        res.status +
+        " " +
+        res.statusText,
         "ERROR",
       );
     }
@@ -880,6 +1082,26 @@ const httpPost = async (name, jsonData) => {
     config.logger("Erreur fetch Jeedom: " + error.message, "ERROR");
   }
 };
+
+// Crée ou récupère un webhook dans un salon
+async function getWebhook(channel) {
+  if (!botAvatar || !botName) {
+    setLog('⚠️ Bot pas encore prêt, impossible de créer le webhook');
+    return null;
+  }
+
+  const webhooks = await channel.fetchWebhooks();
+  let webhook = webhooks.find(w => w.name === 'BotWebhook');
+
+  if (!webhook) {
+    webhook = await channel.createWebhook({
+      name: 'BotWebhook',
+      avatar: botAvatar,
+    });
+  }
+
+  return webhook;
+}
 
 /* Lancement effectif du serveur */
 startServer();

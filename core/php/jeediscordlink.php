@@ -52,6 +52,10 @@ $discordEquipment = eqLogic::byLogicalId($result['channelId'], 'discordlink');
 
 switch ($name) {
 
+	case 'createJeedomMessage':
+		message::add('discordlink', $result['msg']);
+		break;
+
 	case 'messageReceived':
 		getDeviceAndUpdate("lastMessage", $result['message'], 'lastMessage', $result['channelId'], $result['userId']);
 		break;
