@@ -20,7 +20,6 @@ const {
 const BASE_INTENTS = [
   GatewayIntentBits.Guilds,
   GatewayIntentBits.GuildMessages,
-  GatewayIntentBits.MessageContent,
   GatewayIntentBits.GuildMessageReactions,
   GatewayIntentBits.DirectMessages,
 ];
@@ -28,6 +27,10 @@ const BASE_INTENTS = [
 const PRIVILEGED_INTENTS = [
   GatewayIntentBits.GuildMembers,
   GatewayIntentBits.GuildPresences,
+];
+
+const MESSAGE_CONTENT_INTENT = [
+  GatewayIntentBits.MessageContent,
 ];
 
 let client;
@@ -961,41 +964,60 @@ const startServer = () => {
   };
 
   /**
-   * Tentative 1 : avec intents privilégiés
+   * Tentative 1 : avec TOUS les intents (Membres + Présence + Contenu)
+   * Idéal pour un fonctionnement optimal
    */
-  loginClient([...BASE_INTENTS, ...PRIVILEGED_INTENTS], "avec intents privilégiés")
+  loginClient([...BASE_INTENTS, ...PRIVILEGED_INTENTS, ...MESSAGE_CONTENT_INTENT], "Full Intents")
     .then(() => {
-      config.logger("Login Discord OK (intents privilégiés)", "INFO");
+      config.logger("[Login Discord] Connexion réussie :: Intents Standards & Privilégiés", "INFO");
     })
     .catch((err) => {
-      // Discord.js utilise le code 'DisallowedIntents' pour indiquer que le bot a demandé des intents qui ne sont pas activés dans le portail Discord Developer.
       const isIntentError = err.code === 'DisallowedIntents' || (err.message && err.message.toLowerCase().includes('disallowed intents'));
 
-      if (isIntentError) {
-        // en ERREUR pour que ca remonte dans les messages d'erreur de Jeedom
-        httpPost("createJeedomMessage", {
-          msg: "Login échoué avec intents privilégiés :: " + err.message
-        });
+      if (!isIntentError) {
+        config.logger("[Login Discord] Echec critique (1) lors de la connexion (Token invalide ou erreur réseau) :: " + err.message, "ERROR");
+        process.exit(1);
       }
 
-      config.logger(
-        "Login échoué avec intents privilégiés :: " + err.message,
-        "WARNING",
-      );
+      config.logger("[Login Discord] Echec de la connexion (Intents privilégiés manquants ?). Tentative en mode dégradé...", "WARNING");
+      config.logger("[Login Discord] Détail erreur :: " + err.message, "DEBUG");
 
       /**
-       * Tentative 2 : sans intents privilégiés
+       * Tentative 2 : Standard + MessageContent (Sans Membres/Présence)
+       * Mode dégradé acceptable : on perd juste des infos utilisateurs mais le bot parle/écoute
        */
-      loginClient(BASE_INTENTS, "sans intents privilégiés")
+      loginClient([...BASE_INTENTS, ...MESSAGE_CONTENT_INTENT], "Standard + Content")
         .then(() => {
-          config.logger("Login Discord OK (sans intents)", "INFO");
+          config.logger("[Login Discord] Connexion (Mode dégradé) réussie :: Mode Standard + Content", "INFO");
+          const warningMsg = "ATTENTION : Connexion réussie mais certains intents privilégiés sont manquants. Le plugin fonctionne en mode dégradé. Voir la documentation.";
+          config.logger("[Login Discord] " + warningMsg, "WARNING");
+          httpPost("createJeedomMessage", { msg: warningMsg });
         })
-        .catch((err) => {
-          config.logger(
-            "FATAL ERROR Login Discord :: " + err.message,
-            "ERROR",
-          );
-          process.exit(1);
+        .catch((err2) => {
+          const isIntentError2 = err2.code === 'DisallowedIntents' || (err2.message && err2.message.toLowerCase().includes('disallowed intents'));
+
+          if (!isIntentError2) {
+             config.logger("[Login Discord] Echec critique (2) lors de la connexion (Token invalide ou erreur réseau) :: " + err2.message, "ERROR");
+             process.exit(1);
+          }
+
+          config.logger("[Login Discord] Echec de la connexion (Intent privilégié 'Message Content' manquant ?). Tentative en mode notifications...", "WARNING");
+          config.logger("[Login Discord] Détail erreur :: " + err2.message, "DEBUG");
+
+          /**
+           * Tentative 3 : Standard uniquement (Sans rien de privilégié)
+           * Mode Survie : Le bot peut envoyer des messages mais est sourd (ne lit pas les retours)
+           */
+          loginClient(BASE_INTENTS, "Mode Notifications")
+            .then(() => {
+              const diagMsg = "ATTENTION : Connexion réussie mais tous les intents privilégiés sont manquants. Le plugin fonctionne en mode notifications uniquement. Voir la documentation.";
+              config.logger("[Login Discord] " + diagMsg, "WARNING");
+              httpPost("createJeedomMessage", { msg: diagMsg });
+            })
+            .catch((err3) => {
+              config.logger("[Login Discord] Echec critique (3) lors de la connexion (Token invalide ou erreur réseau) :: " + err3.message, "ERROR");
+              process.exit(1);
+            });
         });
     });
 
