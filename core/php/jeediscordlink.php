@@ -63,6 +63,44 @@ switch ($name) {
 		getASK($result['response'], $result['channelId'], $result['request']);
 		break;
 
+	case 'slashCommand':
+		log::add('discordlink', 'debug', 'SlashCommand reçue : ' . $result['request'] . ' (User: ' . $result['username'] . ', ID: ' . $result['userId'] . ')');
+
+		if (!is_object($discordEquipment)) {
+			log::add('discordlink', 'error', 'SlashCommand : Équipement introuvable pour le channel ' . $result['channelId']);
+			echo "Erreur : Équipement introuvable";
+			die();
+		}
+
+		if ($discordEquipment->getConfiguration('interactionJeedom') != 1) {
+			log::add('discordlink', 'warning', 'SlashCommand : Les interactions sont désactivées pour l\'équipement ' . $discordEquipment->getHumanName());
+			echo "Les interactions sont désactivées pour cet équipement.";
+			die();
+		}
+
+		$parameters = array();
+		$parameters['plugin'] = 'discordlink';
+		$parameters['userid'] = $result['userId'];
+		$parameters['channel'] = $result['channelId'];
+		
+		log::add('discordlink', 'debug', 'SlashCommand : Envoi au moteur d\'interaction...');
+		$reply = interactQuery::tryToReply(trim($result['request']), $parameters);
+		log::add('discordlink', 'debug', 'SlashCommand : Réponse brute moteur : ' . json_encode($reply, JSON_UNESCAPED_UNICODE));
+		
+		if (isset($reply['reply'])) {
+			$responseText = $reply['reply'];
+			if (empty($responseText)) {
+				$responseText = "Jeedom a exécuté la commande mais n'a rien renvoyé.";
+			}
+			log::add('discordlink', 'debug', 'SlashCommand : Réponse envoyée à Discord : ' . $responseText);
+			echo $responseText;
+		} else {
+			log::add('discordlink', 'error', 'SlashCommand : Pas de champ "reply" dans la réponse du moteur');
+			echo "Erreur interne Jeedom (pas de réponse interaction)";
+		}
+		die();
+		break;
+
 	default:
 		if (!is_object($discordEquipment)) {
 			log::add('discordlink', 'debug',  'Device non trouvé: ' . $logicalId);
@@ -85,23 +123,6 @@ function getDeviceAndUpdate($name, $value, $jeedomCommand, $_channelId, $_userId
 	updateCommand("lastMessage", $value, "lastMessage", $discordEquipment);
 	updateCommand("previousMessage1", $oldMessage1, "previousMessage1", $discordEquipment);
 	updateCommand("previousMessage2", $oldMessage2, "previousMessage2", $discordEquipment);
-
-	log::add('discordlink', 'debug', $discordEquipment->getConfiguration('interactionJeedom'));
-	if ($discordEquipment->getConfiguration('interactionJeedom') == 1) {
-		$parameters['plugin'] = 'discordlink';
-		$parameters['userid'] = $_userId;
-		$parameters['channel'] = $_channelId;
-		$reply = interactQuery::tryToReply(trim($value), $parameters);
-		log::add('discordlink', 'debug', 'Interaction ' . print_r($reply, true));
-		if ($reply['reply'] != "Désolé je n'ai pas compris" && $reply['reply'] != "Désolé je n'ai pas compris la demande" && $reply['reply'] != "Désolé je ne comprends pas la demande" && $reply['reply'] != "Je ne comprends pas" && $reply['reply'] != "ceci est un message de test" && $reply['reply'] != "" && $reply['reply'] != " ") {
-			log::add('discordlink', 'debug',  "La réponse : " . $reply['reply'] . " est valide je vous l'ai donc renvoyée");
-			$cmd = $discordEquipment->getCmd('action', 'sendMsg');
-			$option = array('message' => $reply['reply']);
-			$cmd->execute($option);
-		} else {
-			log::add('discordlink', 'debug',  "La réponse : " . $reply['reply'] . " est une réponse générique je vous l'ai donc pas renvoyée");
-		}
-	}
 }
 
 function updateCommand($name, $_value, $_logicalId, $_discordEquipment, $_updateTime = null) {

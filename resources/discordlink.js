@@ -15,6 +15,9 @@ const {
   EmbedBuilder,
   ChannelType,
   Events,
+  REST,
+  Routes,
+  SlashCommandBuilder,
 } = require("discord.js");
 
 const BASE_INTENTS = [
@@ -44,6 +47,36 @@ const createClient = (intents) =>
       Partials.Reaction,
     ],
   });
+
+/**
+ * Register Slash Commands
+ * @param {string} clientId 
+ * @param {string} token 
+ */
+const registerCommands = async (clientId, token) => {
+  const commands = [
+    new SlashCommandBuilder()
+      .setName('jeedom')
+      .setDescription('Interagir avec Jeedom')
+      .addStringOption(option =>
+        option.setName('message')
+          .setDescription('Votre demande correspondante à une interaction jeedom')
+          .setRequired(true))
+  ].map(command => command.toJSON());
+
+  const rest = new REST({ version: '10' }).setToken(token);
+
+  try {
+    config.logger('Lancement du rafraîchissement des commandes slash.', 'DEBUG');
+    await rest.put(
+      Routes.applicationCommands(clientId),
+      { body: commands },
+    );
+    config.logger('Commandes slash rechargées avec succès.', 'INFO');
+  } catch (error) {
+    config.logger('Erreur lors du rechargement des commandes slash: ' + error.message, 'ERROR');
+  }
+};
 
 const token = process.argv[3];
 const jeedomURL = process.argv[2];
@@ -840,6 +873,33 @@ const attachDiscordEvents = () => {
     });
   });
 
+  client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isChatInputCommand()) return;
+
+    if (interaction.commandName === "jeedom") {
+      await interaction.deferReply();
+      const request = interaction.options.getString("message");
+
+      try {
+        const response = await httpPost("slashCommand", {
+          channelId: interaction.channelId,
+          userId: interaction.user.id,
+          request: request,
+          username: interaction.user.username,
+        });
+
+        if (response && response.trim() !== '') {
+           await interaction.editReply(response.substring(0, 2000));
+        } else {
+           await interaction.editReply("Jeedom a reçu la commande mais n'a rien renvoyé.");
+        }
+      } catch (e) {
+        config.logger("Erreur interaction: " + e.message, "ERROR");
+        await interaction.editReply("Erreur lors du traitement de la commande.");
+      }
+    }
+  });
+
   // Gestion des erreurs
   client.on("error", (error) => {
     config.logger("Client ERROR :: " + error.message, "ERROR");
@@ -879,6 +939,9 @@ const startServer = () => {
     // READY = SEUL MOMENT FIABLE
     client.once(Events.ClientReady, async () => {
       discordReady = true;
+      
+      // Enregistrement des commandes slash
+      await registerCommands(client.user.id, token);
 
       config.logger(`Bot READY (${label}) :: ${client.user.tag}`, "INFO");
 
@@ -1077,9 +1140,12 @@ const httpPost = async (name, jsonData) => {
         res.statusText,
         "ERROR",
       );
+      return null;
     }
+    return await res.text();
   } catch (error) {
     config.logger("Erreur fetch Jeedom: " + error.message, "ERROR");
+    return null;
   }
 };
 
