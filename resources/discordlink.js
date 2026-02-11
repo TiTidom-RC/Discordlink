@@ -877,7 +877,18 @@ const attachDiscordEvents = () => {
     if (!interaction.isChatInputCommand()) return;
 
     if (interaction.commandName === "jeedom") {
-      await interaction.deferReply();
+      try {
+        await interaction.deferReply();
+      } catch (error) {
+        // Ignorer l'erreur si l'interaction est déjà morte ou inconnue (délai dépassé ou race condition)
+        if (error.code === 10062) {
+           config.logger("Interaction expirée ou inconnue avant traitement (Ignoré)", "DEBUG");
+           return;
+        }
+        config.logger("Erreur lors du deferReply: " + error.message, "ERROR");
+        return;
+      }
+
       const request = interaction.options.getString("message");
 
       try {
@@ -891,6 +902,7 @@ const attachDiscordEvents = () => {
         if (response && response.trim() !== '') {
            await interaction.editReply(response.substring(0, 2000));
         } else {
+           config.logger("Réponse vide ou nulle reçue de Jeedom pour la commande slash", "WARNING");
            await interaction.editReply("Jeedom a reçu la commande mais n'a rien renvoyé.");
         }
       } catch (e) {
