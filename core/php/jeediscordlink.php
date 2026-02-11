@@ -85,7 +85,7 @@ switch ($name) {
 		
 		log::add('discordlink', 'debug', 'SlashCommand : Envoi au moteur d\'interaction...');
 		$reply = interactQuery::tryToReply(trim($result['request']), $parameters);
-		log::add('discordlink', 'debug', 'SlashCommand : Réponse brute moteur : ' . print_r($reply, true));
+		log::add('discordlink', 'debug', 'SlashCommand : Réponse brute moteur : ' . json_encode($reply, JSON_UNESCAPED_UNICODE));
 		
 		if (isset($reply['reply'])) {
 			$responseText = $reply['reply'];
