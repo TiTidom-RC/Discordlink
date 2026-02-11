@@ -85,10 +85,6 @@ const pluginKey = process.argv[6];
 const activityStatus = decodeURI(process.argv[7]);
 const listeningPort = process.argv[8] || 3466;
 
-// Save bot info
-let botName;
-let botAvatar;
-
 // Flag pour indiquer si le client Discord est prêt (évite les erreurs getChannel avant ready)
 let discordReady = false;
 
@@ -516,14 +512,13 @@ app.get("/sendEmbed", async (req, res) => {
       });
 
       collector.on('collect', async () => {
-        const webhook = await getWebhook(m.channel);
-        if (!webhook) return;
-
-        await webhook.send({
-          content: quickText,
-          username: botName,
-          avatarURL: botAvatar,
-          allowedMentions: { parse: [] },
+        // Traiter comme une vraie commande slash
+        await handleSlashCommand({
+          channelId: m.channel.id,
+          userId: client.user.id,
+          request: quickText,
+          username: client.user.username,
+          callback: (response) => m.channel.send(response),
         });
       });
 
@@ -857,6 +852,39 @@ const deleteOldChannelMessages = async (channel, daysToKeep) => {
   }
 };
 
+/**
+ * Traite une commande slash Jeedom
+ * Logique réutilisée pour les vraies interactions slash et les quickreplies
+ * @param {Object} params - Les paramètres
+ * @param {string} params.channelId - L'ID du channel
+ * @param {string} params.userId - L'ID de l'utilisateur
+ * @param {string} params.request - La requête/message
+ * @param {string} params.username - Le nom d'utilisateur
+ * @param {Object} params.callback - Fonction pour envoyer la réponse
+ */
+const handleSlashCommand = async ({ channelId, userId, request, username, callback }) => {
+  try {
+    config.logger(`SlashCommand: "${request}" from user ${userId}`, "DEBUG");
+
+    const response = await httpPost("slashCommand", {
+      channelId,
+      userId,
+      request,
+      username,
+    });
+
+    if (response && response.trim() !== '') {
+      await callback(response.substring(0, 2000));
+    } else {
+      config.logger("Réponse vide ou nulle reçue de Jeedom pour la commande slash", "WARNING");
+      await callback("Jeedom a reçu la commande mais n'a rien renvoyé.");
+    }
+  } catch (e) {
+    config.logger("Erreur lors du traitement de la commande slash: " + e.message, "ERROR");
+    await callback("Erreur lors du traitement de la commande.");
+  }
+};
+
 const attachDiscordEvents = () => {
   // Discord.js v14: 'message' → 'messageCreate'
   client.on("messageCreate", (receivedMessage) => {
@@ -882,8 +910,8 @@ const attachDiscordEvents = () => {
       } catch (error) {
         // Ignorer l'erreur si l'interaction est déjà morte ou inconnue (délai dépassé ou race condition)
         if (error.code === 10062) {
-           config.logger("Interaction expirée ou inconnue avant traitement (Ignoré)", "DEBUG");
-           return;
+          config.logger("Interaction expirée ou inconnue avant traitement (Ignoré)", "DEBUG");
+          return;
         }
         config.logger("Erreur lors du deferReply: " + error.message, "ERROR");
         return;
@@ -891,24 +919,13 @@ const attachDiscordEvents = () => {
 
       const request = interaction.options.getString("message");
 
-      try {
-        const response = await httpPost("slashCommand", {
-          channelId: interaction.channelId,
-          userId: interaction.user.id,
-          request: request,
-          username: interaction.user.username,
-        });
-
-        if (response && response.trim() !== '') {
-           await interaction.editReply(response.substring(0, 2000));
-        } else {
-           config.logger("Réponse vide ou nulle reçue de Jeedom pour la commande slash", "WARNING");
-           await interaction.editReply("Jeedom a reçu la commande mais n'a rien renvoyé.");
-        }
-      } catch (e) {
-        config.logger("Erreur interaction: " + e.message, "ERROR");
-        await interaction.editReply("Erreur lors du traitement de la commande.");
-      }
+      await handleSlashCommand({
+        channelId: interaction.channelId,
+        userId: interaction.user.id,
+        request: request,
+        username: interaction.user.username,
+        callback: (response) => interaction.editReply(response),
+      });
     }
   });
 
@@ -951,7 +968,7 @@ const startServer = () => {
     // READY = SEUL MOMENT FIABLE
     client.once(Events.ClientReady, async () => {
       discordReady = true;
-      
+
       // Enregistrement des commandes slash
       await registerCommands(client.user.id, token);
 
@@ -963,23 +980,20 @@ const startServer = () => {
         config.logger("Erreur setActivity: " + e.message, "WARNING");
       }
 
-      botName = client.user.username;
-      botAvatar = client.user.displayAvatarURL({ format: "png", dynamic: true });
-
       // Pré-chargement des guilds & channels (important pour getChannel) 
       // ... Avec timeout pour éviter de bloquer le bot indéfiniment en cas de gros serveur ou de problème réseau
       try {
         const PRELOAD_TIMEOUT = 15000; // 15 secondes max
         let preloadState = { phase: 'starting', guildsLoaded: 0, channelsLoaded: 0 };
-        
+
         const preloadPromise = (async () => {
           preloadState.phase = 'fetching_guilds';
           await client.guilds.fetch();
           preloadState.guildsLoaded = client.guilds.cache.size;
           preloadState.phase = 'fetching_channels';
-          
+
           config.logger(`${client.guilds.cache.size} guilds récupérées`, "DEBUG");
-          
+
           // Paralléliser les fetch de channels
           const channelFetchPromises = Array.from(client.guilds.cache.values()).map(
             guild => guild.channels.fetch()
@@ -992,11 +1006,11 @@ const startServer = () => {
                 return null; // Continue même si un serveur échoue
               })
           );
-          
+
           await Promise.all(channelFetchPromises);
           preloadState.phase = 'completed';
         })();
-        
+
         const timeoutPromise = new Promise((_, reject) => {
           setTimeout(() => {
             const err = new Error('Timeout préchargement');
@@ -1007,27 +1021,27 @@ const startServer = () => {
             reject(err);
           }, PRELOAD_TIMEOUT);
         });
-        
+
         await Promise.race([preloadPromise, timeoutPromise]);
-        
+
         // Compte les channels texte chargés dans le cache
         const totalTextChannels = Array.from(client.guilds.cache.values())
           .reduce((acc, guild) => acc + guild.channels.cache.filter(c => c.type === ChannelType.GuildText).size, 0);
-        
+
         config.logger(`Guilds & channels préchargés (${totalTextChannels} channels texte)`, "DEBUG");
-        
+
       } catch (e) {
         // Gestion par errorType pour différencier timeout vs autres erreurs
         if (e.errorType === 'PRELOAD_TIMEOUT') {
           const state = e.state;
           let message = `Timeout préchargement (${e.duration}ms) pendant "${state.phase}"`;
-          
+
           if (state.guildsLoaded > 0) {
             message += ` - ${state.guildsLoaded} guilds, ${state.channelsLoaded} channels texte chargés`;
           } else {
             message += ` - Chargement initial en cours`;
           }
-          
+
           config.logger(message, "WARNING");
         } else {
           config.logger(`Erreur preload channels: ${e.message}`, "WARNING");
@@ -1072,8 +1086,8 @@ const startServer = () => {
           const isIntentError2 = err2.code === 'DisallowedIntents' || (err2.message && err2.message.toLowerCase().includes('disallowed intents'));
 
           if (!isIntentError2) {
-             config.logger("[Login Discord] Echec critique (2) lors de la connexion (Token invalide ou erreur réseau) :: " + err2.message, "ERROR");
-             process.exit(1);
+            config.logger("[Login Discord] Echec critique (2) lors de la connexion (Token invalide ou erreur réseau) :: " + err2.message, "ERROR");
+            process.exit(1);
           }
 
           config.logger("[Login Discord] Echec de la connexion (Intent privilégié 'Message Content' manquant ?). Tentative en mode notifications...", "WARNING");
@@ -1160,26 +1174,6 @@ const httpPost = async (name, jsonData) => {
     return null;
   }
 };
-
-// Crée ou récupère un webhook dans un salon
-async function getWebhook(channel) {
-  if (!botAvatar || !botName) {
-    setLog('⚠️ Bot pas encore prêt, impossible de créer le webhook');
-    return null;
-  }
-
-  const webhooks = await channel.fetchWebhooks();
-  let webhook = webhooks.find(w => w.name === 'BotWebhook');
-
-  if (!webhook) {
-    webhook = await channel.createWebhook({
-      name: 'BotWebhook',
-      avatar: botAvatar,
-    });
-  }
-
-  return webhook;
-}
 
 /* Lancement effectif du serveur */
 startServer();
