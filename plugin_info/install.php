@@ -258,6 +258,13 @@ function discordlink_update() {
         log::add('discordlink', 'info', 'Mise à jour terminée - Aucune commande problématique détectée.');
     }
 
+    // Création du fichier quickreply s'il n'existe pas (nouveau chemin data/)
+    $quickReplyPath = dirname(__FILE__) . '/../data/quickreply.json';
+    if (!file_exists($quickReplyPath)) {
+        log::add('discordlink', 'info', 'Création du fichier quickreply.json par défaut');
+        discordlink::createQuickReplyFile();
+    }
+
     // Mise à jour des emojis (ajoute les nouveaux emojis par défaut s'ils n'existent pas)
     discordlink::setEmoji();
 }
