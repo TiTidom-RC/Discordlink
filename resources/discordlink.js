@@ -511,13 +511,16 @@ app.get("/sendEmbed", async (req, res) => {
         time: timeout * 1000,
       });
 
-      collector.on('collect', async () => {
+      collector.on('collect', async (reaction, user) => {
+        // Indiquer que le bot réfléchit
+        await m.channel.sendTyping();
+
         // Traiter comme une vraie commande slash
         await handleSlashCommand({
           channelId: m.channel.id,
-          userId: client.user.id,
+          userId: user.id,
           request: quickText,
-          username: client.user.username,
+          username: user.username,
           callback: (response) => m.channel.send(response),
         });
       });
