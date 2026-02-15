@@ -488,7 +488,7 @@ class discordlink extends eqLogic {
 				'sendMsg' => array('requiredPlugin' => '0', 'label' => 'Envoi message', 'type' => 'action', 'subType' => 'message', 'request' => 'sendMsg?message=#message#', 'visible' => 1, 'template' => 'discordlink::message'),
 				'sendMsgTTS' => array('requiredPlugin' => '0', 'label' => 'Envoi message TTS', 'type' => 'action', 'subType' => 'message', 'request' => 'sendMsgTTS?message=#message#', 'visible' => 1, 'template' => 'discordlink::message'),
 				'sendEmbed' => array('requiredPlugin' => '0', 'label' => 'Envoi message évolué', 'type' => 'action', 'subType' => 'message', 'request' => 'sendEmbed?color=#color#&title=#title#&url=#url#&description=#description#&field=#field#&countanswer=#countanswer#&footer=#footer#&timeout=#timeout#&quickreply=#quickreply#', 'visible' => 1, 'template' => 'discordlink::embed'),
-				'sendFile' => array('requiredPlugin' => '0', 'label' => 'Envoi fichier', 'type' => 'action', 'subType' => 'message', 'request' => 'sendFile?patch=#patch#&name=#name#&message=#message#', 'visible' => 0),
+				'sendFile' => array('requiredPlugin' => '0', 'label' => 'Envoi fichier', 'type' => 'action', 'subType' => 'message', 'request' => 'sendFile?path=#path#&name=#name#&message=#message#', 'visible' => 0),
 				'deleteMessage' => array('requiredPlugin' => '0', 'label' => 'Supprime les messages du channel', 'type' => 'action', 'subType' => 'other', 'request' => 'deleteMessage?null', 'visible' => 0),
 				'daemonInfo' => array('requiredPlugin' => '0', 'label' => 'Etat des démons', 'type' => 'action', 'subType' => 'other', 'request' => 'daemonInfo?null', 'visible' => 1),
 				'dependencyInfo' => array('requiredPlugin' => '0', 'label' => 'Etat des dépendances', 'type' => 'action', 'subType' => 'other', 'request' => 'dependencyInfo?null', 'visible' => 1),
@@ -896,8 +896,7 @@ class discordlinkCmd extends cmd {
 		return $request;
 	}
 
-	private function buildFileRequest($_options = array(), $default = "Une erreur est survenu") {
-		$patch = "null";
+	private function buildFileRequest($_options = array(), $default = "Chemin du fichier non spécifié") {
 		$fileName = "null";
 		$message = "null";
 
@@ -932,7 +931,7 @@ class discordlinkCmd extends cmd {
 			$request
 		);
 		$request = str_replace(
-			array('#patch#'),
+			array('#path#'),
 			array(urlencode(self::decodeRandomText($filePath))),
 			$request
 		);

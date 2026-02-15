@@ -332,7 +332,7 @@ app.get("/sendFile", async (req, res) => {
 
     config.logger("sendFile", "INFO");
 
-    const { channelID, message, patch, name } = req.query;
+    const { channelID, message, path, name } = req.query;
     const channel = client.channels.cache.get(channelID);
 
     if (!channel) {
@@ -347,7 +347,7 @@ app.get("/sendFile", async (req, res) => {
       content: message,
       files: [
         {
-          attachment: patch,
+          attachment: path,
           name: name,
         },
       ],
