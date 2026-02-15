@@ -897,8 +897,7 @@ class discordlinkCmd extends cmd {
 	}
 
 	private function buildFileRequest($_options = array(), $default = "Chemin du fichier non spécifié") {
-		$fileName = "null";
-		$message = "null";
+		$message = "";
 
 		$request = $this->getConfiguration('request');
 		if ((isset($_options['path'])) && ($_options['path'] == "")) $_options['path'] = $default;
@@ -906,18 +905,16 @@ class discordlinkCmd extends cmd {
 
 		if (isset($_options['files']) && is_array($_options['files'])) {
 			foreach ($_options['files'] as $file) {
-				if (version_compare(phpversion(), '5.5.0', '>=')) {
-					$filePath = $file;
-					$files = new CurlFile($file);
-					$fileNameParts = explode('.', $files->getFilename());
-					log::add('discordlink', 'info', $_options['title'] . ' taille : ' . $fileNameParts[sizeof($fileNameParts) - 1]);
-					$fileDisplay = (isset($_options['title']) ? $_options['title'] . '.' . $fileNameParts[sizeof($fileNameParts) - 1] : $files->getFilename());
-				}
+				$filePath = $file;
+				$files = new CurlFile($file);
+				$fileNameParts = explode('.', $files->getFilename());
+				log::add('discordlink', 'info', $_options['title'] . ' taille : ' . $fileNameParts[sizeof($fileNameParts) - 1]);
+				$fileDisplay = (isset($_options['title']) ? $_options['title'] . '.' . $fileNameParts[sizeof($fileNameParts) - 1] : $files->getFilename());
 			}
 			$message = $_options['message'];
 		} else {
 			$filePath = $_options['path'];
-			$fileDisplay = $_options['displayName'];
+			$fileDisplay = !empty($_options['displayName']) ? $_options['displayName'] : basename($_options['path']);
 		}
 
 		$request = str_replace(
