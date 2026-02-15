@@ -904,6 +904,7 @@ class discordlinkCmd extends cmd {
 		if (!(isset($_options['path']))) $_options['path'] = "";
 
 		if (isset($_options['files']) && is_array($_options['files'])) {
+			// TODO: Optimiser ce bloc qui ne gère pas correctement l'envoi multiple (seul le dernier fichier est pris). Voir pour utiliser basename() au lieu de CurlFile.
 			foreach ($_options['files'] as $file) {
 				$filePath = $file;
 				$files = new CurlFile($file);
