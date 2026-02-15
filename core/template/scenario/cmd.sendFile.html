@@ -9,7 +9,7 @@
 </div>
 
 <div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
-  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">Display Name</span>
+  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">Nom</span>
   <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="displayName" rows="1"
     style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#displayName#</textarea>
   <span class="input-group-btn">
@@ -43,10 +43,10 @@
       options.cmd.subType = '#message_cmd_subtype#'
     }
     jeedom.cmd.getSelectModal(options, function (result) {
-      document.querySelector('.expressionAttr[data-l1key=options][data-l2key=fileName][data-uid="#uid#"]').insertAtCursor(result.human)
+      document.querySelector('.expressionAttr[data-l1key=options][data-l2key=displayName][data-uid="#uid#"]').insertAtCursor(result.human)
     })
   })
 
   if ('#path#' == '#' + 'path#') document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=path]').value = '#defaultPath#'
-  if ('#displayName#' == '#' + 'displayName#') document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=fileName]').value = '#defaultDisplayName#'
+  if ('#displayName#' == '#' + 'displayName#') document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=displayName]').value = '#defaultDisplayName#'
 </script>
