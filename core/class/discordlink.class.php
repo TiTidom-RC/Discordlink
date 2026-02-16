@@ -357,7 +357,7 @@ class discordlink extends eqLogic {
 
 		$apiKey = jeedom::getApiKey('discordlink');
 		$cmd = sprintf(
-			'nice -n 19 node %s/discordlink.js %s %s %s %s %s %s %s',
+			'nice -n 19 node %s/discordlink.js %s %s %s %s %s %s %s %s',
 			escapeshellarg(realpath(dirname(__FILE__) . '/../../resources')),
 			escapeshellarg(network::getNetworkAccess('internal', 'proto:127.0.0.1:port:comp')),
 			escapeshellarg(config::byKey('Token', 'discordlink')),
@@ -365,7 +365,8 @@ class discordlink extends eqLogic {
 			escapeshellarg(network::getNetworkAccess('internal', 'proto:127.0.0.1:port:comp') . '/plugins/discordlink/core/api/jeeDiscordlink.php?apikey=' . $apiKey),
 			escapeshellarg($apiKey),
 			escapeshellarg(config::byKey('joueA', 'discordlink', 'Travailler main dans la main avec votre Jeedom')),
-			escapeshellarg(config::byKey('socketport', 'discordlink', self::SOCKET_PORT))
+			escapeshellarg(config::byKey('socketport', 'discordlink', self::SOCKET_PORT)),
+			escapeshellarg(network::getNetworkAccess('external'))
 		);
 
 		log::add('discordlink', 'debug', 'Lancement démon discordlink : ' . $cmd);

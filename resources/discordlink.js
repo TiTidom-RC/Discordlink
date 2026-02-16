@@ -85,6 +85,7 @@ const logLevelLimit = parseInt(process.argv[4]) || 2000; // Par défaut : Aucun 
 const pluginKey = process.argv[6];
 const activityStatus = decodeURI(process.argv[7]);
 const listeningPort = process.argv[8] || 3466;
+const jeedomExtURL = process.argv[9];
 
 // Flag pour indiquer si le client Discord est prêt (évite les erreurs getChannel avant ready)
 let discordReady = false;
@@ -524,11 +525,21 @@ app.get("/sendEmbed", async (req, res) => {
 
         // If multiple images, create a gallery by adding additional embeds
         if (attachments.length > 1) {
+          // To force grouping in a gallery, all embeds should share the same URL
+          // If no URL is defined, we add a dummy one (Jeedom URL) to all embeds if available
+          if (!Embed.data.url && jeedomExtURL) {
+             Embed.setURL(jeedomExtURL);
+          }
+          
           for (let i = 1; i < attachments.length; i++) {
              // Create a simple embed for subsequent images
              const galleryEmbed = new EmbedBuilder()
-               .setURL(Embed.data.url) // Share same URL to link them
                .setImage(`attachment://${attachments[i].name}`);
+             
+             // Must match the first embed URL if it exists
+             if (Embed.data.url) {
+                galleryEmbed.setURL(Embed.data.url);
+             }
 
              // Copy color if present
              if (Embed.data.color) {
@@ -537,7 +548,7 @@ app.get("/sendEmbed", async (req, res) => {
 
              sendOptions.embeds.push(galleryEmbed);
              
-             // Discord limit: 10 embeds per message
+             // Discord limit: 10 embeds per message (but grid view is usually max 4)
              if (sendOptions.embeds.length >= 10) break;
           }
         }
