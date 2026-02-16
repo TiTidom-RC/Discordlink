@@ -357,7 +357,7 @@ class discordlink extends eqLogic {
 
 		$apiKey = jeedom::getApiKey('discordlink');
 		$cmd = sprintf(
-			'nice -n 19 node %s/discordlink.js %s %s %s %s %s %s %s',
+			'nice -n 19 node %s/discordlink.js %s %s %s %s %s %s %s %s',
 			escapeshellarg(realpath(dirname(__FILE__) . '/../../resources')),
 			escapeshellarg(network::getNetworkAccess('internal', 'proto:127.0.0.1:port:comp')),
 			escapeshellarg(config::byKey('Token', 'discordlink')),
@@ -365,7 +365,8 @@ class discordlink extends eqLogic {
 			escapeshellarg(network::getNetworkAccess('internal', 'proto:127.0.0.1:port:comp') . '/plugins/discordlink/core/api/jeeDiscordlink.php?apikey=' . $apiKey),
 			escapeshellarg($apiKey),
 			escapeshellarg(config::byKey('joueA', 'discordlink', 'Travailler main dans la main avec votre Jeedom')),
-			escapeshellarg(config::byKey('socketport', 'discordlink', self::SOCKET_PORT))
+			escapeshellarg(config::byKey('socketport', 'discordlink', self::SOCKET_PORT)),
+			escapeshellarg(network::getNetworkAccess('external'))
 		);
 
 		log::add('discordlink', 'debug', 'Lancement démon discordlink : ' . $cmd);
@@ -485,18 +486,18 @@ class discordlink extends eqLogic {
 		foreach ($eqLogics as $eqLogic) {
 
 			$commandsConfig = array(
-				'sendMsg' => array('requiredPlugin' => '0', 'label' => 'Envoi message', 'type' => 'action', 'subType' => 'message', 'request' => 'sendMsg?message=#message#', 'visible' => 1, 'template' => 'discordlink::message'),
-				'sendMsgTTS' => array('requiredPlugin' => '0', 'label' => 'Envoi message TTS', 'type' => 'action', 'subType' => 'message', 'request' => 'sendMsgTTS?message=#message#', 'visible' => 1, 'template' => 'discordlink::message'),
-				'sendEmbed' => array('requiredPlugin' => '0', 'label' => 'Envoi message évolué', 'type' => 'action', 'subType' => 'message', 'request' => 'sendEmbed?color=#color#&title=#title#&url=#url#&description=#description#&field=#field#&countanswer=#countanswer#&footer=#footer#&timeout=#timeout#&quickreply=#quickreply#', 'visible' => 1, 'template' => 'discordlink::embed'),
-				'sendFile' => array('requiredPlugin' => '0', 'label' => 'Envoi fichier', 'type' => 'action', 'subType' => 'message', 'request' => 'sendFile?patch=#patch#&name=#name#&message=#message#', 'visible' => 0),
-				'deleteMessage' => array('requiredPlugin' => '0', 'label' => 'Supprime les messages du channel', 'type' => 'action', 'subType' => 'other', 'request' => 'deleteMessage?null', 'visible' => 0),
-				'daemonInfo' => array('requiredPlugin' => '0', 'label' => 'Etat des démons', 'type' => 'action', 'subType' => 'other', 'request' => 'daemonInfo?null', 'visible' => 1),
-				'dependencyInfo' => array('requiredPlugin' => '0', 'label' => 'Etat des dépendances', 'type' => 'action', 'subType' => 'other', 'request' => 'dependencyInfo?null', 'visible' => 1),
-				'globalSummary' => array('requiredPlugin' => '0', 'label' => 'Résumé général', 'type' => 'action', 'subType' => 'other', 'request' => 'globalSummary?null', 'visible' => 1),
-				'batteryInfo' => array('requiredPlugin' => '0', 'label' => 'Résumé des batteries', 'type' => 'action', 'subType' => 'other', 'request' => 'batteryInfo?null', 'visible' => 1),
-				'messageCenter' => array('requiredPlugin' => '0', 'label' => 'Centre de messages', 'type' => 'action', 'subType' => 'other', 'request' => 'messageCenter?null', 'visible' => 1),
-				'lastUser' => array('requiredPlugin' => '0', 'label' => 'Dernière Connexion utilisateur', 'type' => 'action', 'subType' => 'other', 'request' => 'lastUser?null', 'visible' => 1),
-				'objectSummary' => array('requiredPlugin' => '0', 'label' => 'Résumé par objet', 'type' => 'action', 'subType' => 'select', 'request' => 'objectSummary?null', 'visible' => 1),
+				'sendMsg' => array('requiredPlugin' => '0', 'label' => 'Envoi message', 'type' => 'action', 'subType' => 'message', 'request' => 'sendMsg', 'visible' => 1, 'template' => 'discordlink::message'),
+				'sendMsgTTS' => array('requiredPlugin' => '0', 'label' => 'Envoi message TTS', 'type' => 'action', 'subType' => 'message', 'request' => 'sendMsgTTS', 'visible' => 1, 'template' => 'discordlink::message'),
+				'sendEmbed' => array('requiredPlugin' => '0', 'label' => 'Envoi message évolué', 'type' => 'action', 'subType' => 'message', 'request' => 'sendEmbed', 'visible' => 1, 'template' => 'discordlink::embed'),
+				'sendFile' => array('requiredPlugin' => '0', 'label' => 'Envoi fichier', 'type' => 'action', 'subType' => 'message', 'request' => 'sendFile', 'visible' => 0),
+				'deleteMessage' => array('requiredPlugin' => '0', 'label' => 'Supprime les messages du channel', 'type' => 'action', 'subType' => 'other', 'request' => 'deleteMessage', 'visible' => 0),
+				'daemonInfo' => array('requiredPlugin' => '0', 'label' => 'Etat des démons', 'type' => 'action', 'subType' => 'other', 'request' => 'daemonInfo', 'visible' => 1),
+				'dependencyInfo' => array('requiredPlugin' => '0', 'label' => 'Etat des dépendances', 'type' => 'action', 'subType' => 'other', 'request' => 'dependencyInfo', 'visible' => 1),
+				'globalSummary' => array('requiredPlugin' => '0', 'label' => 'Résumé général', 'type' => 'action', 'subType' => 'other', 'request' => 'globalSummary', 'visible' => 1),
+				'batteryInfo' => array('requiredPlugin' => '0', 'label' => 'Résumé des batteries', 'type' => 'action', 'subType' => 'other', 'request' => 'batteryInfo', 'visible' => 1),
+				'messageCenter' => array('requiredPlugin' => '0', 'label' => 'Centre de messages', 'type' => 'action', 'subType' => 'other', 'request' => 'messageCenter', 'visible' => 1),
+				'lastUser' => array('requiredPlugin' => '0', 'label' => 'Dernière Connexion utilisateur', 'type' => 'action', 'subType' => 'other', 'request' => 'lastUser', 'visible' => 1),
+				'objectSummary' => array('requiredPlugin' => '0', 'label' => 'Résumé par objet', 'type' => 'action', 'subType' => 'select', 'request' => 'objectSummary', 'visible' => 1),
 				'lastMessage' => array('requiredPlugin' => '0', 'label' => 'Dernier message', 'type' => 'info', 'subType' => 'string', 'visible' => 1),
 				'previousMessage1' => array('requiredPlugin' => '0', 'label' => 'Avant dernier message', 'type' => 'info', 'subType' => 'string', 'visible' => 1),
 				'previousMessage2' => array('requiredPlugin' => '0', 'label' => 'Avant avant dernier message', 'type' => 'info', 'subType' => 'string', 'visible' => 1)
@@ -515,13 +516,9 @@ class discordlink extends eqLogic {
 					}
 					$cmd->setEqLogic_id($eqLogic->getId());
 					$cmd->setLogicalId($cmdKey);
-					if ($cmdConfig['type'] == "action" && $cmdKey != "daemonInfo") {
+					if ($cmdConfig['type'] == "action") {
 						$cmd->setConfiguration('request', $cmdConfig['request']);
-						$cmd->setConfiguration('value', discordlink::getDaemonBaseURL() . '/' . $cmdConfig['request'] . "&channelID=" . $eqLogic->getConfiguration('channelId'));
-					}
-					if ($cmdConfig['type'] == "action" && $cmdKey == "daemonInfo") {
-						$cmd->setConfiguration('request', $cmdConfig['request']);
-						$cmd->setConfiguration('value', $cmdConfig['request']);
+						$cmd->setConfiguration('value', '');
 					}
 
 					$cmd->setDisplay('generic_type', 'GENERIC_INFO');
@@ -824,35 +821,54 @@ class discordlinkCmd extends cmd {
 
 		$deamon = discordlink::deamon_info();
 		if ($deamon['state'] == 'ok') {
-			$request = $this->buildRequest($_options);
-			if ($request != 'requestHandledInternally') {
-				log::add('discordlink', 'debug', 'Envoi de ' . $request);
-				$request_http = new com_http($request);
-				$request_http->setAllowEmptyReponse(true); //Autorise les réponses vides
+			$requestData = $this->buildRequest($_options);
+
+			if ($requestData === 'requestHandledInternally') {
+				return true;
+			}
+
+			// NEW: Handle Array return from buildRequest (POST/JSON migration)
+			if (is_array($requestData)) {
+				$endpoint = $requestData['endpoint'];
+				$payload = $requestData['payload'];
+				$method = $requestData['method'] ?? 'POST';
+
+				$url = discordlink::getDaemonBaseURL() . $endpoint;
+				log::add('discordlink', 'debug', "Executing $method $url");
+
+				$request_http = new com_http($url);
+				$request_http->setAllowEmptyReponse(true);
 				if ($this->getConfiguration('noSslCheck') == 1) $request_http->setNoSslCheck(true);
 				if ($this->getConfiguration('doNotReportHttpError') == 1) $request_http->setNoReportError(true);
-				if (isset($_options['speedAndNoErrorReport']) && $_options['speedAndNoErrorReport'] == true) { // option non activée
+
+				if ($method === 'POST') {
+					$request_http->setPost(json_encode($payload));
+					$request_http->setHeader(array('Content-Type: application/json'));
+				}
+
+				if (isset($_options['speedAndNoErrorReport']) && $_options['speedAndNoErrorReport'] == true) {
 					$request_http->setNoReportError(true);
 					$request_http->exec(0.1, 1);
 					return;
 				}
-				$result = $request_http->exec($this->getConfiguration('timeout', 6), $this->getConfiguration('maxHttpRetry', 1)); //Time out à 3s 3 essais
+
+				$result = $request_http->exec($this->getConfiguration('timeout', 6), $this->getConfiguration('maxHttpRetry', 1));
 				if (!$result) throw new Exception(__('Serveur injoignable', __FILE__));
 				return true;
-			} else {
-				return true;
 			}
+
+
+			return true;
+
 		}
 		return false;
 	}
 
 	private function buildRequest($_options = array()) {
-		if ($this->getType() != 'action') return $this->getConfiguration('request');
+		if ($this->getType() != 'action') return 'requestHandledInternally';
 
-		$cmdAndArg = explode('?', $this->getConfiguration('request'), 2);
-		$command = $cmdAndArg[0];
-
-		$daysToKeep = $this->getEqLogic()->getConfiguration('daysToKeep', 2);
+		// Use Logical ID for stable command mapping
+		$command = $this->getLogicalId();
 
 		$commandMap = array(
 			'sendMsg' => 'buildMessageRequest',
@@ -866,95 +882,96 @@ class discordlinkCmd extends cmd {
 			'objectSummary' => 'buildObjectSummary',
 			'messageCenter' => 'buildMessageCenter',
 			'lastUser' => 'buildLastUser',
-			'deleteMessage' => 'clearChannel?daysToKeep=' . ($daysToKeep >= -1 ? $daysToKeep : 2)
+			'deleteMessage' => 'buildClearChannelRequest' // New builder method
 		);
 
 		if (isset($commandMap[$command])) {
-			$request = is_callable(array($this, $commandMap[$command]))
-				? $this->{$commandMap[$command]}($_options)
-				: $commandMap[$command];
-		} else {
-			$request = '';
+			if (method_exists($this, $commandMap[$command])) {
+				return $this->{$commandMap[$command]}($_options);
+			}
 		}
 
-		if ($request == 'requestHandledInternally') return $request;
-
-		$request = scenarioExpression::setTags($request);
-		if (trim($request) == '') {
-			throw new Exception(__('Commande inconnue ou requête vide : ', __FILE__) . print_r($this, true));
-		}
-
-		$channelID = str_replace('_player', '', $this->getEqLogic()->getConfiguration('channelId'));
-		return discordlink::getDaemonBaseURL() . '/' . $request . '&channelID=' . $channelID;
+		return 'requestHandledInternally';
 	}
 
 	private function buildMessageRequest($_options = array(), $default = "Une erreur est survenue") {
 		$message = isset($_options['message']) && $_options['message'] != '' ? $_options['message'] : $default;
 		$message = str_replace('|', "\n", $message);
-		$request = str_replace('#message#', urlencode(self::decodeRandomText($message)), $this->getConfiguration('request'));
-		log::add('discordlink', 'info', 'Final Request :: ' . $request);
-		return $request;
+		$message = scenarioExpression::setTags($message);
+		$message = self::decodeRandomText($message);
+
+		$channelID = $this->getEqLogic()->getConfiguration('channelId');
+
+		$logicalId = $this->getLogicalId();
+		$endpoint = ($logicalId === 'sendMsgTTS') ? '/sendMsgTTS' : '/sendMsg';
+
+		return array(
+			'endpoint' => $endpoint,
+			'method' => 'POST',
+			'payload' => array(
+				'channelID' => $channelID,
+				'message' => $message
+			)
+		);
 	}
 
-	private function buildFileRequest($_options = array(), $default = "Une erreur est survenu") {
-		$patch = "null";
-		$fileName = "null";
-		$message = "null";
-
-		$request = $this->getConfiguration('request');
-		if ((isset($_options['path'])) && ($_options['path'] == "")) $_options['path'] = $default;
-		if (!(isset($_options['path']))) $_options['path'] = "";
-
-		if (isset($_options['files']) && is_array($_options['files'])) {
-			foreach ($_options['files'] as $file) {
-				if (version_compare(phpversion(), '5.5.0', '>=')) {
-					$filePath = $file;
-					$files = new CurlFile($file);
-					$fileNameParts = explode('.', $files->getFilename());
-					log::add('discordlink', 'info', $_options['title'] . ' taille : ' . $fileNameParts[sizeof($fileNameParts) - 1]);
-					$fileDisplay = (isset($_options['title']) ? $_options['title'] . '.' . $fileNameParts[sizeof($fileNameParts) - 1] : $files->getFilename());
-				}
-			}
-			$message = $_options['message'];
-		} else {
-			$filePath = $_options['path'];
-			$fileDisplay = $_options['displayName'];
+	private function buildFileRequest($_options = array(), $default = "Chemin du fichier non spécifié") {
+		$channelID = $this->getEqLogic()->getConfiguration('channelId');
+		
+		// Handle files input
+		$rawFiles = "";
+		if (isset($_options['files'])) {
+			$rawFiles = $_options['files'];
+			$rawFiles = scenarioExpression::setTags($rawFiles);
+		}
+		
+		$message = isset($_options['message']) ? $_options['message'] : "";
+		$message = scenarioExpression::setTags($message);
+		$message = self::decodeRandomText($message);
+		
+		if (empty($rawFiles) && empty($message)) {
+			log::add('discordlink', 'warning', 'sendFile : Aucun fichier ni message spécifié.');
+			$message = $default;
+		} elseif (empty($rawFiles)) {
+			log::add('discordlink', 'info', 'sendFile : Aucun fichier spécifié, envoi du message seul.');
 		}
 
-		$request = str_replace(
-			array('#message#'),
-			array(urlencode(self::decodeRandomText($message))),
-			$request
-		);
-		$request = str_replace(
-			array('#name#'),
-			array(urlencode(self::decodeRandomText($fileDisplay))),
-			$request
-		);
-		$request = str_replace(
-			array('#patch#'),
-			array(urlencode(self::decodeRandomText($filePath))),
-			$request
-		);
+		// Build array of files
+		$filesArray = [];
+		if (!empty($rawFiles)) {
+			$splits = explode(',', $rawFiles);
+			foreach($splits as $f) {
+				$cleanPath = trim($f);
+				if (!empty($cleanPath)) {
+					$filesArray[] = $cleanPath;
+				}
+			}
+		}
 
-		log::add('discordlink', 'info', 'Final Request :: ' . $request);
-		return $request;
+		return array(
+			'endpoint' => '/sendFile',
+			'method' => 'POST',
+			'payload' => array(
+				'channelID' => $channelID,
+				'message' => $message,
+				'files' => $filesArray
+			)
+		);
 	}
 
 	private function buildEmbedRequest($_options = array(), $default = "Une erreur est survenue") {
 
-		$request = $this->getConfiguration('request');
-
-		// Initialisation de toutes les variables à chaîne vide
+		// Initialisation de toutes les variables
 		$title = "";
 		$url = "";
 		$description = "";
 		$footer = "";
 		$colors = "";
-		$field = "";
-		$timeout = "";
-		$countanswer = "";
-		$quickreply = "";
+		$fields = [];
+		$timeout = 0;
+		$answerCount = "";
+		$quickreply = [];
+		$files = [];
 
 		/** @var discordlink $eqLogic */
 		$eqLogic = $this->getEqLogic();
@@ -967,53 +984,32 @@ class discordlinkCmd extends cmd {
 			// Ajout du Footer pour indiquer une requête Jeedom Ask
 			$footer = 'Jeedom Ask';
 
-			if ($_options['answer'][0] != "") {
+			if (isset($_options['answer'][0]) && $_options['answer'][0] != "") {
 				$answer = $_options['answer'];
 				$timeout = $_options['timeout'];
 				$description = "";
 
-				$a = 0;
-				$url = "[";
 				$choices = [
-					":regional_indicator_a:",
-					":regional_indicator_b:",
-					":regional_indicator_c:",
-					":regional_indicator_d:",
-					":regional_indicator_e:",
-					":regional_indicator_f:",
-					":regional_indicator_g:",
-					":regional_indicator_h:",
-					":regional_indicator_i:",
-					":regional_indicator_j:",
-					":regional_indicator_k:",
-					":regional_indicator_l:",
-					":regional_indicator_m:",
-					":regional_indicator_n:",
-					":regional_indicator_o:",
-					":regional_indicator_p:",
-					":regional_indicator_q:",
-					":regional_indicator_r:",
-					":regional_indicator_s:",
-					":regional_indicator_t:",
-					":regional_indicator_u:",
-					":regional_indicator_v:",
-					":regional_indicator_w:",
-					":regional_indicator_x:",
-					":regional_indicator_y:",
-					":regional_indicator_z:"
+					":regional_indicator_a:", ":regional_indicator_b:", ":regional_indicator_c:", ":regional_indicator_d:",
+					":regional_indicator_e:", ":regional_indicator_f:", ":regional_indicator_g:", ":regional_indicator_h:",
+					":regional_indicator_i:", ":regional_indicator_j:", ":regional_indicator_k:", ":regional_indicator_l:",
+					":regional_indicator_m:", ":regional_indicator_n:", ":regional_indicator_o:", ":regional_indicator_p:",
+					":regional_indicator_q:", ":regional_indicator_r:", ":regional_indicator_s:", ":regional_indicator_t:",
+					":regional_indicator_u:", ":regional_indicator_v:", ":regional_indicator_w:", ":regional_indicator_x:",
+					":regional_indicator_y:", ":regional_indicator_z:"
 				];
-				while ($a < count($answer)) {
-					$description .= $choices[$a] . " : " . $answer[$a];
-					$description .= "\n";
-					$url .= '"' . $answer[$a] . '",';
-					$a++;
+				
+				$urlList = [];
+				for ($a = 0; $a < count($answer); $a++) {
+					$description .= $choices[$a] . " : " . $answer[$a] . "\n";
+					$urlList[] = $answer[$a];
 				}
-				$url = rtrim($url, ',');
-				$url .= ']';
-				$countanswer = count($answer);
+				// Pass the array directly, JS will handle it
+				$url = $urlList;
+				$answerCount = count($answer);
 			} else {
 				$timeout = $_options['timeout'];
-				$countanswer = 0;
+				$answerCount = 0;
 				$description = "Votre prochain message sera la réponse.";
 				$url = "text";
 			}
@@ -1021,42 +1017,101 @@ class discordlinkCmd extends cmd {
 			if (!empty($_options['title'])) $title = $_options['title'];
 			if (!empty($_options['url'])) $url = $_options['url'];
 			if (!empty($_options['description'])) $description = $_options['description'];
-			// Support du champ 'message' comme alias de 'description' (pour le bouton test dashboard)
+			
+			// Support du champ 'message' comme alias de 'description'
 			if (!empty($_options['message']) && empty($description)) $description = $_options['message'];
+			
 			if (!empty($_options['footer'])) $footer = $_options['footer'];
 			if (!empty($_options['colors'])) $colors = $_options['colors'];
-			if (!empty($_options['field'])) $field = json_encode($_options['field']);
-			if (!empty($_options['quickreply'])) $quickreply = $_options['quickreply'];
+			
+			// Fields handling
+			if (!empty($_options['field'])) {
+				if (is_array($_options['field'])) {
+					$fields = $_options['field'];
+				} elseif (is_string($_options['field'])) {
+					$decoded = json_decode($_options['field'], true);
+					if (is_array($decoded)) $fields = $decoded;
+				}
+			}
+			
+			// Quickreply handling
+			if (!empty($_options['quickreply'])) {
+				if (is_array($_options['quickreply'])) {
+					$quickreply = $_options['quickreply'];
+				} else {
+					$splits = explode(',', (string)$_options['quickreply']);
+					foreach($splits as $q) {
+						$clean = trim($q);
+						if(!empty($clean)) $quickreply[] = $clean;
+					}
+				}
+			}
+			
+			// Files handling
+			if (!empty($_options['files'])) {
+				if (is_array($_options['files'])) {
+					$files = $_options['files'];
+				} else {
+					$filesRaw = scenarioExpression::setTags($_options['files']);
+					$splits = explode(',', $filesRaw);
+					foreach($splits as $f) {
+						$clean = trim($f);
+						if(!empty($clean)) $files[] = $clean;
+					}
+				}
+			}
 		}
 
-		$description = discordlink::emojiConvert($description);
-		log::add('discordlink', 'debug', 'description : ' . $description);
+		// Tags processing
+		$title = self::decodeRandomText(scenarioExpression::setTags($title));
+		$description = discordlink::emojiConvert(self::decodeRandomText(scenarioExpression::setTags($description)));
 		$description = str_replace('|', "\n", $description);
+		$footer = self::decodeRandomText(scenarioExpression::setTags($footer));
+		
+		// URL processing only if it's a string (standard embed URL), if it's an array (ASK mode), leave as is
+		if (is_string($url)) {
+			$url = self::decodeRandomText(scenarioExpression::setTags($url));
+		}
 
 		// Si aucune couleur n'est définie, utiliser la couleur par défaut
 		if (empty($colors)) {
 			$colors = $defaultColor;
 		}
 
-		// Remplacement des variables
-		$replacements = array(
-			'#title#' => $title,
-			'#url#' => $url,
-			'#description#' => $description,
-			'#footer#' => $footer,
-			'#countanswer#' => $countanswer,
-			'#field#' => $field,
-			'#color#' => $colors,
-			'#timeout#' => $timeout,
-			'#quickreply#' => $quickreply
+		$channelID = $this->getEqLogic()->getConfiguration('channelId');
+
+		return array(
+			'endpoint' => '/sendEmbed',
+			'method' => 'POST',
+			'payload' => array(
+				'channelID' => $channelID,
+				'title' => $title,
+				'description' => $description,
+				'url' => $url,
+				'footer' => $footer,
+				'color' => $colors,
+				'defaultColor' => $defaultColor,
+				'fields' => $fields,
+				'quickreply' => $quickreply,
+				'files' => $files,
+				'answerCount' => $answerCount,
+				'timeout' => $timeout
+			)
 		);
+	}
 
-		foreach ($replacements as $key => $value) {
-			$request = str_replace($key, urlencode(self::decodeRandomText($value)), $request);
-		}
-
-		log::add('discordlink', 'info', 'Final Request :: ' . $request);
-		return $request;
+	private function buildClearChannelRequest($_options = array()) {
+		$daysToKeep = $this->getEqLogic()->getConfiguration('daysToKeep', 2);
+		$channelID = $this->getEqLogic()->getConfiguration('channelId');
+		
+		return array(
+			'endpoint' => '/clearChannel',
+			'method' => 'POST',
+			'payload' => array(
+				'channelID' => $channelID,
+				'daysToKeep' => ($daysToKeep >= -1 ? $daysToKeep : 2)
+			)
+		);
 	}
 
 	public static function decodeRandomText($_text) {

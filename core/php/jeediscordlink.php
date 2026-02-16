@@ -46,8 +46,6 @@ if (!is_array($result)) {
 	die();
 }
 
-$logicalId = $result['channelId'] . "_player";
-
 $discordEquipment = eqLogic::byLogicalId($result['channelId'], 'discordlink');
 
 switch ($name) {
@@ -103,10 +101,10 @@ switch ($name) {
 
 	default:
 		if (!is_object($discordEquipment)) {
-			log::add('discordlink', 'debug',  'Device non trouvé: ' . $logicalId);
+			log::add('discordlink', 'debug',  'Device non trouvé: ' . $result['channelId']);
 			die();
 		} else {
-			log::add('discordlink', 'debug',  'Device trouvé: ' . $logicalId);
+			log::add('discordlink', 'debug',  'Device trouvé: ' . $result['channelId']);
 		}
 }
 
@@ -150,6 +148,8 @@ function updateCommand($name, $_value, $_logicalId, $_discordEquipment, $_update
 
 function getASK($_value, $_channelId, $_request) {
 	$discordEquipment = eqLogic::byLogicalId($_channelId, 'discordlink');
+	if (!is_object($discordEquipment)) return;
+
 	$cmd = $discordEquipment->getCmd('action', "sendEmbed");
 	if ($_request === "text") {
 		log::add('discordlink', 'debug', 'ASK : Text');
@@ -159,7 +159,8 @@ function getASK($_value, $_channelId, $_request) {
 		$value = $_request[$_value];
 	}
 
-	log::add('discordlink', 'debug', 'ASK : Request :"' . $_request . '" || Response : "' . $value . '"');
+	$requestLog = is_array($_request) ? json_encode($_request, JSON_UNESCAPED_UNICODE) : $_request;
+	log::add('discordlink', 'debug', 'ASK : Request :"' . $requestLog . '" || Response : "' . $value . '"');
 
 	$cmd->askResponse($value);
 }

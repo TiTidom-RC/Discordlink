@@ -35,14 +35,32 @@ function discordlink_install() {
 function discordlink_update() {
     $info = discordlink::getInfo();
     $version = $info['pluginVersion'];
+    log::add('discordlink', 'info', '---------------------------------------------------------------------');
+    log::add('discordlink', 'info', 'Début de la mise à jour du plugin DiscordLink vers la version ' . $version);
+
     config::save('pluginVersion', $version, 'discordlink');
 
-    // Initialisation du port socket s'il n'est pas défini (mise à jour)
+    // 1. Initialisation et Migration Configuration Globale
+    // ---------------------------------------------------
     if (config::byKey('socketport', 'discordlink', '') === '') {
         config::save('socketport', discordlink::SOCKET_PORT, 'discordlink');
+        log::add('discordlink', 'info', 'Initialisation du port socket : ' . discordlink::SOCKET_PORT);
     }
 
-    // Nettoyage des anciens fichiers et dossiers (Migration 2026)
+    // Migration de la clé de configuration globale emojy → emoji
+    $oldEmojiConfig = config::byKey('emojy', 'discordlink', null);
+    if ($oldEmojiConfig !== null) {
+        // On ne migre que si la nouvelle clé n'existe pas déjà pour éviter d'écraser des modifications récentes
+        if (config::byKey('emoji', 'discordlink', null) === null) {
+            config::save('emoji', $oldEmojiConfig, 'discordlink');
+            log::add('discordlink', 'info', '[Migration] Configuration globale : emojy → emoji');
+        }
+        config::remove('emojy', 'discordlink');
+    }
+
+    // 2. Nettoyage Système de Fichiers
+    // --------------------------------
+    log::add('discordlink', 'info', 'Nettoyage des anciens fichiers...');
     $pathsToRemove = array(
         '/core/class/discordlinkCovid.class.php',
         '/core/class/discordMsg.class.php',
@@ -71,85 +89,28 @@ function discordlink_update() {
                 $output = array();
                 $return_var = 0;
                 exec('rm -rf ' . escapeshellarg($path) . ' 2>&1', $output, $return_var);
-
                 if ($return_var !== 0) {
                     log::add('discordlink', 'warning', 'Echec suppression "' . $path . '" (Code: ' . $return_var . ') : ' . implode(' ', $output));
                 }
             } catch (Exception $e) {
-                log::add('discordlink', 'warning', 'Erreur PHP lors de la suppression de ' . $path . ' : ' . $e->getMessage());
+                log::add('discordlink', 'warning', 'Erreur suppression "' . $path . '" : ' . $e->getMessage());
             }
         }
     }
 
-    // MIGRATION V2.0 : Correction des commandes existantes sans LogicalId
-    // Pour éviter l'erreur SQL 1062 Duplicate Entry lors de la recréation des commandes
-    try {
-        $eqLogics = eqLogic::byType('discordlink');
-        foreach ($eqLogics as $eqLogic) {
-            // Liste des commandes critiques qui provoquaient des doublons
-            $cmdsToFix = array(
-                'Etat des démons' => 'daemonInfo',
-                'Etat des dépendances' => 'dependencyInfo',
-                'Résumé général' => 'globalSummary',
-                'Résumé par objet' => 'objectSummary',
-                'Résumé des batteries' => 'batteryInfo',
-                'Centre de messages' => 'messageCenter',
-                'Dernière Connexion utilisateur' => 'lastUser',
-                'Dernier message' => 'lastMessage',
-                'Avant dernier message' => 'previousMessage1',
-                'Avant Avant dernier message' => 'previousMessage2'
-            );
-
-            // On itère sur toutes les commandes de l'équipement pour être sûr de trouver celles qui ont le "bon nom" mais le "mauvais ID"
-            foreach ($eqLogic->getCmd() as $cmd) {
-                if (array_key_exists($cmd->getName(), $cmdsToFix)) {
-                    $targetLogicalId = $cmdsToFix[$cmd->getName()];
-                    // Si le logicalID est différent de celui attendu (vide ou obsolète)
-                    if ($cmd->getLogicalId() != $targetLogicalId) {
-                        log::add('discordlink', 'info', '[Migration] Correction LogicalId pour commande: ' . $cmd->getName() . ' (' . $cmd->getLogicalId() . ' -> ' . $targetLogicalId . ')');
-                        $cmd->setLogicalId($targetLogicalId);
-                        $cmd->save();
-                    }
-                }
-            }
-
-            $cmdsToRemove = array(
-                'covidSend',
-            );
-            // Suppression des commandes obsolètes
-            foreach ($eqLogic->getCmd() as $cmd) {
-                if (in_array($cmd->getLogicalId(), $cmdsToRemove)) {
-                    log::add('discordlink', 'info', '[Migration] Suppression commande obsolète: ' . $cmd->getName() . ' (' . $cmd->getLogicalId() . ')');
-                    $cmd->remove();
-                }
-            }
-        }
-    } catch (Exception $e) {
-        // En cas d'erreur de migration, on continue
-        log::add('discordlink', 'error', 'Erreur lors de la migration des commandes : ' . $e->getMessage());
+    $quickReplyPath = dirname(__FILE__) . '/../data/quickreply.json';
+    if (!file_exists($quickReplyPath)) {
+        log::add('discordlink', 'info', 'Création du fichier quickreply.json par défaut');
+        discordlink::createQuickReplyFile();
     }
 
-    if (config::byKey('disableUpdateMessage', 'discordlink', 0) == 0) {
-        message::add('discordlink', 'Le plugin DiscordLink a été mis à jour en version ' . $version);
-    }
-
-    // Migration de la clé de configuration globale emojy → emoji
-    $oldEmojiConfig = config::byKey('emojy', 'discordlink', null);
-    if ($oldEmojiConfig !== null) {
-        // On ne migre que si la nouvelle clé n'existe pas déjà pour éviter d'écraser des modifications récentes
-        if (config::byKey('emoji', 'discordlink', null) === null) {
-            config::save('emoji', $oldEmojiConfig, 'discordlink');
-            log::add('discordlink', 'info', 'Migration configuration globale: emojy → emoji');
-        }
-        config::remove('emojy', 'discordlink');
-    }
-
-    // Migration des paramètres de configuration des équipements
+    // 3. Migration des Paramètres des Équipements
+    // -------------------------------------------
+    log::add('discordlink', 'info', 'Migration des configurations équipements...');
     foreach (eqLogic::byType('discordlink') as $eqLogic) {
         $needSave = false;
         $configuration = $eqLogic->getConfiguration();
 
-        // Migration des noms de configuration (anciennes versions)
         $configMigrations = [
             'autorefreshDependances' => 'autoRefreshDependency',
             'autorefreshDependancy' => 'autoRefreshDependency',
@@ -169,21 +130,77 @@ function discordlink_update() {
                 $eqLogic->setConfiguration($newKey, $configuration[$oldKey]);
                 unset($configuration[$oldKey]);
                 $needSave = true;
-                log::add('discordlink', 'info', 'Migration configuration équipement ' . $eqLogic->getHumanName() . ': ' . $oldKey . ' → ' . $newKey);
+                log::add('discordlink', 'info', '  - ' . $eqLogic->getHumanName() . ': ' . $oldKey . ' → ' . $newKey);
             }
         }
 
-        // Appliquer les suppressions
         if ($needSave) {
+            // Nettoyage des clés supprimées
             foreach (array_keys($configuration) as $key) {
-                if (!isset($configuration[$key])) {
-                    $eqLogic->setConfiguration($key, null);
-                }
+                if (!isset($configuration[$key])) $eqLogic->setConfiguration($key, null);
             }
             $eqLogic->save();
         }
     }
 
+    // 4. Correction et Nettoyage des Commandes
+    // ----------------------------------------
+    // MIGRATION V2.0 : Correction des commandes existantes sans LogicalId
+    // Pour éviter l'erreur SQL 1062 Duplicate Entry lors de la recréation des commandes
+    log::add('discordlink', 'info', 'Vérification et correction des commandes...');
+    try {
+        $eqLogics = eqLogic::byType('discordlink');
+        foreach ($eqLogics as $eqLogic) {
+            // Liste des commandes critiques qui provoquaient des doublons
+            $cmdsToFix = array(
+                'Etat des démons' => 'daemonInfo',
+                'Etat des dépendances' => 'dependencyInfo',
+                'Résumé général' => 'globalSummary',
+                'Résumé par objet' => 'objectSummary',
+                'Résumé des batteries' => 'batteryInfo',
+                'Centre de messages' => 'messageCenter',
+                'Dernière Connexion utilisateur' => 'lastUser',
+                'Dernier message' => 'lastMessage',
+                'Avant dernier message' => 'previousMessage1',
+                'Avant Avant dernier message' => 'previousMessage2'
+            );
+
+            foreach ($eqLogic->getCmd() as $cmd) {
+                // Correction Logical ID
+                if (array_key_exists($cmd->getName(), $cmdsToFix)) {
+                    $targetLogicalId = $cmdsToFix[$cmd->getName()];
+                    if ($cmd->getLogicalId() != $targetLogicalId) {
+                        log::add('discordlink', 'info', '[Migration] Correction LogicalId : ' . $cmd->getName() . ' (' . $cmd->getLogicalId() . ' -> ' . $targetLogicalId . ')');
+                        $cmd->setLogicalId($targetLogicalId);
+                        $cmd->save();
+                    }
+                }
+            }
+
+            $cmdsToRemove = array(
+                'covidSend',
+            );
+            
+            foreach ($eqLogic->getCmd() as $cmd) {
+                // Suppression commandes obsolètes connues
+                if (in_array($cmd->getLogicalId(), $cmdsToRemove)) {
+                    log::add('discordlink', 'info', '[Migration] Suppression commande obsolète : ' . $cmd->getName() . ' (' . $cmd->getLogicalId() . ')');
+                    $cmd->remove();
+                }
+            }
+        }
+    } catch (Exception $e) {
+        log::add('discordlink', 'error', 'Erreur lors de la migration des commandes : ' . $e->getMessage());
+    }
+
+    // 5. Régénération des Commandes et Emojis
+    // ---------------------------------------
+    log::add('discordlink', 'info', 'Mise à jour des définitions des commandes et emojis...');
+    discordlink::createCmd();
+    discordlink::setEmoji();
+
+    // 6. Vérification Finale (Reporting)
+    // ----------------------------------
     // Détection des commandes obsolètes ou avec mauvais logicalId
     $obsoleteLogicalIds = [
         '1oldmsg',
@@ -195,7 +212,6 @@ function discordlink_update() {
         'centreMsg',
         'LastUser'
     ];
-
     $expectedCommands = [
         'sendMsg' => 'Envoi message',
         'sendMsgTTS' => 'Envoi message TTS',
@@ -258,15 +274,12 @@ function discordlink_update() {
         log::add('discordlink', 'info', 'Mise à jour terminée - Aucune commande problématique détectée.');
     }
 
-    // Création du fichier quickreply s'il n'existe pas (nouveau chemin data/)
-    $quickReplyPath = dirname(__FILE__) . '/../data/quickreply.json';
-    if (!file_exists($quickReplyPath)) {
-        log::add('discordlink', 'info', 'Création du fichier quickreply.json par défaut');
-        discordlink::createQuickReplyFile();
+    if (config::byKey('disableUpdateMessage', 'discordlink', 0) == 0) {
+        message::add('discordlink', 'Le plugin DiscordLink a été mis à jour en version ' . $version);
     }
 
-    // Mise à jour des emojis (ajoute les nouveaux emojis par défaut s'ils n'existent pas)
-    discordlink::setEmoji();
+    log::add('discordlink', 'info', 'Mise à jour terminée avec succès.');
+    log::add('discordlink', 'info', '---------------------------------------------------------------------');
 }
 
 
