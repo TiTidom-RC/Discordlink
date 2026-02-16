@@ -548,8 +548,13 @@ app.get("/sendEmbed", async (req, res) => {
 
              sendOptions.embeds.push(galleryEmbed);
              
-             // Discord limit: 10 embeds per message (but grid view is usually max 4)
-             if (sendOptions.embeds.length >= 10) break;
+             // Limit to 4 embeds total (1 main + 3 others) for grid view aesthetic
+             if (sendOptions.embeds.length >= 4) {
+               if (i < attachments.length - 1) {
+                 config.logger(`Limite de 4 images atteinte pour la galerie. ${attachments.length - 4} image(s) ignorée(s).`, "WARNING");
+               }
+               break;
+             }
           }
         }
         
