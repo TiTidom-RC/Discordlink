@@ -1,25 +1,25 @@
 <div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
-  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">Path</span>
-  <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="path" rows="1"
-    style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#path#</textarea>
+  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">Fichiers</span>
+  <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="files" rows="1"
+    style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#files#</textarea>
   <span class="input-group-btn">
-    <button class="btn btn-default listDeviceInfoPath roundedRight" type="button" title="{{Sélectionner la commande}}"
+    <button class="btn btn-default listDeviceInfoFiles roundedRight" type="button" title="{{Sélectionner la commande}}"
       data-cmd_id="#id#" data-uid="#uid#"><i class="fas fa-list-alt"></i></button>
   </span>
 </div>
 
 <div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
-  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">Nom</span>
-  <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="displayName" rows="1"
-    style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#displayName#</textarea>
+  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">Message</span>
+  <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="message" rows="1"
+    style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#message#</textarea>
   <span class="input-group-btn">
-    <button class="btn btn-default listDeviceInfoDisplayName roundedRight" type="button" title="{{Sélectionner la commande}}"
+    <button class="btn btn-default listDeviceInfoMessage roundedRight" type="button" title="{{Sélectionner la commande}}"
       data-cmd_id="#id#" data-uid="#uid#"><i class="fas fa-list-alt"></i></button>
   </span>
 </div>
 
 <script>
-  document.querySelector('.listDeviceInfoPath[data-uid="#uid#"]').addEventListener('click', function () {
+  document.querySelector('.listDeviceInfoFiles[data-uid="#uid#"]').addEventListener('click', function () {
     var options = {
       cmd: {
         type: '#message_cmd_type#'
@@ -29,11 +29,11 @@
       options.cmd.subType = '#message_cmd_subtype#'
     }
     jeedom.cmd.getSelectModal(options, function (result) {
-      document.querySelector('.expressionAttr[data-l1key=options][data-l2key=path][data-uid="#uid#"]').insertAtCursor(result.human)
+      document.querySelector('.expressionAttr[data-l1key=options][data-l2key=files][data-uid="#uid#"]').insertAtCursor(result.human)
     })
   })
 
-  document.querySelector('.listDeviceInfoDisplayName[data-uid="#uid#"]').addEventListener('click', function () {
+  document.querySelector('.listDeviceInfoMessage[data-uid="#uid#"]').addEventListener('click', function () {
     var options = {
       cmd: {
         type: '#message_cmd_type#'
@@ -43,10 +43,9 @@
       options.cmd.subType = '#message_cmd_subtype#'
     }
     jeedom.cmd.getSelectModal(options, function (result) {
-      document.querySelector('.expressionAttr[data-l1key=options][data-l2key=displayName][data-uid="#uid#"]').insertAtCursor(result.human)
+      document.querySelector('.expressionAttr[data-l1key=options][data-l2key=message][data-uid="#uid#"]').insertAtCursor(result.human)
     })
   })
 
-  if ('#path#' == '#' + 'path#') document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=path]').value = '#defaultPath#'
-  if ('#displayName#' == '#' + 'displayName#') document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=displayName]').value = '#defaultDisplayName#'
+  if ('#files#' == '#' + 'files#') document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=files]').value = '#defaultPath#'
 </script>

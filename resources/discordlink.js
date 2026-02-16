@@ -334,9 +334,11 @@ app.get("/sendFile", async (req, res) => {
 
     config.logger("sendFile", "INFO");
 
-    const { channelID, message, path, name } = req.query;
-    const channel = client.channels.cache.get(channelID);
+    const channelID = req.query.channelID;
+    const message = req.query.message || "";
+    const files = req.query.files || "";
 
+    const channel = client.channels.cache.get(channelID);
     if (!channel) {
       return res.status(404).json({
         error: "Channel non trouvé",
@@ -344,18 +346,40 @@ app.get("/sendFile", async (req, res) => {
       });
     }
 
-    // Discord.js v14: syntaxe identique pour les fichiers
+    const attachments = [];
+    if (files) {
+      const fileList = files.split(',').map(f => f.trim()).filter(f => f.length > 0);
+      
+      // Limit to 4 files
+      const filesToSend = fileList.slice(0, 4);
+      if (fileList.length > 4) {
+        config.logger(`WARNING: Only first 4 files will be sent (requested: ${fileList.length})`, "WARNING");
+      }
+
+      for (const filePath of filesToSend) {
+        try {
+          if (fs.existsSync(filePath)) {
+            const attachment = new AttachmentBuilder(filePath);
+            attachments.push(attachment);
+          } else {
+            config.logger(`File not found: ${filePath}`, "WARNING");
+          }
+        } catch (e) {
+          config.logger(`Error processing file ${filePath}: ${e.message}`, "ERROR");
+        }
+      }
+    }
+
+    if (attachments.length === 0 && !message) {
+      return res.status(400).json({ error: "No files or message to send" });
+    }
+
     await channel.send({
       content: message,
-      files: [
-        {
-          attachment: path,
-          name: name,
-        },
-      ],
+      files: attachments
     });
 
-    toReturn.push({ id: req.query });
+    toReturn.push({ filesSent: attachments.length, messageSent: !!message });
     res.status(200).json(toReturn);
   } catch (error) {
     config.logger("ERROR sendFile :: " + error.message, "ERROR");

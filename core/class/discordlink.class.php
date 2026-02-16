@@ -489,7 +489,7 @@ class discordlink extends eqLogic {
 				'sendMsg' => array('requiredPlugin' => '0', 'label' => 'Envoi message', 'type' => 'action', 'subType' => 'message', 'request' => 'sendMsg?message=#message#', 'visible' => 1, 'template' => 'discordlink::message'),
 				'sendMsgTTS' => array('requiredPlugin' => '0', 'label' => 'Envoi message TTS', 'type' => 'action', 'subType' => 'message', 'request' => 'sendMsgTTS?message=#message#', 'visible' => 1, 'template' => 'discordlink::message'),
 				'sendEmbed' => array('requiredPlugin' => '0', 'label' => 'Envoi message évolué', 'type' => 'action', 'subType' => 'message', 'request' => 'sendEmbed?color=#color#&title=#title#&url=#url#&description=#description#&field=#field#&countanswer=#countanswer#&footer=#footer#&timeout=#timeout#&quickreply=#quickreply#&files=#files#', 'visible' => 1, 'template' => 'discordlink::embed'),
-				'sendFile' => array('requiredPlugin' => '0', 'label' => 'Envoi fichier', 'type' => 'action', 'subType' => 'message', 'request' => 'sendFile?path=#path#&name=#name#&message=#message#', 'visible' => 0),
+				'sendFile' => array('requiredPlugin' => '0', 'label' => 'Envoi fichier', 'type' => 'action', 'subType' => 'message', 'request' => 'sendFile?files=#files#&message=#message#', 'visible' => 0),
 				'deleteMessage' => array('requiredPlugin' => '0', 'label' => 'Supprime les messages du channel', 'type' => 'action', 'subType' => 'other', 'request' => 'deleteMessage?null', 'visible' => 0),
 				'daemonInfo' => array('requiredPlugin' => '0', 'label' => 'Etat des démons', 'type' => 'action', 'subType' => 'other', 'request' => 'daemonInfo?null', 'visible' => 1),
 				'dependencyInfo' => array('requiredPlugin' => '0', 'label' => 'Etat des dépendances', 'type' => 'action', 'subType' => 'other', 'request' => 'dependencyInfo?null', 'visible' => 1),
@@ -898,42 +898,44 @@ class discordlinkCmd extends cmd {
 	}
 
 	private function buildFileRequest($_options = array(), $default = "Chemin du fichier non spécifié") {
-		$message = "";
-
 		$request = $this->getConfiguration('request');
-		if ((isset($_options['path'])) && ($_options['path'] == "")) $_options['path'] = $default;
-		if (!(isset($_options['path']))) $_options['path'] = "";
-
-		if (isset($_options['files']) && is_array($_options['files'])) {
-			// TODO: Optimiser ce bloc qui ne gère pas correctement l'envoi multiple (seul le dernier fichier est pris). Voir pour utiliser basename() au lieu de CurlFile.
-			foreach ($_options['files'] as $file) {
-				$filePath = $file;
-				$files = new CurlFile($file);
-				$fileNameParts = explode('.', $files->getFilename());
-				log::add('discordlink', 'info', $_options['title'] . ' taille : ' . $fileNameParts[sizeof($fileNameParts) - 1]);
-				$fileDisplay = (isset($_options['title']) ? $_options['title'] . '.' . $fileNameParts[sizeof($fileNameParts) - 1] : $files->getFilename());
-			}
-			$message = $_options['message'];
-		} else {
-			$filePath = $_options['path'];
-			$fileDisplay = !empty($_options['displayName']) ? $_options['displayName'] : basename($_options['path']);
+		
+		// Handle files input
+		$rawFiles = "";
+		if (isset($_options['files'])) {
+			$rawFiles = $_options['files'];
+		}
+		
+		// Handle message - use default if no files and no message provided, or just as fallback message?
+		// User requested not to use default as file path.
+		$message = isset($_options['message']) ? $_options['message'] : "";
+		
+		if (empty($rawFiles) && empty($message)) {
+			// If both are empty, use default message to warn user
+			log::add('discordlink', 'warning', 'sendFile : Aucun fichier ni message spécifié.');
+			$message = $default;
+		} elseif (empty($rawFiles)) {
+			// If only file is empty, log info
+			log::add('discordlink', 'info', 'sendFile : Aucun fichier spécifié, envoi du message seul.');
 		}
 
-		$request = str_replace(
-			array('#message#'),
-			array(urlencode(self::decodeRandomText($message))),
-			$request
+		// Encode files (handling comma separation)
+		$filesArray = explode(',', (string)$rawFiles);
+		$encodedFiles = array();
+		foreach ($filesArray as $f) {
+			$encodedFiles[] = urlencode(trim(self::decodeRandomText($f)));
+		}
+		$encodedFilesStr = implode(',', $encodedFiles);
+
+		// Replace placeholders
+		$replacements = array(
+			'#message#' => urlencode(self::decodeRandomText($message)),
+			'#files#' => $encodedFilesStr,
 		);
-		$request = str_replace(
-			array('#name#'),
-			array(urlencode(self::decodeRandomText($fileDisplay))),
-			$request
-		);
-		$request = str_replace(
-			array('#path#'),
-			array(urlencode(self::decodeRandomText($filePath))),
-			$request
-		);
+
+		foreach ($replacements as $key => $value) {
+			$request = str_replace($key, $value, $request);
+		}
 
 		log::add('discordlink', 'info', 'Final Request :: ' . $request);
 		return $request;
