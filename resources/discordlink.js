@@ -197,8 +197,9 @@ if (!token) {
 
 /* Routing */
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Increase limit for larger payloads (like images or large embeds)
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
 let server = null;
 
@@ -298,67 +299,57 @@ app.get("/getchannel", async (req, res) => {
   }
 });
 
-/***** Send simple message *****/
-app.get("/sendMsg", async (req, res) => {
+// --- MIGRATION POST ---
+/***** Send simple message (POST) *****/
+app.post("/sendMsg", async (req, res) => {
   try {
     res.type("json");
-    let toReturn = [];
+    config.logger("DiscordLink: sendMsg (POST)", "INFO");
 
-    config.logger("DiscordLink: sendMsg", "INFO");
-
-    const { channelID, message } = req.query;
+    const { channelID, message } = req.body;
     const channel = client.channels.cache.get(channelID);
 
     if (!channel) {
-      return res.status(404).json({
-        error: "Channel non trouvé",
-        channelID,
-      });
+      return res.status(404).json({ error: "Channel non trouvé", channelID });
     }
 
     await channel.send(message);
-
-    toReturn.push({ id: req.query });
-    res.status(200).json(toReturn);
+    res.status(200).json([{ id: req.body }]);
   } catch (error) {
     config.logger("ERROR sendMsg :: " + error.message, "ERROR");
     res.status(500).json({ error: error.message });
   }
 });
 
-/***** Send file *****/
-app.get("/sendFile", async (req, res) => {
+// --- MIGRATION POST ---
+/***** Send file (POST) *****/
+app.post("/sendFile", async (req, res) => {
   try {
     res.type("json");
-    let toReturn = [];
+    config.logger("sendFile (POST)", "INFO");
 
-    config.logger("sendFile", "INFO");
-
-    const channelID = req.query.channelID;
-    const message = req.query.message || "";
-    const files = req.query.files || "";
+    const channelID = req.body.channelID;
+    const message = req.body.message || "";
+    // files defaults to empty array so we can iterate safely
+    const files = req.body.files || [];
 
     const channel = client.channels.cache.get(channelID);
     if (!channel) {
-      return res.status(404).json({
-        error: "Channel non trouvé",
-        channelID,
-      });
+      return res.status(404).json({ error: "Channel non trouvé", channelID });
     }
 
     const attachments = [];
-    if (files) {
-      const fileList = files.split(',').map(f => f.trim()).filter(f => f.length > 0);
+    if (files && Array.isArray(files) && files.length > 0) {
       
       // Limit to 4 files
-      const filesToSend = fileList.slice(0, 4);
-      if (fileList.length > 4) {
-        config.logger(`WARNING: Only first 4 files will be sent (requested: ${fileList.length})`, "WARNING");
+      const filesToSend = files.slice(0, 4);
+      if (files.length > 4) {
+        config.logger(`WARNING: Only first 4 files will be sent (requested: ${files.length})`, "WARNING");
       }
 
       for (const filePath of filesToSend) {
         try {
-          if (fs.existsSync(filePath)) {
+          if (typeof filePath === 'string' && fs.existsSync(filePath)) {
             const attachment = new AttachmentBuilder(filePath);
             attachments.push(attachment);
           } else {
@@ -374,31 +365,26 @@ app.get("/sendFile", async (req, res) => {
       return res.status(400).json({ error: "No files or message to send" });
     }
 
-    await channel.send({
-      content: message,
-      files: attachments
-    });
-
-    toReturn.push({ filesSent: attachments.length, messageSent: !!message });
-    res.status(200).json(toReturn);
+    await channel.send({ content: message, files: attachments });
+    res.status(200).json({ filesSent: attachments.length, messageSent: !!message });
   } catch (error) {
     config.logger("ERROR sendFile :: " + error.message, "ERROR");
     res.status(500).json({ error: error.message });
   }
 });
 
-/***** Send TTS message *****/
-app.get("/sendMsgTTS", async (req, res) => {
+// --- MIGRATION POST ---
+/***** Send TTS message (POST) *****/
+app.post("/sendMsgTTS", async (req, res) => {
   try {
     res.type("json");
-    let toReturn = [];
+    config.logger("sendMsgTTS (POST)", "INFO");
 
-    config.logger("sendMsgTTS", "INFO");
-
-    const { channelID, message } = req.query;
+    const { channelID, message } = req.body;
     const channel = client.channels.cache.get(channelID);
 
     if (!channel) {
+      config.logger(`Channel not found: ${channelID}`, "ERROR");
       return res.status(404).json({
         error: "Channel non trouvé",
         channelID,
@@ -410,43 +396,52 @@ app.get("/sendMsgTTS", async (req, res) => {
       tts: true,
     });
 
-    toReturn.push({ id: req.query });
-    res.status(200).json(toReturn);
+    res.status(200).json({ success: true, message });
   } catch (error) {
     config.logger("ERROR sendMsgTTS :: " + error.message, "ERROR");
     res.status(500).json({ error: error.message });
   }
 });
 
-/***** Send embed message *****/
-app.get("/sendEmbed", async (req, res) => {
+// --- MIGRATION POST ---
+/***** Send embed message (POST) *****/
+app.post("/sendEmbed", async (req, res) => {
   try {
     res.type("json");
-    let toReturn = [];
+    config.logger("sendEmbed (POST)", "INFO");
 
-    config.logger("sendEmbed", "INFO");
-
-    let {
+    const {
+      channelID,
       color,
       title,
-      url,
+      url, // Can be a URL string OR a JSON string/Object for ASK callbacks
       description,
-      countanswer: answerCount,
-      field: fields,
+      fields, // Array of objects {name, value, inline}
       footer,
       defaultColor,
-      quickreply,
-      files
-    } = req.query;
+      quickreply, // Array of strings
+      files, // Array of strings (paths)
+      answerCount, // Number or String
+      timeout // Number
+    } = req.body;
 
-    let userResponse = "null";
+    // Normaliser les valeurs vides ou "null" de manière stricte pour JSON (null/undefined/empty string)
+    const isEmpty = (val) =>
+      val === undefined || val === null || val === "" || val === "null";
 
-    // Ajout QuickReply
+    const channel = client.channels.cache.get(channelID);
+    if (!channel) {
+      config.logger(`Channel not found: ${channelID}`, "ERROR");
+      return res.status(404).json({
+        error: "Channel non trouvé",
+        channelID,
+      });
+    }
+
+    // Gestion QuickReply
     let quickReplies = [];
-    if (quickreply && quickreply !== "null") {
+    if (quickreply && Array.isArray(quickreply)) {
       quickReplies = quickreply
-        .split(',')
-        .map(q => q.trim())
         .filter(q => {
           if (!quickreplyConf[q]) {
             config.logger(`QuickReply "${q}" non trouvé dans quickreply.json`, "WARNING");
@@ -456,13 +451,9 @@ app.get("/sendEmbed", async (req, res) => {
         });
     }
 
-    // Normaliser les valeurs vides ou "null"
-    const isEmpty = (val) =>
-      !val || val === "null" || val === "undefined" || val.trim() === "";
-
     // Valider qu'une URL est bien formée et a un domaine valide
     const isValidUrl = (val) => {
-      if (isEmpty(val)) return false;
+      if (isEmpty(val) || typeof val !== 'string') return false;
       try {
         const urlObj = new URL(val);
         // Vérifier que le hostname contient au moins un point (domaine.tld) ou est localhost
@@ -472,15 +463,19 @@ app.get("/sendEmbed", async (req, res) => {
       }
     };
 
-    if (isEmpty(color)) color = defaultColor;
+    let embedColor = color;
+    if (isEmpty(embedColor)) embedColor = defaultColor;
 
     // Discord.js v14: MessageEmbed → EmbedBuilder
-    const Embed = new EmbedBuilder().setColor(color).setTimestamp();
+    const Embed = new EmbedBuilder().setColor(embedColor).setTimestamp();
 
     if (!isEmpty(title)) Embed.setTitle(title);
+    
+    // Only set URL if it looks like a URL and we are NOT in database/ASK mode (answerCount is empty)
     if (isValidUrl(url) && isEmpty(answerCount)) {
       Embed.setURL(url);
     }
+    
     if (!isEmpty(description)) Embed.setDescription(description);
 
     // Discord.js v14: setFooter prend un objet
@@ -488,45 +483,27 @@ app.get("/sendEmbed", async (req, res) => {
       Embed.setFooter({ text: footer });
     }
 
-    if (!isEmpty(fields)) {
-      fields = JSON.parse(fields);
-      for (let field in fields) {
-        let name = fields[field]["name"];
-        let value = fields[field]["value"];
-        let inline = fields[field]["inline"];
-
-        inline = inline === 1;
-
-        config.logger(JSON.stringify(fields[field]), "DEBUG");
-        config.logger("Name : " + name + " | Value : " + value, "DEBUG");
+    if (fields && Array.isArray(fields) && fields.length > 0) {
+      for (const field of fields) {
+        let { name, value, inline } = field;
+        
+        // Convert integer 1/0 to boolean if necessary, or string "1"/"0"
+        if (inline === 1 || inline === "1" || inline === true) inline = true;
+        else inline = false;
 
         // Discord.js v14: addField → addFields
         Embed.addFields({ name: name, value: value, inline: inline });
       }
     }
 
-    const channel = client.channels.cache.get(req.query.channelID);
-
-    if (!channel) {
-      return res.status(404).json({
-        error: "Channel non trouvé",
-        channelID: req.query.channelID,
-      });
-    }
-
     const sendOptions = { embeds: [Embed] };
-    if (!isEmpty(files)) {
-      // Split by comma, trim, and filter
-      const fileList = files
-        .split(',')
-        .map(f => f.trim())
-        .filter(f => f.length > 0);
-      
-      // Verify files exist before sending to avoid DiscordAPIError if file not found
+    
+    // Handle Files
+    if (files && Array.isArray(files) && files.length > 0) {
       const existingFiles = [];
-      
-      for (const filePath of fileList) {
-        if (fs.existsSync(filePath)) {
+        
+      for (const filePath of files) {
+        if (typeof filePath === 'string' && fs.existsSync(filePath)) {
           existingFiles.push(filePath);
         } else {
           config.logger(`Fichier introuvable ou inaccessible: ${filePath}`, "WARNING");
@@ -534,8 +511,10 @@ app.get("/sendEmbed", async (req, res) => {
       }
       
       if (existingFiles.length > 0) {
-        // Use AttachmentBuilder for better control
-        const attachments = existingFiles.map(filePath => {
+        // Use AttachmentBuilder
+        const attachments = existingFiles.map((filePath, index) => {
+          // Unique name if sending multiple files with same basename could be an issue? 
+          // Discord handles duplicate filenames somewhat but let's stick to basename for now.
           const filename = path.basename(filePath);
           return new AttachmentBuilder(filePath, { name: filename });
         });
@@ -547,32 +526,22 @@ app.get("/sendEmbed", async (req, res) => {
            Embed.setImage(`attachment://${attachments[0].name}`);
         }
 
-        // If multiple images, create a gallery by adding additional embeds
+        // If multiple images, create a gallery
         if (attachments.length > 1) {
-          // To force grouping in a gallery, all embeds should share the same URL
-          // If no URL is defined, we add a dummy one (Jeedom URL) to all embeds if available
           if (!Embed.data.url && jeedomExtURL) {
              Embed.setURL(jeedomExtURL);
           }
           
           for (let i = 1; i < attachments.length; i++) {
-             // Create a simple embed for subsequent images
              const galleryEmbed = new EmbedBuilder()
                .setImage(`attachment://${attachments[i].name}`);
              
-             // Must match the first embed URL if it exists
-             if (Embed.data.url) {
-                galleryEmbed.setURL(Embed.data.url);
-             }
-
-             // Copy color if present
-             if (Embed.data.color) {
-                galleryEmbed.setColor(Embed.data.color);
-             }
+             if (Embed.data.url) galleryEmbed.setURL(Embed.data.url);
+             if (Embed.data.color) galleryEmbed.setColor(Embed.data.color);
 
              sendOptions.embeds.push(galleryEmbed);
              
-             // Limit to 4 embeds total (1 main + 3 others) for grid view aesthetic
+             // Limit to 4 embeds total
              if (sendOptions.embeds.length >= 4) {
                if (i < attachments.length - 1) {
                  config.logger(`Limite de 4 images atteinte pour la galerie. ${attachments.length - 4} image(s) ignorée(s).`, "WARNING");
@@ -581,40 +550,41 @@ app.get("/sendEmbed", async (req, res) => {
              }
           }
         }
-        
         config.logger(`Envoi de ${existingFiles.length} fichier(s) en galerie`, "INFO");
       }
     }
 
     const m = await channel.send(sendOptions);
 
-    // Gestion QuickReply
-    // Ajout de tous les emojis quickreply demandés
+    // Apply QuickReplies (Reactions)
     for (const q of quickReplies) {
       const conf = quickreplyConf[q];
       if (!conf) continue;
 
-      const emoji = conf.emoji;
+      const emoji = conf.emoji; // e.g. "👍" or custom ID
       const quickText = conf.text;
-      let timeout = parseInt(conf.timeout, 10);
-      if (isNaN(timeout) || timeout <= 0) timeout = 120;
+      let qTimeout = parseInt(conf.timeout, 10);
+      if (isNaN(qTimeout) || qTimeout <= 0) qTimeout = 120;
 
-      await m.react(emoji);
+      // Note: Reacting might fail if emoji is invalid or bot lacks permission
+      try {
+        await m.react(emoji);
+      } catch (err) {
+        config.logger(`Impossible de réagir avec ${emoji}: ${err.message}`, "error");
+        continue;
+      }
 
       const filter = (reaction, user) =>
-        reaction.emoji.name === emoji && !user.bot;
+        (reaction.emoji.name === emoji || reaction.emoji.id === emoji) && !user.bot;
 
       const collector = m.createReactionCollector({
         filter,
         max: 1,
-        time: timeout * 1000,
+        time: qTimeout * 1000,
       });
 
       collector.on('collect', async (reaction, user) => {
-        // Indiquer que le bot réfléchit
         await m.channel.sendTyping();
-
-        // Traiter comme une vraie commande slash
         await handleSlashCommand({
           channelId: m.channel.id,
           userId: user.id,
@@ -626,11 +596,10 @@ app.get("/sendEmbed", async (req, res) => {
 
       collector.on('end', (collected, reason) => {
         if (reason === 'time') {
+          // Remove bot reaction on timeout
           const reaction = m.reactions.cache.find(r =>
-            (r.emoji.id && r.emoji.id === emoji) ||
-            (r.emoji.name === emoji)
+            (r.emoji.id && r.emoji.id === emoji) || (r.emoji.name === emoji)
           );
-
           if (reaction) {
             reaction.users.remove(client.user.id).catch(() => { });
           }
@@ -638,49 +607,32 @@ app.get("/sendEmbed", async (req, res) => {
       });
     }
 
-    // Gestion des réponses ASK
-    if (!isEmpty(answerCount)) {
-      let timeoutMs = req.query.timeout * 1000;
-      toReturn.push({
-        query: req.query,
-        timeout: req.query.timeout,
-        timeoutMs: timeoutMs,
+    // Gestion des réponses ASK (Question/Réponse)
+    if (!isEmpty(answerCount) && answerCount !== "0" && answerCount !== 0) {
+      let timeoutVal = parseInt(timeout, 10);
+      if (isNaN(timeoutVal)) timeoutVal = 60; // default 60s
+      
+      const timeoutMs = timeoutVal * 1000;
+      
+      // We respond immediately to acknowledge the request
+      res.status(200).json({
+        success: true,
+        type: "ASK",
+        timeout: timeoutVal
       });
-      res.status(200).json(toReturn);
 
-      if (answerCount !== "0") {
-        // Réponses avec emojis A-Z
+      // Handle Emoji A-Z selection
         let emojiList = [
-          "🇦",
-          "🇧",
-          "🇨",
-          "🇩",
-          "🇪",
-          "🇫",
-          "🇬",
-          "🇭",
-          "🇮",
-          "🇯",
-          "🇰",
-          "🇱",
-          "🇲",
-          "🇳",
-          "🇴",
-          "🇵",
-          "🇶",
-          "🇷",
-          "🇸",
-          "🇹",
-          "🇺",
-          "🇻",
-          "🇼",
-          "🇽",
-          "🇾",
-          "🇿",
+          "🇦", "🇧", "🇨", "🇩", "🇪", "🇫", "🇬", "🇭", "🇮", "🇯", "🇰", "🇱", "🇲",
+          "🇳", "🇴", "🇵", "🇶", "🇷", "🇸", "🇹", "🇺", "🇻", "🇼", "🇽", "🇾", "🇿",
         ];
+        
+        // Convert to Number safely
+        const count = parseInt(answerCount, 10);
         let a = 0;
-        while (a < answerCount) {
-          await m.react(emojiList[a]);
+        // React with options
+        while (a < count && a < emojiList.length) {
+          await m.react(emojiList[a]).catch(e => config.logger("Error reacting: "+e.message, "error"));
           a++;
         }
 
@@ -699,48 +651,37 @@ app.get("/sendEmbed", async (req, res) => {
           .then((collected) => {
             const reaction = collected.first();
             const emojiMap = {
-              "🇦": 0,
-              "🇧": 1,
-              "🇨": 2,
-              "🇩": 3,
-              "🇪": 4,
-              "🇫": 5,
-              "🇬": 6,
-              "🇭": 7,
-              "🇮": 8,
-              "🇯": 9,
-              "🇰": 10,
-              "🇱": 11,
-              "🇲": 12,
-              "🇳": 13,
-              "🇴": 14,
-              "🇵": 15,
-              "🇶": 16,
-              "🇷": 17,
-              "🇸": 18,
-              "🇹": 19,
-              "🇺": 20,
-              "🇻": 21,
-              "🇼": 22,
-              "🇽": 23,
-              "🇾": 24,
-              "🇿": 25,
+              "🇦": 0, "🇧": 1, "🇨": 2, "🇩": 3, "🇪": 4, "🇫": 5, "🇬": 6, "🇭": 7, "🇮": 8, "🇯": 9, "🇰": 10, "🇱": 11, "🇲": 12,
+              "🇳": 13, "🇴": 14, "🇵": 15, "🇶": 16, "🇷": 17, "🇸": 18, "🇹": 19, "🇺": 20, "🇻": 21, "🇼": 22, "🇽": 23, "🇾": 24, "🇿": 25,
             };
 
-            userResponse = emojiMap[reaction.emoji.name];
-            url = JSON.parse(url);
+            const userResponseIndex = emojiMap[reaction.emoji.name];
+            
+            // Legacy: url was JSON stringified request when using ASK?
+            // If new payload sends it as object, we use it directly.
+            let requestPayload = url; 
+            if (typeof url === 'string') {
+               try { requestPayload = JSON.parse(url); } catch(e) {}
+            }
 
             httpPost("ASK", {
               channelId: m.channel.id,
-              response: userResponse,
-              request: url,
+              response: userResponseIndex,
+              request: requestPayload,
             });
           })
           .catch(() => {
             m.delete().catch(() => { });
           });
-      } else {
-        // Réponse textuelle
+
+    } else if (!isEmpty(answerCount) && (answerCount === "0" || answerCount === 0)) {
+       // ASK Mode: Text Response (0 options)
+       let timeoutVal = parseInt(timeout, 10);
+       if (isNaN(timeoutVal)) timeoutVal = 60;
+       const timeoutMs = timeoutVal * 1000;
+
+       res.status(200).json({ success: true, type: "ASK_TEXT" });
+
         const messageFilter = (msg) => msg.author.bot === false;
 
         m.channel
@@ -752,22 +693,26 @@ app.get("/sendEmbed", async (req, res) => {
           })
           .then((collected) => {
             let msg = collected.first();
-            userResponse = msg.content;
+            const userResponseText = msg.content;
             msg.react("✅").catch(() => { });
+
+            let requestPayload = url;
+            if (typeof url === 'string') {
+               try { requestPayload = JSON.parse(url); } catch(e) {}
+            }
 
             httpPost("ASK", {
               channelId: m.channel.id,
-              response: userResponse,
-              request: url,
+              response: userResponseText,
+              request: requestPayload,
             });
           })
           .catch(() => {
             m.delete().catch(() => { });
           });
-      }
     } else {
-      toReturn.push({ query: req.query });
-      res.status(200).json(toReturn);
+      // Normal embed (no ASK)
+      res.status(200).json({ success: true });
     }
   } catch (error) {
     config.logger("DiscordLink ERROR sendEmbed: " + error.message, "ERROR");
@@ -776,11 +721,11 @@ app.get("/sendEmbed", async (req, res) => {
   }
 });
 
-/***** Clear channel messages *****/
-app.get("/clearChannel", async (req, res) => {
+/***** Clear channel messages (POST) *****/
+app.post("/clearChannel", async (req, res) => {
   try {
-    const channelID = req.query.channelID;
-    const daysToKeep = req.query.daysToKeep;
+    const channelID = req.body.channelID;
+    const daysToKeep = req.body.daysToKeep;
 
     if (!channelID) {
       return res.status(400).json({ error: "channelID manquant" });
