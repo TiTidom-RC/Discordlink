@@ -487,7 +487,7 @@ class discordlink extends eqLogic {
 			$commandsConfig = array(
 				'sendMsg' => array('requiredPlugin' => '0', 'label' => 'Envoi message', 'type' => 'action', 'subType' => 'message', 'request' => 'sendMsg?message=#message#', 'visible' => 1, 'template' => 'discordlink::message'),
 				'sendMsgTTS' => array('requiredPlugin' => '0', 'label' => 'Envoi message TTS', 'type' => 'action', 'subType' => 'message', 'request' => 'sendMsgTTS?message=#message#', 'visible' => 1, 'template' => 'discordlink::message'),
-				'sendEmbed' => array('requiredPlugin' => '0', 'label' => 'Envoi message évolué', 'type' => 'action', 'subType' => 'message', 'request' => 'sendEmbed?color=#color#&title=#title#&url=#url#&description=#description#&field=#field#&countanswer=#countanswer#&footer=#footer#&timeout=#timeout#&quickreply=#quickreply#', 'visible' => 1, 'template' => 'discordlink::embed'),
+				'sendEmbed' => array('requiredPlugin' => '0', 'label' => 'Envoi message évolué', 'type' => 'action', 'subType' => 'message', 'request' => 'sendEmbed?color=#color#&title=#title#&url=#url#&description=#description#&field=#field#&countanswer=#countanswer#&footer=#footer#&timeout=#timeout#&quickreply=#quickreply#&files=#files#', 'visible' => 1, 'template' => 'discordlink::embed'),
 				'sendFile' => array('requiredPlugin' => '0', 'label' => 'Envoi fichier', 'type' => 'action', 'subType' => 'message', 'request' => 'sendFile?path=#path#&name=#name#&message=#message#', 'visible' => 0),
 				'deleteMessage' => array('requiredPlugin' => '0', 'label' => 'Supprime les messages du channel', 'type' => 'action', 'subType' => 'other', 'request' => 'deleteMessage?null', 'visible' => 0),
 				'daemonInfo' => array('requiredPlugin' => '0', 'label' => 'Etat des démons', 'type' => 'action', 'subType' => 'other', 'request' => 'daemonInfo?null', 'visible' => 1),
@@ -952,6 +952,7 @@ class discordlinkCmd extends cmd {
 		$timeout = "";
 		$countanswer = "";
 		$quickreply = "";
+		$files = "";
 
 		/** @var discordlink $eqLogic */
 		$eqLogic = $this->getEqLogic();
@@ -1024,6 +1025,7 @@ class discordlinkCmd extends cmd {
 			if (!empty($_options['colors'])) $colors = $_options['colors'];
 			if (!empty($_options['field'])) $field = json_encode($_options['field']);
 			if (!empty($_options['quickreply'])) $quickreply = $_options['quickreply'];
+			if (!empty($_options['files'])) $files = $_options['files'];
 		}
 
 		$description = discordlink::emojiConvert($description);
@@ -1033,6 +1035,10 @@ class discordlinkCmd extends cmd {
 		// Si aucune couleur n'est définie, utiliser la couleur par défaut
 		if (empty($colors)) {
 			$colors = $defaultColor;
+		}
+
+		if (preg_match('/&files=#files#/', $request) == 0) {
+			$request .= '&files=#files#';
 		}
 
 		// Remplacement des variables
@@ -1045,11 +1051,23 @@ class discordlinkCmd extends cmd {
 			'#field#' => $field,
 			'#color#' => $colors,
 			'#timeout#' => $timeout,
-			'#quickreply#' => $quickreply
+			'#quickreply#' => $quickreply,
+			'#files#' => $files
 		);
 
 		foreach ($replacements as $key => $value) {
-			$request = str_replace($key, urlencode(self::decodeRandomText($value)), $request);
+			// Special handling for files to avoid encoding the separator if multiple files
+			if ($key === '#files#') {
+				// We don't want to encode the comma separator if present, so we encode each file path independently
+				// Value contains the raw string from the textarea (e.g. "/path1, /path2")
+				$filesArray = explode(',', (string)$value);
+				$encodedFiles = array_map(function($f) { return urlencode(trim(self::decodeRandomText($f))); }, $filesArray);
+				// Re-join with comma, so JS receives "encodedPath1,encodedPath2" and splits by comma
+				$encodedValue = implode(',', $encodedFiles);
+				$request = str_replace($key, $encodedValue, $request);
+			} else {
+				$request = str_replace($key, urlencode(self::decodeRandomText($value)), $request);
+			}
 		}
 
 		log::add('discordlink', 'info', 'Final Request :: ' . $request);

@@ -410,6 +410,7 @@ app.get("/sendEmbed", async (req, res) => {
       footer,
       defaultColor,
       quickreply,
+      files
     } = req.query;
 
     let userResponse = "null";
@@ -487,7 +488,32 @@ app.get("/sendEmbed", async (req, res) => {
       });
     }
 
-    const m = await channel.send({ embeds: [Embed] });
+    const sendOptions = { embeds: [Embed] };
+    if (!isEmpty(files)) {
+      // Split by comma, trim, and filter
+      const fileList = files
+        .split(',')
+        .map(f => f.trim())
+        .filter(f => f.length > 0);
+      
+      // Verify files exist before sending to avoid DiscordAPIError if file not found
+      const existingFiles = [];
+      
+      for (const filePath of fileList) {
+        if (fs.existsSync(filePath)) {
+          existingFiles.push(filePath);
+        } else {
+          config.logger(`Fichier introuvable ou inaccessible: ${filePath}`, "WARNING");
+        }
+      }
+      
+      if (existingFiles.length > 0) {
+        sendOptions.files = existingFiles;
+        config.logger(`Envoi de ${existingFiles.length} fichier(s)`, "INFO");
+      }
+    }
+
+    const m = await channel.send(sendOptions);
 
     // Gestion QuickReply
     // Ajout de tous les emojis quickreply demandés
