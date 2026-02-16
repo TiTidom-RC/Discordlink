@@ -6,7 +6,6 @@
     "plugins\/discordlink\/core\/class\/discordlink.class.php": {
         "' . $match . '": "' . $match . '",
         "(.*?)": "(.*?)",
-        "Commande inconnue ou requête vide : ": "Comando desconocido o solicitud vacía: ",
         "Expression cron non valide pour ": "Expresión cron no válida para ",
         "Serveur injoignable": "Servidor inaccesible",
         "Veuillez vérifier la configuration": "Compruebe la configuración."
