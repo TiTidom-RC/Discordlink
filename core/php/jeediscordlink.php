@@ -159,7 +159,8 @@ function getASK($_value, $_channelId, $_request) {
 		$value = $_request[$_value];
 	}
 
-	log::add('discordlink', 'debug', 'ASK : Request :"' . $_request . '" || Response : "' . $value . '"');
+	$requestLog = is_array($_request) ? json_encode($_request, JSON_UNESCAPED_UNICODE) : $_request;
+	log::add('discordlink', 'debug', 'ASK : Request :"' . $requestLog . '" || Response : "' . $value . '"');
 
 	$cmd->askResponse($value);
 }
