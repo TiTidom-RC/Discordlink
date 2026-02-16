@@ -513,9 +513,15 @@ app.post("/sendEmbed", async (req, res) => {
       if (existingFiles.length > 0) {
         // Use AttachmentBuilder
         const attachments = existingFiles.map((filePath, index) => {
-          // Unique name to avoid collisions and ensure correct mapping
-          // Using index ensures uniqueness even if files have same basename
-          const filename = `file_${index}_${path.basename(filePath)}`;
+          let filename = path.basename(filePath);
+          
+          // Check for duplicate filenames in the current batch
+          const isDuplicate = existingFiles.some((f, i) => i !== index && path.basename(f) === filename);
+          
+          if (isDuplicate) {
+             filename = `${index}_${filename}`;
+          }
+          
           return new AttachmentBuilder(filePath, { name: filename });
         });
         
