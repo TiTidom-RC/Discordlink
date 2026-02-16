@@ -527,21 +527,29 @@ app.post("/sendEmbed", async (req, res) => {
         }
 
         // If multiple images, create a gallery
+        // Note: Discord allows up to 10 embeds per message, but only 4 displayed as a grid if they have same URL
         if (attachments.length > 1) {
-          if (!Embed.data.url && jeedomExtURL) {
-             Embed.setURL(jeedomExtURL);
-          }
+          const galleryUrl = Embed.data.url || jeedomExtURL || "https://www.jeedom.com";
+
+          // Ensure the main embed has this URL so they group together
+          Embed.setURL(galleryUrl);
           
           for (let i = 1; i < attachments.length; i++) {
+             // Create a lightweight embed for the gallery image
              const galleryEmbed = new EmbedBuilder()
+               .setURL(galleryUrl) // Must match main embed URL to group
                .setImage(`attachment://${attachments[i].name}`);
              
-             if (Embed.data.url) galleryEmbed.setURL(Embed.data.url);
+             // galleryEmbed.setColor(null); // Try to not set color on secondary embeds to avoid sidebar clutter? 
+             // Actually it's better if they don't have color or have same color.
+             // But if we want a clean image grid, usually they shouldn't have other properties.
+             
+             // Copy color if present on main embed to look consistent
              if (Embed.data.color) galleryEmbed.setColor(Embed.data.color);
 
              sendOptions.embeds.push(galleryEmbed);
              
-             // Limit to 4 embeds total
+             // Limit checks
              if (sendOptions.embeds.length >= 4) {
                if (i < attachments.length - 1) {
                  config.logger(`Limite de 4 images atteinte pour la galerie. ${attachments.length - 4} image(s) ignorée(s).`, "WARNING");
