@@ -13,6 +13,7 @@ const {
   GatewayIntentBits,
   Partials,
   EmbedBuilder,
+  AttachmentBuilder,
   ChannelType,
   Events,
   REST,
@@ -508,8 +509,40 @@ app.get("/sendEmbed", async (req, res) => {
       }
       
       if (existingFiles.length > 0) {
-        sendOptions.files = existingFiles;
-        config.logger(`Envoi de ${existingFiles.length} fichier(s)`, "INFO");
+        // Use AttachmentBuilder for better control
+        const attachments = existingFiles.map(filePath => {
+          const filename = path.basename(filePath);
+          return new AttachmentBuilder(filePath, { name: filename });
+        });
+        
+        sendOptions.files = attachments;
+        
+        // Attach the first file as the Embed Image of the main embed
+        if (attachments.length > 0) {
+           Embed.setImage(`attachment://${attachments[0].name}`);
+        }
+
+        // If multiple images, create a gallery by adding additional embeds
+        if (attachments.length > 1) {
+          for (let i = 1; i < attachments.length; i++) {
+             // Create a simple embed for subsequent images
+             const galleryEmbed = new EmbedBuilder()
+               .setURL(Embed.data.url) // Share same URL to link them
+               .setImage(`attachment://${attachments[i].name}`);
+
+             // Copy color if present
+             if (Embed.data.color) {
+                galleryEmbed.setColor(Embed.data.color);
+             }
+
+             sendOptions.embeds.push(galleryEmbed);
+             
+             // Discord limit: 10 embeds per message
+             if (sendOptions.embeds.length >= 10) break;
+          }
+        }
+        
+        config.logger(`Envoi de ${existingFiles.length} fichier(s) en galerie`, "INFO");
       }
     }
 
