@@ -513,9 +513,9 @@ app.post("/sendEmbed", async (req, res) => {
       if (existingFiles.length > 0) {
         // Use AttachmentBuilder
         const attachments = existingFiles.map((filePath, index) => {
-          // Unique name if sending multiple files with same basename could be an issue? 
-          // Discord handles duplicate filenames somewhat but let's stick to basename for now.
-          const filename = path.basename(filePath);
+          // Unique name to avoid collisions and ensure correct mapping
+          // Using index ensures uniqueness even if files have same basename
+          const filename = `file_${index}_${path.basename(filePath)}`;
           return new AttachmentBuilder(filePath, { name: filename });
         });
         
