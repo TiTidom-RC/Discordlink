@@ -461,7 +461,7 @@ class discordlink extends eqLogic {
 		$channel = $this->getConfiguration('channelId');
 		if (!empty($channel) && $channel != 'null') {
 			$this->setLogicalId($channel);
-			log::add('discordlink', 'debug', 'setLogicalId : ' . $channel);
+			log::add('discordlink', 'debug', 'preSave - setLogicalId for empty channel: ' . $channel);
 		} else {
 			$this->setConfiguration('channelId', $this->getLogicalId());
 		}
@@ -484,6 +484,7 @@ class discordlink extends eqLogic {
 
 		$eqLogics = eqLogic::byType('discordlink');
 		foreach ($eqLogics as $eqLogic) {
+			// log::add('discordlink', 'debug', 'Création/Mise à jour des commandes pour ' . $eqLogic->getName());
 
 			$commandsConfig = array(
 				'sendMsg' => array('requiredPlugin' => '0', 'label' => 'Envoi message', 'type' => 'action', 'subType' => 'message', 'request' => 'sendMsg', 'visible' => 1, 'template' => 'discordlink::message'),
@@ -510,9 +511,9 @@ class discordlink extends eqLogic {
 					if (!is_object($cmd)) {
 						$cmd = new discordlinkCmd();
 						$cmd->setName($cmdConfig['label']);
-						$cmd->setIsVisible($cmdConfig['visible']);
 						$cmd->setType($cmdConfig['type']);
 						$cmd->setSubType($cmdConfig['subType']);
+						$cmd->setIsVisible($cmdConfig['visible']);
 					}
 					$cmd->setEqLogic_id($eqLogic->getId());
 					$cmd->setLogicalId($cmdKey);
@@ -531,7 +532,12 @@ class discordlink extends eqLogic {
 					if (in_array($cmdKey, array('lastMessage', 'previousMessage1', 'previousMessage2'))) {
 						$cmd->setDisplay('forceReturnLineBefore', true);
 					}
-					$cmd->save();
+					try {
+						$cmd->save();
+					} catch (\Throwable $th) {
+						//throw $th;
+						log::add('discordlink', 'error', 'Erreur lors de la sauvegarde de la commande ' . $cmdConfig['label'] . ' (' . $cmdKey . ') pour ' . $eqLogic->getName() . ' : ' . $th->getMessage());
+					}
 					$order++;
 				}
 			}
@@ -551,7 +557,7 @@ class discordlink extends eqLogic {
 	}
 
 	public function postUpdate() {
-		discordlink::createCmd();
+		self::createCmd();
 	}
 
 	public function preRemove() {
@@ -859,7 +865,6 @@ class discordlinkCmd extends cmd {
 
 
 			return true;
-
 		}
 		return false;
 	}
@@ -894,11 +899,44 @@ class discordlinkCmd extends cmd {
 		return 'requestHandledInternally';
 	}
 
+	/**
+	 * Standardize text processing for Discord messages/embeds.
+	 *
+	 * Pipeline:
+	 * 1. Jeedom Tags (#[...]#)
+	 * 2. Random Text ({...})
+	 * 3. Custom Emojis (emo_...) - ONLY if $_supportMarkdown is true
+	 * 4. Newlines (| -> \n)
+	 *
+	 * @param string $_text The text to process
+	 * @param bool $_supportMarkdown Whether the target field supports Markdown/Custom Emojis (default: false)
+	 * @return string
+	 */
+	private function formatDiscordText($_text, $_supportMarkdown = false) {
+		if (empty($_text)) return $_text;
+
+		// 1. Tags replacement
+		$text = scenarioExpression::setTags($_text);
+		
+		// 2. Random text decoding
+		$text = self::decodeRandomText($text);
+		
+		// 3. Emoji conversion (only if markdown supported)
+		if ($_supportMarkdown) {
+			$text = discordlink::emojiConvert($text);
+		}
+		
+		// 4. Newline replacement
+		$text = str_replace('|', "\n", $text);
+		
+		return $text;
+	}
+
 	private function buildMessageRequest($_options = array(), $default = "Une erreur est survenue") {
 		$message = isset($_options['message']) && $_options['message'] != '' ? $_options['message'] : $default;
-		$message = str_replace('|', "\n", $message);
-		$message = scenarioExpression::setTags($message);
-		$message = self::decodeRandomText($message);
+		
+		// Call unified formatter (Message supports Markdown/Emojis)
+		$message = $this->formatDiscordText($message, true);
 
 		$channelID = $this->getEqLogic()->getConfiguration('channelId');
 
@@ -917,18 +955,19 @@ class discordlinkCmd extends cmd {
 
 	private function buildFileRequest($_options = array(), $default = "Chemin du fichier non spécifié") {
 		$channelID = $this->getEqLogic()->getConfiguration('channelId');
-		
+
 		// Handle files input
 		$rawFiles = "";
 		if (isset($_options['files'])) {
-			$rawFiles = $_options['files'];
+			$rawFiles = is_array($_options['files']) ? implode(',', $_options['files']) : (string)$_options['files'];
 			$rawFiles = scenarioExpression::setTags($rawFiles);
 		}
-		
+
 		$message = isset($_options['message']) ? $_options['message'] : "";
-		$message = scenarioExpression::setTags($message);
-		$message = self::decodeRandomText($message);
 		
+		// Use unified formatter (Message supports Markdown/Emojis)
+		$message = $this->formatDiscordText($message, true);
+
 		if (empty($rawFiles) && empty($message)) {
 			log::add('discordlink', 'warning', 'sendFile : Aucun fichier ni message spécifié.');
 			$message = $default;
@@ -940,7 +979,7 @@ class discordlinkCmd extends cmd {
 		$filesArray = [];
 		if (!empty($rawFiles)) {
 			$splits = explode(',', $rawFiles);
-			foreach($splits as $f) {
+			foreach ($splits as $f) {
 				$cleanPath = trim($f);
 				if (!empty($cleanPath)) {
 					$filesArray[] = $cleanPath;
@@ -990,15 +1029,34 @@ class discordlinkCmd extends cmd {
 				$description = "";
 
 				$choices = [
-					":regional_indicator_a:", ":regional_indicator_b:", ":regional_indicator_c:", ":regional_indicator_d:",
-					":regional_indicator_e:", ":regional_indicator_f:", ":regional_indicator_g:", ":regional_indicator_h:",
-					":regional_indicator_i:", ":regional_indicator_j:", ":regional_indicator_k:", ":regional_indicator_l:",
-					":regional_indicator_m:", ":regional_indicator_n:", ":regional_indicator_o:", ":regional_indicator_p:",
-					":regional_indicator_q:", ":regional_indicator_r:", ":regional_indicator_s:", ":regional_indicator_t:",
-					":regional_indicator_u:", ":regional_indicator_v:", ":regional_indicator_w:", ":regional_indicator_x:",
-					":regional_indicator_y:", ":regional_indicator_z:"
+					":regional_indicator_a:",
+					":regional_indicator_b:",
+					":regional_indicator_c:",
+					":regional_indicator_d:",
+					":regional_indicator_e:",
+					":regional_indicator_f:",
+					":regional_indicator_g:",
+					":regional_indicator_h:",
+					":regional_indicator_i:",
+					":regional_indicator_j:",
+					":regional_indicator_k:",
+					":regional_indicator_l:",
+					":regional_indicator_m:",
+					":regional_indicator_n:",
+					":regional_indicator_o:",
+					":regional_indicator_p:",
+					":regional_indicator_q:",
+					":regional_indicator_r:",
+					":regional_indicator_s:",
+					":regional_indicator_t:",
+					":regional_indicator_u:",
+					":regional_indicator_v:",
+					":regional_indicator_w:",
+					":regional_indicator_x:",
+					":regional_indicator_y:",
+					":regional_indicator_z:"
 				];
-				
+
 				$urlList = [];
 				for ($a = 0; $a < count($answer); $a++) {
 					$description .= $choices[$a] . " : " . $answer[$a] . "\n";
@@ -1017,13 +1075,13 @@ class discordlinkCmd extends cmd {
 			if (!empty($_options['title'])) $title = $_options['title'];
 			if (!empty($_options['url'])) $url = $_options['url'];
 			if (!empty($_options['description'])) $description = $_options['description'];
-			
+
 			// Support du champ 'message' comme alias de 'description'
 			if (!empty($_options['message']) && empty($description)) $description = $_options['message'];
-			
+
 			if (!empty($_options['footer'])) $footer = $_options['footer'];
 			if (!empty($_options['colors'])) $colors = $_options['colors'];
-			
+
 			// Fields handling
 			if (!empty($_options['field'])) {
 				if (is_array($_options['field'])) {
@@ -1033,20 +1091,32 @@ class discordlinkCmd extends cmd {
 					if (is_array($decoded)) $fields = $decoded;
 				}
 			}
-			
+
+			// Validate and process fields
+			if (!empty($fields)) {
+				foreach ($fields as &$field) {
+					if (isset($field['name'])) {
+						$field['name'] = $this->formatDiscordText($field['name'], false); // No Markdown in Field Name
+					}
+					if (isset($field['value'])) {
+						$field['value'] = $this->formatDiscordText($field['value'], true); // Markdown OK in Field Value
+					}
+				}
+			}
+
 			// Quickreply handling
 			if (!empty($_options['quickreply'])) {
 				if (is_array($_options['quickreply'])) {
 					$quickreply = $_options['quickreply'];
 				} else {
 					$splits = explode(',', (string)$_options['quickreply']);
-					foreach($splits as $q) {
+					foreach ($splits as $q) {
 						$clean = trim($q);
-						if(!empty($clean)) $quickreply[] = $clean;
+						if (!empty($clean)) $quickreply[] = $clean;
 					}
 				}
 			}
-			
+
 			// Files handling
 			if (!empty($_options['files'])) {
 				if (is_array($_options['files'])) {
@@ -1054,23 +1124,23 @@ class discordlinkCmd extends cmd {
 				} else {
 					$filesRaw = scenarioExpression::setTags($_options['files']);
 					$splits = explode(',', $filesRaw);
-					foreach($splits as $f) {
+					foreach ($splits as $f) {
 						$clean = trim($f);
-						if(!empty($clean)) $files[] = $clean;
+						if (!empty($clean)) $files[] = $clean;
 					}
 				}
 			}
 		}
 
-		// Tags processing
-		$title = self::decodeRandomText(scenarioExpression::setTags($title));
-		$description = discordlink::emojiConvert(self::decodeRandomText(scenarioExpression::setTags($description)));
-		$description = str_replace('|', "\n", $description);
-		$footer = self::decodeRandomText(scenarioExpression::setTags($footer));
-		
+		// Tags processing using unified helper
+		$title = $this->formatDiscordText($title, false); // No Markdown in Title
+		$description = $this->formatDiscordText($description, true); // Markdown OK in Description
+		$footer = $this->formatDiscordText($footer, false); // No Markdown in Footer
+
 		// URL processing only if it's a string (standard embed URL), if it's an array (ASK mode), leave as is
 		if (is_string($url)) {
-			$url = self::decodeRandomText(scenarioExpression::setTags($url));
+			// Basic tag replacement for URL, no emojis
+			$url = $this->formatDiscordText($url, false);
 		}
 
 		// Si aucune couleur n'est définie, utiliser la couleur par défaut
@@ -1103,7 +1173,7 @@ class discordlinkCmd extends cmd {
 	private function buildClearChannelRequest($_options = array()) {
 		$daysToKeep = $this->getEqLogic()->getConfiguration('daysToKeep', 2);
 		$channelID = $this->getEqLogic()->getConfiguration('channelId');
-		
+
 		return array(
 			'endpoint' => '/clearChannel',
 			'method' => 'POST',

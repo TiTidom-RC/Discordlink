@@ -104,7 +104,57 @@ function discordlink_update() {
         discordlink::createQuickReplyFile();
     }
 
-    // 3. Migration des Paramètres des Équipements
+    // 3. Correction et Nettoyage des Commandes
+    // ----------------------------------------
+    // MIGRATION V2.0 : Correction des commandes existantes sans LogicalId
+    // Pour éviter l'erreur SQL 1062 Duplicate Entry lors de la recréation des commandes
+    log::add('discordlink', 'info', 'Vérification et correction des commandes...');
+    try {
+        $eqLogics = eqLogic::byType('discordlink');
+        foreach ($eqLogics as $eqLogic) {
+            // Liste des commandes critiques qui provoquaient des doublons
+            $cmdsToFix = array(
+                'Etat des démons' => 'daemonInfo',
+                'Etat des dépendances' => 'dependencyInfo',
+                'Résumé général' => 'globalSummary',
+                'Résumé par objet' => 'objectSummary',
+                'Résumé des batteries' => 'batteryInfo',
+                'Centre de messages' => 'messageCenter',
+                'Dernière Connexion utilisateur' => 'lastUser',
+                'Dernier message' => 'lastMessage',
+                'Avant dernier message' => 'previousMessage1',
+                'Avant Avant dernier message' => 'previousMessage2'
+            );
+
+            foreach ($eqLogic->getCmd() as $cmd) {
+                // Correction Logical ID
+                if (array_key_exists($cmd->getName(), $cmdsToFix)) {
+                    $targetLogicalId = $cmdsToFix[$cmd->getName()];
+                    if ($cmd->getLogicalId() != $targetLogicalId) {
+                        log::add('discordlink', 'info', '[Migration] Correction LogicalId : ' . $cmd->getName() . ' (' . $cmd->getLogicalId() . ' -> ' . $targetLogicalId . ')');
+                        $cmd->setLogicalId($targetLogicalId);
+                        $cmd->save();
+                    }
+                }
+            }
+
+            $cmdsToRemove = array(
+                'covidSend',
+            );
+
+            foreach ($eqLogic->getCmd() as $cmd) {
+                // Suppression commandes obsolètes connues
+                if (in_array($cmd->getLogicalId(), $cmdsToRemove)) {
+                    log::add('discordlink', 'info', '[Migration] Suppression commande obsolète : ' . $cmd->getName() . ' (' . $cmd->getLogicalId() . ')');
+                    $cmd->remove();
+                }
+            }
+        }
+    } catch (Exception $e) {
+        log::add('discordlink', 'error', 'Erreur lors de la migration des commandes : ' . $e->getMessage());
+    }
+
+    // 4. Migration des Paramètres des Équipements
     // -------------------------------------------
     log::add('discordlink', 'info', 'Migration des configurations équipements...');
     foreach (eqLogic::byType('discordlink') as $eqLogic) {
@@ -143,55 +193,7 @@ function discordlink_update() {
         }
     }
 
-    // 4. Correction et Nettoyage des Commandes
-    // ----------------------------------------
-    // MIGRATION V2.0 : Correction des commandes existantes sans LogicalId
-    // Pour éviter l'erreur SQL 1062 Duplicate Entry lors de la recréation des commandes
-    log::add('discordlink', 'info', 'Vérification et correction des commandes...');
-    try {
-        $eqLogics = eqLogic::byType('discordlink');
-        foreach ($eqLogics as $eqLogic) {
-            // Liste des commandes critiques qui provoquaient des doublons
-            $cmdsToFix = array(
-                'Etat des démons' => 'daemonInfo',
-                'Etat des dépendances' => 'dependencyInfo',
-                'Résumé général' => 'globalSummary',
-                'Résumé par objet' => 'objectSummary',
-                'Résumé des batteries' => 'batteryInfo',
-                'Centre de messages' => 'messageCenter',
-                'Dernière Connexion utilisateur' => 'lastUser',
-                'Dernier message' => 'lastMessage',
-                'Avant dernier message' => 'previousMessage1',
-                'Avant Avant dernier message' => 'previousMessage2'
-            );
 
-            foreach ($eqLogic->getCmd() as $cmd) {
-                // Correction Logical ID
-                if (array_key_exists($cmd->getName(), $cmdsToFix)) {
-                    $targetLogicalId = $cmdsToFix[$cmd->getName()];
-                    if ($cmd->getLogicalId() != $targetLogicalId) {
-                        log::add('discordlink', 'info', '[Migration] Correction LogicalId : ' . $cmd->getName() . ' (' . $cmd->getLogicalId() . ' -> ' . $targetLogicalId . ')');
-                        $cmd->setLogicalId($targetLogicalId);
-                        $cmd->save();
-                    }
-                }
-            }
-
-            $cmdsToRemove = array(
-                'covidSend',
-            );
-            
-            foreach ($eqLogic->getCmd() as $cmd) {
-                // Suppression commandes obsolètes connues
-                if (in_array($cmd->getLogicalId(), $cmdsToRemove)) {
-                    log::add('discordlink', 'info', '[Migration] Suppression commande obsolète : ' . $cmd->getName() . ' (' . $cmd->getLogicalId() . ')');
-                    $cmd->remove();
-                }
-            }
-        }
-    } catch (Exception $e) {
-        log::add('discordlink', 'error', 'Erreur lors de la migration des commandes : ' . $e->getMessage());
-    }
 
     // 5. Régénération des Commandes et Emojis
     // ---------------------------------------
