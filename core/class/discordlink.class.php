@@ -513,8 +513,8 @@ class discordlink extends eqLogic {
 						$cmd->setName($cmdConfig['label']);
 						$cmd->setType($cmdConfig['type']);
 						$cmd->setSubType($cmdConfig['subType']);
+						$cmd->setIsVisible($cmdConfig['visible']);
 					}
-					$cmd->setIsVisible($cmdConfig['visible']);
 					$cmd->setEqLogic_id($eqLogic->getId());
 					$cmd->setLogicalId($cmdKey);
 					if ($cmdConfig['type'] == "action") {
