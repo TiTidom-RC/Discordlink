@@ -926,7 +926,7 @@ class discordlinkCmd extends cmd {
 		// Handle files input
 		$rawFiles = "";
 		if (isset($_options['files'])) {
-			$rawFiles = $_options['files'];
+			$rawFiles = is_array($_options['files']) ? implode(',', $_options['files']) : (string)$_options['files'];
 			$rawFiles = scenarioExpression::setTags($rawFiles);
 		}
 
@@ -952,6 +952,8 @@ class discordlinkCmd extends cmd {
 				}
 			}
 		}
+
+		$message = str_replace("|", "\n", $message);
 
 		return array(
 			'endpoint' => '/sendFile',
