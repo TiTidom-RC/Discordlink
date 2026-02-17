@@ -899,11 +899,44 @@ class discordlinkCmd extends cmd {
 		return 'requestHandledInternally';
 	}
 
+	/**
+	 * Standardize text processing for Discord messages/embeds.
+	 *
+	 * Pipeline:
+	 * 1. Jeedom Tags (#[...]#)
+	 * 2. Random Text ({...})
+	 * 3. Custom Emojis (emo_...) - ONLY if $_supportMarkdown is true
+	 * 4. Newlines (| -> \n)
+	 *
+	 * @param string $_text The text to process
+	 * @param bool $_supportMarkdown Whether the target field supports Markdown/Custom Emojis (default: false)
+	 * @return string
+	 */
+	private function formatDiscordText($_text, $_supportMarkdown = false) {
+		if (empty($_text)) return $_text;
+
+		// 1. Tags replacement
+		$text = scenarioExpression::setTags($_text);
+		
+		// 2. Random text decoding
+		$text = self::decodeRandomText($text);
+		
+		// 3. Emoji conversion (only if markdown supported)
+		if ($_supportMarkdown) {
+			$text = discordlink::emojiConvert($text);
+		}
+		
+		// 4. Newline replacement
+		$text = str_replace('|', "\n", $text);
+		
+		return $text;
+	}
+
 	private function buildMessageRequest($_options = array(), $default = "Une erreur est survenue") {
 		$message = isset($_options['message']) && $_options['message'] != '' ? $_options['message'] : $default;
-		$message = str_replace('|', "\n", $message);
-		$message = scenarioExpression::setTags($message);
-		$message = self::decodeRandomText($message);
+		
+		// Call unified formatter (Message supports Markdown/Emojis)
+		$message = $this->formatDiscordText($message, true);
 
 		$channelID = $this->getEqLogic()->getConfiguration('channelId');
 
@@ -931,8 +964,9 @@ class discordlinkCmd extends cmd {
 		}
 
 		$message = isset($_options['message']) ? $_options['message'] : "";
-		$message = scenarioExpression::setTags($message);
-		$message = self::decodeRandomText($message);
+		
+		// Use unified formatter (Message supports Markdown/Emojis)
+		$message = $this->formatDiscordText($message, true);
 
 		if (empty($rawFiles) && empty($message)) {
 			log::add('discordlink', 'warning', 'sendFile : Aucun fichier ni message spécifié.');
@@ -952,8 +986,6 @@ class discordlinkCmd extends cmd {
 				}
 			}
 		}
-
-		$message = str_replace("|", "\n", $message);
 
 		return array(
 			'endpoint' => '/sendFile',
@@ -1060,6 +1092,18 @@ class discordlinkCmd extends cmd {
 				}
 			}
 
+			// Validate and process fields
+			if (!empty($fields)) {
+				foreach ($fields as &$field) {
+					if (isset($field['name'])) {
+						$field['name'] = $this->formatDiscordText($field['name'], false); // No Markdown in Field Name
+					}
+					if (isset($field['value'])) {
+						$field['value'] = $this->formatDiscordText($field['value'], true); // Markdown OK in Field Value
+					}
+				}
+			}
+
 			// Quickreply handling
 			if (!empty($_options['quickreply'])) {
 				if (is_array($_options['quickreply'])) {
@@ -1088,15 +1132,15 @@ class discordlinkCmd extends cmd {
 			}
 		}
 
-		// Tags processing
-		$title = self::decodeRandomText(scenarioExpression::setTags($title));
-		$description = discordlink::emojiConvert(self::decodeRandomText(scenarioExpression::setTags($description)));
-		$description = str_replace('|', "\n", $description);
-		$footer = self::decodeRandomText(scenarioExpression::setTags($footer));
+		// Tags processing using unified helper
+		$title = $this->formatDiscordText($title, false); // No Markdown in Title
+		$description = $this->formatDiscordText($description, true); // Markdown OK in Description
+		$footer = $this->formatDiscordText($footer, false); // No Markdown in Footer
 
 		// URL processing only if it's a string (standard embed URL), if it's an array (ASK mode), leave as is
 		if (is_string($url)) {
-			$url = self::decodeRandomText(scenarioExpression::setTags($url));
+			// Basic tag replacement for URL, no emojis
+			$url = $this->formatDiscordText($url, false);
 		}
 
 		// Si aucune couleur n'est définie, utiliser la couleur par défaut
