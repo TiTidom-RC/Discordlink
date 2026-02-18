@@ -83,6 +83,7 @@ const registerCommands = async (clientId, token) => {
               .setName('nbmessages')
               .setDescription('Nombre de messages à supprimer')
               .setRequired(true)
+              .setMinValue(1)
           )
       )
       .addSubcommand(subcommand =>
@@ -94,6 +95,7 @@ const registerCommands = async (clientId, token) => {
               .setName('nbjours')
               .setDescription("Nombre de jours à conserver. -1 pour tout supprimer")
               .setRequired(true)
+              .setMinValue(-1)
           )
       )
   ].map(command => command.toJSON());
