@@ -58,25 +58,44 @@ const registerCommands = async (clientId, token) => {
   const commands = [
     new SlashCommandBuilder()
       .setName('jeedom')
-      .setDescription('Interagir avec Jeedom')
-      .addStringOption(option =>
-        option.setName('message')
-          .setDescription('Votre demande correspondante à une interaction jeedom')
-          .setRequired(true)),
+      .setDescription('Commandes principales pour Jeedom')
+      .addSubcommand(subcommand =>
+        subcommand
+          .setName('interaction')
+          .setDescription('Envoyer une interaction à Jeedom')
+          .addStringOption(option =>
+            option
+              .setName('requete')
+              .setDescription('Requête Jeedom')
+              .setRequired(true)
+          )
+      ),
+
     new SlashCommandBuilder()
-      .setName('deletelastmessages')
-      .setDescription('Supprimer les X derniers messages du channel')
-      .addStringOption(option =>
-        option.setName('nbmessages')
-          .setDescription('Nombre de messages à supprimer (à partir du plus récent)')
-          .setRequired(true)),
-    new SlashCommandBuilder()
-      .setName('keeplastdays')
-      .setDescription('Conserver les X derniers jours de messages du channel')
-      .addStringOption(option =>
-        option.setName('nbjours')
-          .setDescription('Nombre de jours à conserver. Ex: 1 = aujourd\'hui + hier, etc. -1 pour tout supprimer')
-          .setRequired(true))
+      .setName('clean')
+      .setDescription('Commandes génériques sur un channel')
+      .addSubcommand(subcommand =>
+        subcommand
+          .setName('msg')
+          .setDescription('Supprimer les X derniers messages')
+          .addIntegerOption(option =>
+            option
+              .setName('nbmessages')
+              .setDescription('Nombre de messages à supprimer')
+              .setRequired(true)
+          )
+      )
+      .addSubcommand(subcommand =>
+        subcommand
+          .setName('keep')
+          .setDescription('Conserver les X derniers jours de messages')
+          .addIntegerOption(option =>
+            option
+              .setName('nbjours')
+              .setDescription("Nombre de jours à conserver. -1 pour tout supprimer")
+              .setRequired(true)
+          )
+      )
   ].map(command => command.toJSON());
 
   const rest = new REST({ version: '10' }).setToken(token);
@@ -616,6 +635,7 @@ app.post("/sendEmbed", async (req, res) => {
         await handleSlashCommand({
           channelId: m.channel.id,
           userId: user.id,
+          command: 'interaction',
           request: quickText,
           username: user.username,
           callback: (response) => m.channel.send(response),
@@ -1058,17 +1078,19 @@ const deleteLastMessages = async (channel, count) => {
  * @param {Object} params - Les paramètres
  * @param {string} params.channelId - L'ID du channel
  * @param {string} params.userId - L'ID de l'utilisateur
+ * @param {string} params.command - Le nom de la commande
  * @param {string} params.request - La requête/message
  * @param {string} params.username - Le nom d'utilisateur
  * @param {Object} params.callback - Fonction pour envoyer la réponse
  */
-const handleSlashCommand = async ({ channelId, userId, request, username, callback }) => {
+const handleSlashCommand = async ({ channelId, userId, command, request, username, callback }) => {
   try {
     config.logger(`SlashCommand: "${request}" from user ${userId}`, "DEBUG");
 
     const response = await httpPost("slashCommand", {
       channelId,
       userId,
+      command,
       request,
       username,
     });
@@ -1104,44 +1126,97 @@ const attachDiscordEvents = () => {
   client.on(Events.InteractionCreate, async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
 
-    if (interaction.commandName === "deletelastmessages") {
-      try {
-        await interaction.deferReply();
-      } catch (error) {
-        // Ignorer l'erreur si l'interaction est déjà morte ou inconnue (délai dépassé ou race condition)
-        if (error.code === 10062) {
-          config.logger("Interaction expirée ou inconnue avant traitement (Ignoré)", "DEBUG");
+    const command = interaction.commandName;
+    const subCommand = interaction.options.getSubcommand();
+
+    if (command == 'clean') {
+
+      if (subCommand === "msg") {
+        try {
+          // ajout du mode éphemère pour éviter les erreurs et la suppression du msg
+          await interaction.deferReply({ ephemeral: true });
+        } catch (error) {
+          if (error.code === 10062) {
+            config.logger("Interaction expirée ou inconnue avant traitement (Ignoré)", "DEBUG");
+            return;
+          }
+          config.logger("Erreur lors du deferReply: " + error.message, "ERROR");
           return;
         }
-        config.logger("Erreur lors du deferReply: " + error.message, "ERROR");
-        return;
+
+        try {
+          const nbmessages = interaction.options.getInteger("nbmessages");
+          const channel = client.channels.cache.get(interaction.channelId);
+          const channelID = channel.id;
+
+          config.logger("Commande deleteLastMessages reçue pour channel " + channelID + " avec nbmessages=" + nbmessages, "INFO");
+
+          const deletedCount = await deleteLastMessages(channel, nbmessages);
+          config.logger(
+            "Suppression des derniers messages du channel " + channelID + " terminée avec succès (" + deletedCount + " messages supprimés)",
+            "INFO",
+          );
+          interaction.editReply("Derniers " + deletedCount + " messages supprimés avec succès !");
+        } catch (error) {
+          interaction.editReply('Erreur lors du nettoyage du channel : ' + error.message);
+          config.logger(
+            "Erreur lors de la suppression des derniers messages du channel : " +
+            error.message,
+            "ERROR",
+          );
+        }
       }
 
-      const nbmessages = interaction.options.getString("nbmessages");
-      const channel = client.channels.cache.get(interaction.channelId);
-      const channelID = channel.id;
+      if (subCommand === "keep") {
+        try {
+          // ajout du mode éphemère pour éviter les erreurs et la suppression du msg
+          await interaction.deferReply({ ephemeral: true });
+        } catch (error) {
+          if (error.code === 10062) {
+            config.logger("Interaction expirée ou inconnue avant traitement (Ignoré)", "DEBUG");
+            return;
+          }
+          config.logger("Erreur lors du deferReply: " + error.message, "ERROR");
+          return;
+        }
 
-      config.logger("Commande deleteLastMessages reçue pour channel " + channelID + " avec nbmessages=" + nbmessages, "INFO");
+        try {
+          const nbjours = interaction.options.getInteger("nbjours");
+          const channel = client.channels.cache.get(interaction.channelId);
+          const channelID = channel.id;
 
-      try {
-        const deletedCount = await deleteLastMessages(channel, nbmessages);
-        config.logger(
-          "Suppression des derniers messages du channel " + channelID + " terminée avec succès (" + deletedCount + " messages supprimés)",
-          "INFO",
-        );
-        interaction.editReply("Derniers " + deletedCount + " messages supprimés avec succès !");
-      } catch (error) {
-        config.logger(
-          "Erreur lors de la suppression des derniers messages du channel " +
-          channelID +
-          ": " +
-          error.message,
-          "ERROR",
-        );
+          config.logger("Commande keeplastdays reçue pour channel " + channelID + " avec nbjours=" + nbjours, "INFO");
+
+          const deletedCount = await deleteOldChannelMessages(channel, nbjours);
+          config.logger(
+            "Suppression des derniers messages du channel " + channelID + " terminée avec succès (" + deletedCount + " messages supprimés)",
+            "INFO",
+          );
+
+          let response
+          if (nbjours == -1) {
+            response = "Tous les messages supprimés avec succès !";
+          }
+          else if (deletedCount === 0) {
+            response = "Aucun message à supprimer, le channel est déjà propre !";
+          }
+          else {
+            response = deletedCount + " messages de plus de " + nbjours + " jours supprimés avec succès !";
+          }
+
+          interaction.editReply(response);
+        } catch (error) {
+          interaction.editReply('Erreur lors du nettoyage du channel : ' + error.message);
+          config.logger(
+            "Erreur lors de la suppression des derniers messages du channel : " +
+            error.message,
+            "ERROR",
+          );
+        }
       }
     }
 
-    if (interaction.commandName === "keeplastdays") {
+    if (subCommand === "interaction") {
       try {
         await interaction.deferReply();
       } catch (error) {
@@ -1154,60 +1229,12 @@ const attachDiscordEvents = () => {
         return;
       }
 
-      const nbjours = interaction.options.getString("nbjours");
-      const channel = client.channels.cache.get(interaction.channelId);
-      const channelID = channel.id;
-
-      config.logger("Commande keeplastdays reçue pour channel " + channelID + " avec nbjours=" + nbjours, "INFO");
-
-      try {
-        const deletedCount = await deleteOldChannelMessages(channel, nbjours);
-        config.logger(
-          "Suppression des derniers messages du channel " + channelID + " terminée avec succès (" + deletedCount + " messages supprimés)",
-          "INFO",
-        );
-
-        let response
-        if (nbjours == -1) {
-          response = "Tous les messages supprimés avec succès !";
-        }
-        else if (deletedCount === 0) {
-          response = "Aucun message à supprimer, le channel est déjà propre !";
-        }
-        else {
-          response = deletedCount + " messages de plus de " + nbjours + " jours supprimés avec succès !";
-        }
-
-        interaction.editReply(response);
-      } catch (error) {
-        config.logger(
-          "Erreur lors de la suppression des derniers messages du channel " +
-          channelID +
-          ": " +
-          error.message,
-          "ERROR",
-        );
-      }
-    }
-
-    if (interaction.commandName === "jeedom") {
-      try {
-        await interaction.deferReply();
-      } catch (error) {
-        // Ignorer l'erreur si l'interaction est déjà morte ou inconnue (délai dépassé ou race condition)
-        if (error.code === 10062) {
-          config.logger("Interaction expirée ou inconnue avant traitement (Ignoré)", "DEBUG");
-          return;
-        }
-        config.logger("Erreur lors du deferReply: " + error.message, "ERROR");
-        return;
-      }
-
-      const request = interaction.options.getString("message");
+      const request = interaction.options.getString("requete");
 
       await handleSlashCommand({
         channelId: interaction.channelId,
         userId: interaction.user.id,
+        command: subCommand,
         request: request,
         username: interaction.user.username,
         callback: (response) => interaction.editReply(response),
