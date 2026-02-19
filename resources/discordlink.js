@@ -58,11 +58,46 @@ const registerCommands = async (clientId, token) => {
   const commands = [
     new SlashCommandBuilder()
       .setName('jeedom')
-      .setDescription('Interagir avec Jeedom')
-      .addStringOption(option =>
-        option.setName('message')
-          .setDescription('Votre demande correspondante à une interaction jeedom')
-          .setRequired(true))
+      .setDescription('Commandes principales pour Jeedom')
+      .addSubcommand(subcommand =>
+        subcommand
+          .setName('interaction')
+          .setDescription('Envoyer une interaction à Jeedom')
+          .addStringOption(option =>
+            option
+              .setName('requete')
+              .setDescription('Requête Jeedom')
+              .setRequired(true)
+          )
+      ),
+
+    new SlashCommandBuilder()
+      .setName('clean')
+      .setDescription('Commandes génériques sur un channel')
+      .addSubcommand(subcommand =>
+        subcommand
+          .setName('msg')
+          .setDescription('Supprimer les X derniers messages')
+          .addIntegerOption(option =>
+            option
+              .setName('nbmessages')
+              .setDescription('Nombre de messages à supprimer')
+              .setRequired(true)
+              .setMinValue(1)
+          )
+      )
+      .addSubcommand(subcommand =>
+        subcommand
+          .setName('keep')
+          .setDescription('Conserver les X derniers jours de messages')
+          .addIntegerOption(option =>
+            option
+              .setName('nbjours')
+              .setDescription("Nombre de jours à conserver. -1 pour tout supprimer")
+              .setRequired(true)
+              .setMinValue(-1)
+          )
+      )
   ].map(command => command.toJSON());
 
   const rest = new REST({ version: '10' }).setToken(token);
@@ -340,7 +375,7 @@ app.post("/sendFile", async (req, res) => {
 
     const attachments = [];
     if (files && Array.isArray(files) && files.length > 0) {
-      
+
       // Limit to 4 files
       const filesToSend = files.slice(0, 4);
       if (files.length > 4) {
@@ -470,12 +505,12 @@ app.post("/sendEmbed", async (req, res) => {
     const Embed = new EmbedBuilder().setColor(embedColor).setTimestamp();
 
     if (!isEmpty(title)) Embed.setTitle(title);
-    
+
     // Only set URL if it looks like a URL and we are NOT in database/ASK mode (answerCount is empty)
     if (isValidUrl(url) && isEmpty(answerCount)) {
       Embed.setURL(url);
     }
-    
+
     if (!isEmpty(description)) Embed.setDescription(description);
 
     // Discord.js v14: setFooter prend un objet
@@ -486,7 +521,7 @@ app.post("/sendEmbed", async (req, res) => {
     if (fields && Array.isArray(fields) && fields.length > 0) {
       for (const field of fields) {
         let { name, value, inline } = field;
-        
+
         // Convert integer 1/0 to boolean if necessary, or string "1"/"0"
         if (inline === 1 || inline === "1" || inline === true) inline = true;
         else inline = false;
@@ -497,11 +532,11 @@ app.post("/sendEmbed", async (req, res) => {
     }
 
     const sendOptions = { embeds: [Embed] };
-    
+
     // Handle Files
     if (files && Array.isArray(files) && files.length > 0) {
       const existingFiles = [];
-        
+
       for (const filePath of files) {
         if (typeof filePath === 'string' && fs.existsSync(filePath)) {
           existingFiles.push(filePath);
@@ -509,27 +544,27 @@ app.post("/sendEmbed", async (req, res) => {
           config.logger(`Fichier introuvable ou inaccessible: ${filePath}`, "WARNING");
         }
       }
-      
+
       if (existingFiles.length > 0) {
         // Use AttachmentBuilder
         const attachments = existingFiles.map((filePath, index) => {
           let filename = path.basename(filePath);
-          
+
           // Check for duplicate filenames in the current batch
           const isDuplicate = existingFiles.some((f, i) => i !== index && path.basename(f) === filename);
-          
+
           if (isDuplicate) {
-             filename = `${index}_${filename}`;
+            filename = `${index}_${filename}`;
           }
-          
+
           return new AttachmentBuilder(filePath, { name: filename });
         });
-        
+
         sendOptions.files = attachments;
-        
+
         // Attach the first file as the Embed Image of the main embed
         if (attachments.length > 0) {
-           Embed.setImage(`attachment://${attachments[0].name}`);
+          Embed.setImage(`attachment://${attachments[0].name}`);
         }
 
         // If multiple images, create a gallery
@@ -539,29 +574,29 @@ app.post("/sendEmbed", async (req, res) => {
 
           // Ensure the main embed has this URL so they group together
           Embed.setURL(galleryUrl);
-          
-          for (let i = 1; i < attachments.length; i++) {
-             // Create a lightweight embed for the gallery image
-             const galleryEmbed = new EmbedBuilder()
-               .setURL(galleryUrl) // Must match main embed URL to group
-               .setImage(`attachment://${attachments[i].name}`);
-             
-             // galleryEmbed.setColor(null); // Try to not set color on secondary embeds to avoid sidebar clutter? 
-             // Actually it's better if they don't have color or have same color.
-             // But if we want a clean image grid, usually they shouldn't have other properties.
-             
-             // Copy color if present on main embed to look consistent
-             if (Embed.data.color) galleryEmbed.setColor(Embed.data.color);
 
-             sendOptions.embeds.push(galleryEmbed);
-             
-             // Limit checks
-             if (sendOptions.embeds.length >= 4) {
-               if (i < attachments.length - 1) {
-                 config.logger(`Limite de 4 images atteinte pour la galerie. ${attachments.length - 4} image(s) ignorée(s).`, "WARNING");
-               }
-               break;
-             }
+          for (let i = 1; i < attachments.length; i++) {
+            // Create a lightweight embed for the gallery image
+            const galleryEmbed = new EmbedBuilder()
+              .setURL(galleryUrl) // Must match main embed URL to group
+              .setImage(`attachment://${attachments[i].name}`);
+
+            // galleryEmbed.setColor(null); // Try to not set color on secondary embeds to avoid sidebar clutter? 
+            // Actually it's better if they don't have color or have same color.
+            // But if we want a clean image grid, usually they shouldn't have other properties.
+
+            // Copy color if present on main embed to look consistent
+            if (Embed.data.color) galleryEmbed.setColor(Embed.data.color);
+
+            sendOptions.embeds.push(galleryEmbed);
+
+            // Limit checks
+            if (sendOptions.embeds.length >= 4) {
+              if (i < attachments.length - 1) {
+                config.logger(`Limite de 4 images atteinte pour la galerie. ${attachments.length - 4} image(s) ignorée(s).`, "WARNING");
+              }
+              break;
+            }
           }
         }
         config.logger(`Envoi de ${existingFiles.length} fichier(s) en galerie`, "INFO");
@@ -602,6 +637,7 @@ app.post("/sendEmbed", async (req, res) => {
         await handleSlashCommand({
           channelId: m.channel.id,
           userId: user.id,
+          command: 'interaction',
           request: quickText,
           username: user.username,
           callback: (response) => m.channel.send(response),
@@ -625,9 +661,9 @@ app.post("/sendEmbed", async (req, res) => {
     if (!isEmpty(answerCount) && answerCount !== "0" && answerCount !== 0) {
       let timeoutVal = parseInt(timeout, 10);
       if (isNaN(timeoutVal)) timeoutVal = 60; // default 60s
-      
+
       const timeoutMs = timeoutVal * 1000;
-      
+
       // We respond immediately to acknowledge the request
       res.status(200).json({
         success: true,
@@ -636,94 +672,94 @@ app.post("/sendEmbed", async (req, res) => {
       });
 
       // Handle Emoji A-Z selection
-        let emojiList = [
-          "🇦", "🇧", "🇨", "🇩", "🇪", "🇫", "🇬", "🇭", "🇮", "🇯", "🇰", "🇱", "🇲",
-          "🇳", "🇴", "🇵", "🇶", "🇷", "🇸", "🇹", "🇺", "🇻", "🇼", "🇽", "🇾", "🇿",
-        ];
-        
-        // Convert to Number safely
-        const count = parseInt(answerCount, 10);
-        let a = 0;
-        // React with options
-        while (a < count && a < emojiList.length) {
-          await m.react(emojiList[a]).catch(e => config.logger("Error reacting: "+e.message, "error"));
-          a++;
-        }
+      let emojiList = [
+        "🇦", "🇧", "🇨", "🇩", "🇪", "🇫", "🇬", "🇭", "🇮", "🇯", "🇰", "🇱", "🇲",
+        "🇳", "🇴", "🇵", "🇶", "🇷", "🇸", "🇹", "🇺", "🇻", "🇼", "🇽", "🇾", "🇿",
+      ];
 
-        const emojiFilter = (reaction, user) => {
-          return (
-            emojiList.includes(reaction.emoji.name) && user.id !== m.author.id
-          );
-        };
+      // Convert to Number safely
+      const count = parseInt(answerCount, 10);
+      let a = 0;
+      // React with options
+      while (a < count && a < emojiList.length) {
+        await m.react(emojiList[a]).catch(e => config.logger("Error reacting: " + e.message, "error"));
+        a++;
+      }
 
-        m.awaitReactions({
-          filter: emojiFilter,
+      const emojiFilter = (reaction, user) => {
+        return (
+          emojiList.includes(reaction.emoji.name) && user.id !== m.author.id
+        );
+      };
+
+      m.awaitReactions({
+        filter: emojiFilter,
+        max: 1,
+        time: timeoutMs,
+        errors: ["time"],
+      })
+        .then((collected) => {
+          const reaction = collected.first();
+          const emojiMap = {
+            "🇦": 0, "🇧": 1, "🇨": 2, "🇩": 3, "🇪": 4, "🇫": 5, "🇬": 6, "🇭": 7, "🇮": 8, "🇯": 9, "🇰": 10, "🇱": 11, "🇲": 12,
+            "🇳": 13, "🇴": 14, "🇵": 15, "🇶": 16, "🇷": 17, "🇸": 18, "🇹": 19, "🇺": 20, "🇻": 21, "🇼": 22, "🇽": 23, "🇾": 24, "🇿": 25,
+          };
+
+          const userResponseIndex = emojiMap[reaction.emoji.name];
+
+          // Legacy: url was JSON stringified request when using ASK?
+          // If new payload sends it as object, we use it directly.
+          let requestPayload = url;
+          if (typeof url === 'string') {
+            try { requestPayload = JSON.parse(url); } catch (e) { }
+          }
+
+          httpPost("ASK", {
+            channelId: m.channel.id,
+            response: userResponseIndex,
+            request: requestPayload,
+          });
+        })
+        .catch(() => {
+          m.delete().catch(() => { });
+        });
+
+    } else if (!isEmpty(answerCount) && (answerCount === "0" || answerCount === 0)) {
+      // ASK Mode: Text Response (0 options)
+      let timeoutVal = parseInt(timeout, 10);
+      if (isNaN(timeoutVal)) timeoutVal = 60;
+      const timeoutMs = timeoutVal * 1000;
+
+      res.status(200).json({ success: true, type: "ASK_TEXT" });
+
+      const messageFilter = (msg) => msg.author.bot === false;
+
+      m.channel
+        .awaitMessages({
+          filter: messageFilter,
           max: 1,
           time: timeoutMs,
           errors: ["time"],
         })
-          .then((collected) => {
-            const reaction = collected.first();
-            const emojiMap = {
-              "🇦": 0, "🇧": 1, "🇨": 2, "🇩": 3, "🇪": 4, "🇫": 5, "🇬": 6, "🇭": 7, "🇮": 8, "🇯": 9, "🇰": 10, "🇱": 11, "🇲": 12,
-              "🇳": 13, "🇴": 14, "🇵": 15, "🇶": 16, "🇷": 17, "🇸": 18, "🇹": 19, "🇺": 20, "🇻": 21, "🇼": 22, "🇽": 23, "🇾": 24, "🇿": 25,
-            };
+        .then((collected) => {
+          let msg = collected.first();
+          const userResponseText = msg.content;
+          msg.react("✅").catch(() => { });
 
-            const userResponseIndex = emojiMap[reaction.emoji.name];
-            
-            // Legacy: url was JSON stringified request when using ASK?
-            // If new payload sends it as object, we use it directly.
-            let requestPayload = url; 
-            if (typeof url === 'string') {
-               try { requestPayload = JSON.parse(url); } catch(e) {}
-            }
+          let requestPayload = url;
+          if (typeof url === 'string') {
+            try { requestPayload = JSON.parse(url); } catch (e) { }
+          }
 
-            httpPost("ASK", {
-              channelId: m.channel.id,
-              response: userResponseIndex,
-              request: requestPayload,
-            });
-          })
-          .catch(() => {
-            m.delete().catch(() => { });
+          httpPost("ASK", {
+            channelId: m.channel.id,
+            response: userResponseText,
+            request: requestPayload,
           });
-
-    } else if (!isEmpty(answerCount) && (answerCount === "0" || answerCount === 0)) {
-       // ASK Mode: Text Response (0 options)
-       let timeoutVal = parseInt(timeout, 10);
-       if (isNaN(timeoutVal)) timeoutVal = 60;
-       const timeoutMs = timeoutVal * 1000;
-
-       res.status(200).json({ success: true, type: "ASK_TEXT" });
-
-        const messageFilter = (msg) => msg.author.bot === false;
-
-        m.channel
-          .awaitMessages({
-            filter: messageFilter,
-            max: 1,
-            time: timeoutMs,
-            errors: ["time"],
-          })
-          .then((collected) => {
-            let msg = collected.first();
-            const userResponseText = msg.content;
-            msg.react("✅").catch(() => { });
-
-            let requestPayload = url;
-            if (typeof url === 'string') {
-               try { requestPayload = JSON.parse(url); } catch(e) {}
-            }
-
-            httpPost("ASK", {
-              channelId: m.channel.id,
-              response: userResponseText,
-              request: requestPayload,
-            });
-          })
-          .catch(() => {
-            m.delete().catch(() => { });
-          });
+        })
+        .catch(() => {
+          m.delete().catch(() => { });
+        });
     } else {
       // Normal embed (no ASK)
       res.status(200).json({ success: true });
@@ -780,6 +816,114 @@ app.post("/clearChannel", async (req, res) => {
   }
 });
 
+
+/***** Delete last N messages from channel (POST) *****/
+app.post("/deleteLastMessages", async (req, res) => {
+  try {
+    const channelID = req.body.channelID;
+    const count = req.body.count;
+
+    if (!channelID) {
+      return res.status(400).json({ error: "channelID manquant" });
+    }
+
+    if (!count) {
+      return res.status(400).json({ error: "count manquant" });
+    }
+
+    const channel = client.channels.cache.get(channelID);
+
+    if (!channel) {
+      return res.status(404).json({ error: "Channel non trouvé" });
+    }
+
+    // Répondre immédiatement pour éviter les timeouts côté Jeedom
+    res.status(200).json({
+      status: "ok",
+      channelID,
+      count,
+      message: "Suppression en cours...",
+    });
+
+    // Effectuer la suppression en arrière-plan
+    try {
+      await deleteLastMessages(channel, count);
+      config.logger(
+        "Suppression des derniers messages du channel " + channelID + " terminée avec succès",
+        "INFO",
+      );
+    } catch (error) {
+      config.logger(
+        "Erreur lors de la suppression des derniers messages du channel " +
+        channelID +
+        ": " +
+        error.message,
+        "ERROR",
+      );
+    }
+  } catch (error) {
+    config.logger("DiscordLink ERROR deleteLastMessages: " + error.message, "ERROR");
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Utility function to delete messages from an array
+ * Handles both bulk delete (for messages < 14 days) and individual delete (for older messages)
+ * @param {Object} channel - The Discord channel object
+ * @param {Array} messagesToDelete - Array of message objects to delete
+ * @param {Object} stats - Statistics object to accumulate results { totalDeleted, totalBulkDeleted, totalIndividualDeleted }
+ * @returns {Promise<void>}
+ */
+const performMessageDeletion = async (channel, messagesToDelete, stats) => {
+  if (messagesToDelete.length === 0) return;
+
+  const FOURTEEN_DAYS_MS = 14 * 86400000;
+  const fourteenDaysAgoTimestamp = Date.now() - FOURTEEN_DAYS_MS + 60000;
+
+  const recentMessages = []; // Messages récents à supprimer en masse (< 14 jours)
+  const ancientMessages = []; // > 14 jours : suppression individuelle
+
+  // Trier les messages par date
+  for (const message of messagesToDelete) {
+    if (!message.deletable) continue;
+
+    if (message.createdTimestamp > fourteenDaysAgoTimestamp) {
+      recentMessages.push(message);
+    } else {
+      ancientMessages.push(message);
+    }
+  }
+
+  // Suppression en masse (messages récents)
+  if (recentMessages.length > 0) {
+    try {
+      const deleted = await channel.bulkDelete(recentMessages);
+      stats.totalBulkDeleted += deleted.size;
+      stats.totalDeleted += deleted.size;
+      config.logger(deleted.size + " messages supprimés en masse", "DEBUG");
+    } catch (e) {
+      config.logger("Erreur bulkDelete: " + e.message, "WARNING");
+    }
+  }
+
+  // Suppression individuelle (messages > 14 jours)
+  if (ancientMessages.length > 0) {
+    let deletedInThisBatch = 0;
+    for (const message of ancientMessages) {
+      try {
+        await message.delete();
+        deletedInThisBatch++;
+        stats.totalIndividualDeleted++;
+        stats.totalDeleted++;
+      } catch (e) {
+        config.logger("Echec suppression message " + message.id + ": " + e.message, "WARNING");
+      }
+    }
+    config.logger(deletedInThisBatch + " vieux messages (>14j) supprimés un par un", "DEBUG");
+  }
+};
+
 /**
  * Delete messages older than 24 hours in a channel
  * Keeps messages from today and yesterday
@@ -794,24 +938,17 @@ const deleteOldChannelMessages = async (channel, daysToKeep) => {
 
     // Constantes de durée
     const ONE_DAY_MS = 86400000;
-    const FOURTEEN_DAYS_MS = 14 * ONE_DAY_MS;
 
     // Timestamps de référence (minuit aujourd'hui en heure locale)
     const nowTimestamp = Date.now();
     const todayTimestamp = new Date().setHours(0, 0, 0, 0);
 
-    // Pour bulkDelete, la limite est de 14 jours EXACTS par rapport à maintenant, non pas minuit.
-    // On prend une marge de sécurité de 1 minute pour éviter les effets de bord temps réseau.
-    const fourteenDaysAgoTimestamp = nowTimestamp - FOURTEEN_DAYS_MS + 60000;
-
     // Si daysToKeep == -1 (tout effacer) : on prend nowTimestamp comme limite
     // Sinon calcul classique (ex: 1 -> hier minuit)
     const daysToKeepTimestamp = daysToKeep == -1 ? nowTimestamp : todayTimestamp - (daysToKeep * ONE_DAY_MS);
 
-    let totalDeleted = 0;
-    let totalBulkDeleted = 0;
-    let totalIndividualDeleted = 0;
     let lastMessageId = null; // Curseur pour la pagination
+    const stats = { totalDeleted: 0, totalBulkDeleted: 0, totalIndividualDeleted: 0 };
 
     const formattedDate = getTimestamp(new Date(daysToKeepTimestamp));
 
@@ -849,66 +986,90 @@ const deleteOldChannelMessages = async (channel, daysToKeep) => {
       // On met à jour le curseur pour le prochain tour (le plus vieux message de ce lot)
       lastMessageId = messages.last().id;
 
-      const recentMessages = []; // Messages récents à supprimer en masse
-      const ancientMessages = []; // > 14 jours : suppression individuelle
+      const messagesToDelete = [];
 
       for (const [msgId, message] of messages) {
         // Supprimer uniquement les messages plus vieux que le timestamp limite
-        if (
-          message.createdTimestamp < daysToKeepTimestamp &&
-          message.deletable
-        ) {
-          if (message.createdTimestamp > fourteenDaysAgoTimestamp) {
-            recentMessages.push(message);
-          } else {
-            ancientMessages.push(message);
-          }
+        if (message.createdTimestamp < daysToKeepTimestamp && message.deletable) {
+          messagesToDelete.push(message);
         }
       }
 
-      // Note : On ne 'break' plus si les tableaux sont vides.
-      // On continue la boucle pour aller chercher les messages plus anciens (batch suivant).
-
-      // Suppression en masse (messages récents mais à supprimer)
-      if (recentMessages.length > 0) {
-        try {
-          const deleted = await channel.bulkDelete(recentMessages);
-          totalBulkDeleted += deleted.size;
-          totalDeleted += deleted.size;
-          config.logger(
-            deleted.size + " messages supprimés en masse",
-            "DEBUG",
-          );
-        } catch (e) {
-          config.logger("Erreur bulkDelete: " + e.message, "WARNING");
-        }
-      }
-
-      // Suppression individuelle (messages > 14 jours)
-      if (ancientMessages.length > 0) {
-        let deletedInThisBatch = 0;
-        for (const message of ancientMessages) {
-          try {
-            await message.delete();
-            deletedInThisBatch++;
-            totalIndividualDeleted++;
-            totalDeleted++;
-          } catch (e) {
-            config.logger("Echec suppression message " + message.id + ": " + e.message, "WARNING");
-          }
-        }
-        config.logger(deletedInThisBatch + " vieux messages (>14j) supprimés un par un", "DEBUG");
-      }
+      // Effectuer la suppression en réutilisant la fonction utilitaire
+      await performMessageDeletion(channel, messagesToDelete, stats);
     }
 
     config.logger("========================================", "INFO");
     config.logger("Nettoyage terminé - Récapitulatif :", "INFO");
-    config.logger("- Messages supprimés en masse : " + totalBulkDeleted, "INFO");
-    config.logger("- Messages supprimés individuellement (>14j) : " + totalIndividualDeleted, "INFO");
-    config.logger("- TOTAL supprimés : " + totalDeleted, "INFO");
+    config.logger("- Messages supprimés en masse : " + stats.totalBulkDeleted, "INFO");
+    config.logger("- Messages supprimés individuellement (>14j) : " + stats.totalIndividualDeleted, "INFO");
+    config.logger("- TOTAL supprimés : " + stats.totalDeleted, "INFO");
     config.logger("========================================", "INFO");
+    return stats.totalDeleted;
   } catch (error) {
     config.logger("Erreur critique lors du nettoyage : " + error.message, "ERROR");
+    throw error;
+  }
+};
+
+/**
+ * Delete the last N messages from a channel
+ * @param {Object} channel - The Discord channel object
+ * @param {number} count - The number of messages to delete
+ * @returns {Promise<void>}
+ */
+const deleteLastMessages = async (channel, count) => {
+  try {
+    // Sécurisation du type (int) : Base 10
+    count = parseInt(count, 10);
+
+    if (count <= 0) {
+      config.logger("Nombre de messages invalide: " + count, "WARNING");
+      return;
+    }
+
+    let messagesToDelete = [];
+    let lastMessageId = null;
+
+    config.logger("Début de la suppression des " + count + " derniers messages du channel " + channel.id, "INFO");
+
+    // Récupérer les messages jusqu'à ce qu'on en ait assez
+    while (messagesToDelete.length < count) {
+      const fetchOptions = { limit: Math.min(100, count - messagesToDelete.length), cache: false };
+      if (lastMessageId) {
+        fetchOptions.before = lastMessageId;
+      }
+
+      const messages = await channel.messages.fetch(fetchOptions);
+
+      if (messages.size === 0) {
+        config.logger("Fin de l'historique atteinte. Seulement " + messagesToDelete.length + " messages trouvés.", "DEBUG");
+        break;
+      }
+
+      lastMessageId = messages.last().id;
+
+      // Ajouter les messages supprimables à la liste
+      for (const [msgId, message] of messages) {
+        if (message.deletable && messagesToDelete.length < count) {
+          messagesToDelete.push(message);
+        }
+      }
+    }
+
+    // Supprimer les messages obtenus
+    const stats = { totalDeleted: 0, totalBulkDeleted: 0, totalIndividualDeleted: 0 };
+    await performMessageDeletion(channel, messagesToDelete, stats);
+
+    config.logger("========================================", "INFO");
+    config.logger("Suppression des derniers messages terminée - Récapitulatif :", "INFO");
+    config.logger("- Messages supprimés en masse : " + stats.totalBulkDeleted, "INFO");
+    config.logger("- Messages supprimés individuellement (>14j) : " + stats.totalIndividualDeleted, "INFO");
+    config.logger("- TOTAL supprimés : " + stats.totalDeleted, "INFO");
+    config.logger("========================================", "INFO");
+    return stats.totalDeleted;
+  } catch (error) {
+    config.logger("Erreur critique lors de la suppression des derniers messages : " + error.message, "ERROR");
     throw error;
   }
 };
@@ -919,17 +1080,19 @@ const deleteOldChannelMessages = async (channel, daysToKeep) => {
  * @param {Object} params - Les paramètres
  * @param {string} params.channelId - L'ID du channel
  * @param {string} params.userId - L'ID de l'utilisateur
+ * @param {string} params.command - Le nom de la commande
  * @param {string} params.request - La requête/message
  * @param {string} params.username - Le nom d'utilisateur
  * @param {Object} params.callback - Fonction pour envoyer la réponse
  */
-const handleSlashCommand = async ({ channelId, userId, request, username, callback }) => {
+const handleSlashCommand = async ({ channelId, userId, command, request, username, callback }) => {
   try {
     config.logger(`SlashCommand: "${request}" from user ${userId}`, "DEBUG");
 
     const response = await httpPost("slashCommand", {
       channelId,
       userId,
+      command,
       request,
       username,
     });
@@ -965,7 +1128,97 @@ const attachDiscordEvents = () => {
   client.on(Events.InteractionCreate, async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
 
-    if (interaction.commandName === "jeedom") {
+    const command = interaction.commandName;
+    const subCommand = interaction.options.getSubcommand();
+
+    if (command == 'clean') {
+
+      if (subCommand === "msg") {
+        try {
+          // ajout du mode éphemère pour éviter les erreurs et la suppression du msg
+          await interaction.deferReply({ ephemeral: true });
+        } catch (error) {
+          if (error.code === 10062) {
+            config.logger("Interaction expirée ou inconnue avant traitement (Ignoré)", "DEBUG");
+            return;
+          }
+          config.logger("Erreur lors du deferReply: " + error.message, "ERROR");
+          return;
+        }
+
+        try {
+          const nbmessages = interaction.options.getInteger("nbmessages");
+          const channel = client.channels.cache.get(interaction.channelId);
+          const channelID = channel.id;
+
+          config.logger("Commande deleteLastMessages reçue pour channel " + channelID + " avec nbmessages=" + nbmessages, "INFO");
+
+          const deletedCount = await deleteLastMessages(channel, nbmessages);
+          config.logger(
+            "Suppression des derniers messages du channel " + channelID + " terminée avec succès (" + deletedCount + " messages supprimés)",
+            "INFO",
+          );
+          interaction.editReply("Derniers " + deletedCount + " messages supprimés avec succès !");
+        } catch (error) {
+          interaction.editReply('Erreur lors du nettoyage du channel : ' + error.message);
+          config.logger(
+            "Erreur lors de la suppression des derniers messages du channel : " +
+            error.message,
+            "ERROR",
+          );
+        }
+      }
+
+      if (subCommand === "keep") {
+        try {
+          // ajout du mode éphemère pour éviter les erreurs et la suppression du msg
+          await interaction.deferReply({ ephemeral: true });
+        } catch (error) {
+          if (error.code === 10062) {
+            config.logger("Interaction expirée ou inconnue avant traitement (Ignoré)", "DEBUG");
+            return;
+          }
+          config.logger("Erreur lors du deferReply: " + error.message, "ERROR");
+          return;
+        }
+
+        try {
+          const nbjours = interaction.options.getInteger("nbjours");
+          const channel = client.channels.cache.get(interaction.channelId);
+          const channelID = channel.id;
+
+          config.logger("Commande keeplastdays reçue pour channel " + channelID + " avec nbjours=" + nbjours, "INFO");
+
+          const deletedCount = await deleteOldChannelMessages(channel, nbjours);
+          config.logger(
+            "Suppression des derniers messages du channel " + channelID + " terminée avec succès (" + deletedCount + " messages supprimés)",
+            "INFO",
+          );
+
+          let response
+          if (nbjours == -1) {
+            response = "Tous les messages supprimés avec succès !";
+          }
+          else if (deletedCount === 0) {
+            response = "Aucun message à supprimer, le channel est déjà propre !";
+          }
+          else {
+            response = deletedCount + " messages de plus de " + nbjours + " jours supprimés avec succès !";
+          }
+
+          interaction.editReply(response);
+        } catch (error) {
+          interaction.editReply('Erreur lors du nettoyage du channel : ' + error.message);
+          config.logger(
+            "Erreur lors de la suppression des derniers messages du channel : " +
+            error.message,
+            "ERROR",
+          );
+        }
+      }
+    }
+
+    if (subCommand === "interaction") {
       try {
         await interaction.deferReply();
       } catch (error) {
@@ -978,11 +1231,12 @@ const attachDiscordEvents = () => {
         return;
       }
 
-      const request = interaction.options.getString("message");
+      const request = interaction.options.getString("requete");
 
       await handleSlashCommand({
         channelId: interaction.channelId,
         userId: interaction.user.id,
+        command: subCommand,
         request: request,
         username: interaction.user.username,
         callback: (response) => interaction.editReply(response),
