@@ -1,0 +1,57 @@
+name: Sync fork from upstream
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "0 * * * *"   
+
+permissions:
+  contents: write  # nécessaire pour pousser sur ton fork avec GITHUB_TOKEN
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork (no shallow clone)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0           # important pour éviter les problèmes d'historique (no shallow)
+          persist-credentials: true
+
+      - name: Add upstream remote
+        run: |
+          if ! git remote | grep -q upstream; then
+            git remote add upstream https://github.com/TiTidom-RC/Discordlink.git
+          fi
+          git remote -v
+
+      - name: Detect upstream default branch
+        id: detect
+        run: |
+          # Récupère infos de l'upstream
+          git fetch upstream --prune
+          # Détecte la branche HEAD côté upstream (main, master, develop, ...)
+          DEFAULT_BRANCH=$(git remote show upstream | sed -n 's/.*HEAD branch: //p')
+          echo "default_branch=$DEFAULT_BRANCH" >> "$GITHUB_OUTPUT"
+          echo "Upstream default branch: $DEFAULT_BRANCH"
+
+      - name: Configure git identity (CI)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # Option 1: rebase (historique propre)
+      - name: Rebase fork default branch on upstream
+        run: |
+          git checkout "${{ steps.detect.outputs.default_branch }}"
+          git pull --rebase upstream "${{ steps.detect.outputs.default_branch }}"
+
+      # Option 2 (alternative) : merge (décommente si tu préfères)
+      # - name: Merge upstream into fork
+      #   run: |
+      #     git checkout "${{ steps.detect.outputs.default_branch }}"
+      #     git merge --ff-only "upstream/${{ steps.detect.outputs.default_branch }}"
+
+      - name: Push back to fork
+        run: |
+          git push origin "${{ steps.detect.outputs.default_branch }}"
