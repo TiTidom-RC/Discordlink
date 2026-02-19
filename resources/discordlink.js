@@ -882,7 +882,7 @@ const performMessageDeletion = async (channel, messagesToDelete, stats) => {
   const fourteenDaysAgoTimestamp = Date.now() - FOURTEEN_DAYS_MS + 60000;
 
   const recentMessages = []; // Messages récents à supprimer en masse (< 14 jours)
-  const ancientMessages = []; // > 14 jours : suppression individuelle
+  const oldMessages = []; // > 14 jours : suppression individuelle
 
   // Trier les messages par date
   for (const message of messagesToDelete) {
@@ -891,7 +891,7 @@ const performMessageDeletion = async (channel, messagesToDelete, stats) => {
     if (message.createdTimestamp > fourteenDaysAgoTimestamp) {
       recentMessages.push(message);
     } else {
-      ancientMessages.push(message);
+      oldMessages.push(message);
     }
   }
 
@@ -908,9 +908,9 @@ const performMessageDeletion = async (channel, messagesToDelete, stats) => {
   }
 
   // Suppression individuelle (messages > 14 jours)
-  if (ancientMessages.length > 0) {
+  if (oldMessages.length > 0) {
     let deletedInThisBatch = 0;
-    for (const message of ancientMessages) {
+    for (const message of oldMessages) {
       try {
         await message.delete();
         deletedInThisBatch++;
