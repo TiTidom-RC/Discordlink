@@ -46,8 +46,6 @@ if (!is_array($result)) {
 	die();
 }
 
-$logicalId = $result['channelId'] . "_player";
-
 $discordEquipment = eqLogic::byLogicalId($result['channelId'], 'discordlink');
 
 switch ($name) {
@@ -64,49 +62,54 @@ switch ($name) {
 		break;
 
 	case 'slashCommand':
-		log::add('discordlink', 'debug', 'SlashCommand reçue : ' . $result['request'] . ' (User: ' . $result['username'] . ', ID: ' . $result['userId'] . ')');
+		log::add('discordlink', 'debug', 'SlashCommand reçue : cmd => ' . $result['command'] . ' request => ' . $result['request'] . ' (User: ' . $result['username'] . ', ID: ' . $result['userId'] . ')');
 
-		if (!is_object($discordEquipment)) {
-			log::add('discordlink', 'error', 'SlashCommand : Équipement introuvable pour le channel ' . $result['channelId']);
-			echo "Erreur : Équipement introuvable";
-			die();
-		}
-
-		if ($discordEquipment->getConfiguration('interactionJeedom') != 1) {
-			log::add('discordlink', 'warning', 'SlashCommand : Les interactions sont désactivées pour l\'équipement ' . $discordEquipment->getHumanName());
-			echo "Les interactions sont désactivées pour cet équipement.";
-			die();
-		}
-
-		$parameters = array();
-		$parameters['plugin'] = 'discordlink';
-		$parameters['userid'] = $result['userId'];
-		$parameters['channel'] = $result['channelId'];
-		
-		log::add('discordlink', 'debug', 'SlashCommand : Envoi au moteur d\'interaction...');
-		$reply = interactQuery::tryToReply(trim($result['request']), $parameters);
-		log::add('discordlink', 'debug', 'SlashCommand : Réponse brute moteur : ' . json_encode($reply, JSON_UNESCAPED_UNICODE));
-		
-		if (isset($reply['reply'])) {
-			$responseText = $reply['reply'];
-			if (empty($responseText)) {
-				$responseText = "Jeedom a exécuté la commande mais n'a rien renvoyé.";
+		if ($result['command'] == 'interaction') {
+			if (!is_object($discordEquipment)) {
+				log::add('discordlink', 'error', 'SlashCommand : Équipement introuvable pour le channel ' . $result['channelId']);
+				echo "Erreur : Équipement introuvable";
+				die();
 			}
-			log::add('discordlink', 'debug', 'SlashCommand : Réponse envoyée à Discord : ' . $responseText);
-			echo $responseText;
+
+			if ($discordEquipment->getConfiguration('interactionJeedom') != 1) {
+				log::add('discordlink', 'warning', 'SlashCommand : Les interactions sont désactivées pour l\'équipement ' . $discordEquipment->getHumanName());
+				echo "Les interactions sont désactivées pour cet équipement.";
+				die();
+			}
+
+			$parameters = array();
+			$parameters['plugin'] = 'discordlink';
+			$parameters['userid'] = $result['userId'];
+			$parameters['channel'] = $result['channelId'];
+
+			log::add('discordlink', 'debug', 'SlashCommand : Envoi au moteur d\'interaction...');
+			$reply = interactQuery::tryToReply(trim($result['request']), $parameters);
+			log::add('discordlink', 'debug', 'SlashCommand : Réponse brute moteur : ' . json_encode($reply, JSON_UNESCAPED_UNICODE));
+
+			if (isset($reply['reply'])) {
+				$responseText = $reply['reply'];
+				if (empty($responseText)) {
+					$responseText = "Jeedom a exécuté la commande mais n'a rien renvoyé.";
+				}
+				log::add('discordlink', 'debug', 'SlashCommand : Réponse envoyée à Discord : ' . $responseText);
+				echo $responseText;
+			} else {
+				log::add('discordlink', 'error', 'SlashCommand : Pas de champ "reply" dans la réponse du moteur');
+				echo "Erreur interne Jeedom (pas de réponse interaction)";
+			}
 		} else {
-			log::add('discordlink', 'error', 'SlashCommand : Pas de champ "reply" dans la réponse du moteur');
-			echo "Erreur interne Jeedom (pas de réponse interaction)";
+			log::add('discordlink', 'warning', 'SlashCommand : Commande inconnue "' . $result['command'] . '"');
+			echo "Commande inconnue";
 		}
 		die();
 		break;
 
 	default:
 		if (!is_object($discordEquipment)) {
-			log::add('discordlink', 'debug',  'Device non trouvé: ' . $logicalId);
+			log::add('discordlink', 'debug',  'Device non trouvé: ' . $result['channelId']);
 			die();
 		} else {
-			log::add('discordlink', 'debug',  'Device trouvé: ' . $logicalId);
+			log::add('discordlink', 'debug',  'Device trouvé: ' . $result['channelId']);
 		}
 }
 
@@ -150,6 +153,8 @@ function updateCommand($name, $_value, $_logicalId, $_discordEquipment, $_update
 
 function getASK($_value, $_channelId, $_request) {
 	$discordEquipment = eqLogic::byLogicalId($_channelId, 'discordlink');
+	if (!is_object($discordEquipment)) return;
+
 	$cmd = $discordEquipment->getCmd('action', "sendEmbed");
 	if ($_request === "text") {
 		log::add('discordlink', 'debug', 'ASK : Text');
@@ -159,7 +164,8 @@ function getASK($_value, $_channelId, $_request) {
 		$value = $_request[$_value];
 	}
 
-	log::add('discordlink', 'debug', 'ASK : Request :"' . $_request . '" || Response : "' . $value . '"');
+	$requestLog = is_array($_request) ? json_encode($_request, JSON_UNESCAPED_UNICODE) : $_request;
+	log::add('discordlink', 'debug', 'ASK : Request :"' . $requestLog . '" || Response : "' . $value . '"');
 
 	$cmd->askResponse($value);
 }

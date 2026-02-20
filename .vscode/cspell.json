@@ -29,7 +29,8 @@
     "pgrep",
     "pkill",
     "quickreply",
-    "Reponse"
+    "Reponse",
+    "userid"
   ],
   "ignoreWords": [],
   "ignoreRegExpList": [
