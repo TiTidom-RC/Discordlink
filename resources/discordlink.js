@@ -796,7 +796,7 @@ app.post("/clearChannel", async (req, res) => {
 
     // Effectuer le nettoyage en arrière-plan
     try {
-      await deleteOldChannelMessages(channel, daysToKeep);
+      await cleanChannel(channel, { daysToKeep });
       config.logger(
         "Nettoyage du channel " + channelID + " terminé avec succès",
         "INFO",
@@ -847,7 +847,7 @@ app.post("/deleteLastMessages", async (req, res) => {
 
     // Effectuer la suppression en arrière-plan
     try {
-      await deleteLastMessages(channel, count);
+      await cleanChannel(channel, { limit: count });
       config.logger(
         "Suppression des derniers messages du channel " + channelID + " terminée avec succès",
         "INFO",
@@ -925,78 +925,129 @@ const performMessageDeletion = async (channel, messagesToDelete, stats) => {
 };
 
 /**
- * Delete messages older than 24 hours in a channel
- * Keeps messages from today and yesterday
- * @param {Object} channel - The Discord channel object
- * @param {number} daysToKeep - The number of days to keep messages
- * @returns {Promise<void>}
+ * Fonction unifiée pour nettoyer un channel Discord
+ * Gère deux modes de fonctionnement :
+ * 1. Suppression par nombre (limit) : supprime les X derniers messages
+ * 2. Suppression par date (daysToKeep) : supprime les messages plus vieux que X jours
+ * 
+ * Cette fonction utilise un système de pagination (batch) pour traiter
+ * un grand nombre de messages sans surcharger la mémoire ou l'API Discord.
+ * 
+ * @param {Object} channel - L'objet channel Discord à nettoyer
+ * @param {Object} options - Options de nettoyage
+ * @param {number} [options.limit] - Nombre de messages max à supprimer
+ * @param {number} [options.daysToKeep] - Nombre de jours d'historique à conserver
+ * @returns {Promise<number>} Le nombre total de messages supprimés
  */
-const deleteOldChannelMessages = async (channel, daysToKeep) => {
+const cleanChannel = async (channel, options = {}) => {
   try {
-    // Sécurisation du type (int) : Base 10, valeur par défaut 2
-    daysToKeep = parseInt(daysToKeep, 10);
-
-    // Constantes de durée
-    const ONE_DAY_MS = 86400000;
-
-    // Timestamps de référence (minuit aujourd'hui en heure locale)
-    const nowTimestamp = Date.now();
-    const todayTimestamp = new Date().setHours(0, 0, 0, 0);
-
-    // Si daysToKeep == -1 (tout effacer) : on prend nowTimestamp comme limite
-    // Sinon calcul classique (ex: 1 -> hier minuit)
-    const daysToKeepTimestamp = daysToKeep == -1 ? nowTimestamp : todayTimestamp - (daysToKeep * ONE_DAY_MS);
-
-    let lastMessageId = null; // Curseur pour la pagination
-    const stats = { totalDeleted: 0, totalBulkDeleted: 0, totalIndividualDeleted: 0 };
-
-    const formattedDate = getTimestamp(new Date(daysToKeepTimestamp));
-
-    config.logger("Début du nettoyage du channel " + channel.id, "INFO");
-
-    if (daysToKeep == -1) {
-      config.logger("Suppression de tous les messages", "INFO");
-    } else {
-      config.logger("Suppression des messages avant " + formattedDate, "INFO");
-      config.logger(
-        "Conservation : Aujourd'hui + les " + daysToKeep + " derniers jours",
-        "INFO",
-      );
+    // Vérification de sécurité : le channel doit exister et être textuel
+    if (!channel) {
+      config.logger("cleanChannel appelé avec un channel invalide (null/undefined)", "ERROR");
+      return 0;
+    }
+    // Compatible Discord.js v13/v14 : isTextBased() ou isText()
+    const isText = channel.isTextBased ? channel.isTextBased() : channel.isText?.();
+    if (!isText) {
+      config.logger(`Le channel ${channel.id} (${channel.name}) n'est pas textuel, impossible de nettoyer.`, "WARNING");
+      return 0;
     }
 
-    while (true) {
-      // Options de récupération
-      const fetchOptions = { limit: 100, cache: false };
-      // Si on a déjà récupéré un lot, on demande la suite (messages plus vieux que le dernier vu)
-      if (lastMessageId) {
-        fetchOptions.before = lastMessageId;
-      }
+    const { limit = null, daysToKeep = null } = options;
+    let maxCount = null; // Limite globale de suppression (si définie)
+    let filter = null;   // Fonction de filtre pour les messages (si définie)
 
-      // Récupérer les messages
+    // -----------------------------------------------------------
+    // Mode 1: Suppression des X derniers messages (limit)
+    // -----------------------------------------------------------
+    if (limit !== null) {
+      const count = parseInt(limit, 10);
+      if (count <= 0) {
+        config.logger("Nombre de messages invalide: " + count, "WARNING");
+        return 0;
+      }
+      maxCount = count; // On s'arrêtera une fois ce nombre atteint
+      config.logger("Début de la suppression des " + count + " derniers messages du channel " + channel.id, "INFO");
+    }
+    // -----------------------------------------------------------
+    // Mode 2: Suppression par ancienneté (daysToKeep)
+    // -----------------------------------------------------------
+    else if (daysToKeep !== null) {
+      const days = parseInt(daysToKeep, 10);
+      const ONE_DAY_MS = 86400000;
+      const nowTimestamp = Date.now();
+      const todayTimestamp = new Date().setHours(0, 0, 0, 0);
+
+      // Calcul de la date butoir
+      // Si -1, on supprime tout jusqu'à maintenant
+      // Sinon, on garde 'days' jours avant aujourd'hui minuit
+      const cutoffTimestamp = days === -1 ? nowTimestamp : todayTimestamp - (days * ONE_DAY_MS);
+      
+      // Filtre : on ne garde pour suppression que les messages plus vieux que la date butoir
+      filter = (msg) => msg.createdTimestamp < cutoffTimestamp;
+
+      const formattedDate = getTimestamp(new Date(cutoffTimestamp));
+      config.logger("Début du nettoyage du channel " + channel.id, "INFO");
+      if (days === -1) {
+        config.logger("Suppression de tous les messages", "INFO");
+      } else {
+        config.logger("Suppression des messages avant " + formattedDate, "INFO");
+        config.logger("Conservation : Aujourd'hui + les " + days + " derniers jours", "INFO");
+      }
+    } else {
+      config.logger("Aucune option de nettoyage fournie (limit ou daysToKeep)", "WARNING");
+      return 0;
+    }
+
+    // Initialisation du scan par batch
+    let lastMessageId = null;
+    const stats = { totalDeleted: 0, totalBulkDeleted: 0, totalIndividualDeleted: 0 };
+
+    config.logger(`Début du scan (Max: ${maxCount || 'Infini'})`, "DEBUG");
+
+    // Boucle principale de pagination
+    while (true) {
+      // Condition d'arrêt : Si on a atteint le quota de suppression (Mode 1)
+      if (maxCount !== null && stats.totalDeleted >= maxCount) break;
+
+      // Configuration de la requête fetch (pagination)
+      const fetchOptions = { limit: 100, cache: false };
+      if (lastMessageId) fetchOptions.before = lastMessageId;
+
+      // Récupération d'un lot de messages
       const messages = await channel.messages.fetch(fetchOptions);
 
-      // Si Discord ne renvoie plus rien, on a atteint la fin du salon (ou le début de l'histoire)
+      // Condition d'arrêt : Plus aucun message à scanner
       if (messages.size === 0) {
-        config.logger("Fin de l'historique du salon atteinte.", "DEBUG");
+        config.logger("Fin de l'historique atteinte.", "DEBUG");
         break;
       }
 
-      config.logger("Traitement de " + messages.size + " messages", "DEBUG");
-
-      // On met à jour le curseur pour le prochain tour (le plus vieux message de ce lot)
+      // Mise à jour du curseur pour le prochain tour
       lastMessageId = messages.last().id;
-
       const messagesToDelete = [];
 
-      for (const [msgId, message] of messages) {
-        // Supprimer uniquement les messages plus vieux que le timestamp limite
-        if (message.createdTimestamp < daysToKeepTimestamp && message.deletable) {
+      // Analyse des messages du lot courant
+      for (const [id, message] of messages) {
+        // Vérification de la limite globale au sein même de la boucle
+        if (maxCount !== null && (stats.totalDeleted + messagesToDelete.length) >= maxCount) break;
+
+        // Si le message est supprimable ET respecte le filtre (si défini)
+        if (message.deletable && (!filter || filter(message))) {
           messagesToDelete.push(message);
         }
       }
 
-      // Effectuer la suppression en réutilisant la fonction utilitaire
-      await performMessageDeletion(channel, messagesToDelete, stats);
+      // Exécution de la suppression pour ce lot
+      if (messagesToDelete.length > 0) {
+        await performMessageDeletion(channel, messagesToDelete, stats);
+      } else if (maxCount !== null && (stats.totalDeleted >= maxCount)) {
+        // Si on n'a rien ajouté car limite atteinte, on sort
+        break;
+      }
+      // Note : Si messagesToDelete est vide mais qu'on n'a pas atteint la limite,
+      // cela signifie juste que ce lot ne contenait aucun message éligible (ex: trop récents)
+      // on continue donc au lot suivant.
     }
 
     config.logger("========================================", "INFO");
@@ -1005,71 +1056,11 @@ const deleteOldChannelMessages = async (channel, daysToKeep) => {
     config.logger("- Messages supprimés individuellement (>14j) : " + stats.totalIndividualDeleted, "INFO");
     config.logger("- TOTAL supprimés : " + stats.totalDeleted, "INFO");
     config.logger("========================================", "INFO");
+
     return stats.totalDeleted;
+
   } catch (error) {
     config.logger("Erreur critique lors du nettoyage : " + error.message, "ERROR");
-    throw error;
-  }
-};
-
-/**
- * Delete the last N messages from a channel
- * @param {Object} channel - The Discord channel object
- * @param {number} count - The number of messages to delete
- * @returns {Promise<void>}
- */
-const deleteLastMessages = async (channel, count) => {
-  try {
-    // Sécurisation du type (int) : Base 10
-    count = parseInt(count, 10);
-
-    if (count <= 0) {
-      config.logger("Nombre de messages invalide: " + count, "WARNING");
-      return;
-    }
-
-    let messagesToDelete = [];
-    let lastMessageId = null;
-
-    config.logger("Début de la suppression des " + count + " derniers messages du channel " + channel.id, "INFO");
-
-    // Récupérer les messages jusqu'à ce qu'on en ait assez
-    while (messagesToDelete.length < count) {
-      const fetchOptions = { limit: Math.min(100, count - messagesToDelete.length), cache: false };
-      if (lastMessageId) {
-        fetchOptions.before = lastMessageId;
-      }
-
-      const messages = await channel.messages.fetch(fetchOptions);
-
-      if (messages.size === 0) {
-        config.logger("Fin de l'historique atteinte. Seulement " + messagesToDelete.length + " messages trouvés.", "DEBUG");
-        break;
-      }
-
-      lastMessageId = messages.last().id;
-
-      // Ajouter les messages supprimables à la liste
-      for (const [msgId, message] of messages) {
-        if (message.deletable && messagesToDelete.length < count) {
-          messagesToDelete.push(message);
-        }
-      }
-    }
-
-    // Supprimer les messages obtenus
-    const stats = { totalDeleted: 0, totalBulkDeleted: 0, totalIndividualDeleted: 0 };
-    await performMessageDeletion(channel, messagesToDelete, stats);
-
-    config.logger("========================================", "INFO");
-    config.logger("Suppression des derniers messages terminée - Récapitulatif :", "INFO");
-    config.logger("- Messages supprimés en masse : " + stats.totalBulkDeleted, "INFO");
-    config.logger("- Messages supprimés individuellement (>14j) : " + stats.totalIndividualDeleted, "INFO");
-    config.logger("- TOTAL supprimés : " + stats.totalDeleted, "INFO");
-    config.logger("========================================", "INFO");
-    return stats.totalDeleted;
-  } catch (error) {
-    config.logger("Erreur critique lors de la suppression des derniers messages : " + error.message, "ERROR");
     throw error;
   }
 };
@@ -1153,7 +1144,7 @@ const attachDiscordEvents = () => {
 
           config.logger("Commande deleteLastMessages reçue pour channel " + channelID + " avec nbmessages=" + nbmessages, "INFO");
 
-          const deletedCount = await deleteLastMessages(channel, nbmessages);
+          const deletedCount = await cleanChannel(channel, { limit: nbmessages });
           config.logger(
             "Suppression des derniers messages du channel " + channelID + " terminée avec succès (" + deletedCount + " messages supprimés)",
             "INFO",
@@ -1189,7 +1180,7 @@ const attachDiscordEvents = () => {
 
           config.logger("Commande keeplastdays reçue pour channel " + channelID + " avec nbjours=" + nbjours, "INFO");
 
-          const deletedCount = await deleteOldChannelMessages(channel, nbjours);
+          const deletedCount = await cleanChannel(channel, { daysToKeep: nbjours });
           config.logger(
             "Suppression des derniers messages du channel " + channelID + " terminée avec succès (" + deletedCount + " messages supprimés)",
             "INFO",
