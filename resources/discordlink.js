@@ -58,14 +58,14 @@ const registerCommands = async (clientId, token) => {
   const commands = [
     new SlashCommandBuilder()
       .setName('jeedom')
-      .setDescription('Commandes principales pour Jeedom')
+      .setDescription('Commandes Jeedom')
       .addSubcommand(subcommand =>
         subcommand
           .setName('interaction')
           .setDescription('Envoyer une interaction à Jeedom')
           .addStringOption(option =>
             option
-              .setName('requete')
+              .setName('request')
               .setDescription('Requête Jeedom')
               .setRequired(true)
           )
@@ -73,14 +73,14 @@ const registerCommands = async (clientId, token) => {
 
     new SlashCommandBuilder()
       .setName('clean')
-      .setDescription('Commandes génériques sur un channel')
+      .setDescription('Commandes Clean Channel via Jeedom')
       .addSubcommand(subcommand =>
         subcommand
           .setName('msg')
           .setDescription('Supprimer les X derniers messages')
           .addIntegerOption(option =>
             option
-              .setName('nbmessages')
+              .setName('count')
               .setDescription('Nombre de messages à supprimer')
               .setRequired(true)
               .setMinValue(1)
@@ -89,11 +89,11 @@ const registerCommands = async (clientId, token) => {
       .addSubcommand(subcommand =>
         subcommand
           .setName('keep')
-          .setDescription('Conserver les X derniers jours de messages')
+          .setDescription('Conserver les messages des X derniers jours, supprimer le reste')
           .addIntegerOption(option =>
             option
-              .setName('nbjours')
-              .setDescription("Nombre de jours à conserver. -1 pour tout supprimer")
+              .setName('days')
+              .setDescription("Nombre de jours à conserver (-1 pour tout supprimer)")
               .setRequired(true)
               .setMinValue(-1)
           )
@@ -1126,7 +1126,7 @@ const attachDiscordEvents = () => {
 
       if (subCommand === "msg") {
         try {
-          // ajout du mode éphemère pour éviter les erreurs et la suppression du msg
+          // ajout du mode éphémère pour éviter les erreurs et la suppression du msg
           await interaction.deferReply({ ephemeral: true });
         } catch (error) {
           if (error.code === 10062) {
@@ -1138,13 +1138,13 @@ const attachDiscordEvents = () => {
         }
 
         try {
-          const nbmessages = interaction.options.getInteger("nbmessages");
+          const count = interaction.options.getInteger("count");
           const channel = client.channels.cache.get(interaction.channelId);
           const channelID = channel.id;
 
-          config.logger("Commande deleteLastMessages reçue pour channel " + channelID + " avec nbmessages=" + nbmessages, "INFO");
+          config.logger("Commande deleteLastMessages reçue pour channel " + channelID + " avec count=" + count, "INFO");
 
-          const deletedCount = await cleanChannel(channel, { limit: nbmessages });
+          const deletedCount = await cleanChannel(channel, { limit: count });
           config.logger(
             "Suppression des derniers messages du channel " + channelID + " terminée avec succès (" + deletedCount + " messages supprimés)",
             "INFO",
@@ -1162,7 +1162,7 @@ const attachDiscordEvents = () => {
 
       if (subCommand === "keep") {
         try {
-          // ajout du mode éphemère pour éviter les erreurs et la suppression du msg
+          // ajout du mode éphémère pour éviter les erreurs et la suppression du msg
           await interaction.deferReply({ ephemeral: true });
         } catch (error) {
           if (error.code === 10062) {
@@ -1174,27 +1174,27 @@ const attachDiscordEvents = () => {
         }
 
         try {
-          const nbjours = interaction.options.getInteger("nbjours");
+          const days = interaction.options.getInteger("days");
           const channel = client.channels.cache.get(interaction.channelId);
           const channelID = channel.id;
 
-          config.logger("Commande keeplastdays reçue pour channel " + channelID + " avec nbjours=" + nbjours, "INFO");
+          config.logger("Commande keepLastDays reçue pour channel " + channelID + " avec days=" + days, "INFO");
 
-          const deletedCount = await cleanChannel(channel, { daysToKeep: nbjours });
+          const deletedCount = await cleanChannel(channel, { daysToKeep: days });
           config.logger(
             "Suppression des derniers messages du channel " + channelID + " terminée avec succès (" + deletedCount + " messages supprimés)",
             "INFO",
           );
 
           let response
-          if (nbjours == -1) {
+          if (days == -1) {
             response = "Tous les messages supprimés avec succès !";
           }
           else if (deletedCount === 0) {
             response = "Aucun message à supprimer, le channel est déjà propre !";
           }
           else {
-            response = deletedCount + " messages de plus de " + nbjours + " jours supprimés avec succès !";
+            response = deletedCount + " messages de plus de " + days + " jours supprimés avec succès !";
           }
 
           interaction.editReply(response);
@@ -1222,7 +1222,7 @@ const attachDiscordEvents = () => {
         return;
       }
 
-      const request = interaction.options.getString("requete");
+      const request = interaction.options.getString("request");
 
       await handleSlashCommand({
         channelId: interaction.channelId,
