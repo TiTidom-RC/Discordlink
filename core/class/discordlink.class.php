@@ -1226,7 +1226,7 @@ class discordlinkCmd extends cmd {
 		}
 		$message = str_replace("|", "\n", $message);
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-		$_options = array('title' => 'Etat des démons', 'description' => $message, 'colors' => $colors, 'footer' => 'By DiscordLink');
+		$_options = array('title' => 'Etat des démons', 'description' => $message, 'colors' => $colors, 'footer' => 'DiscordLink');
 		$cmd->execCmd($_options);
 		return 'requestHandledInternally';
 	}
@@ -1256,7 +1256,7 @@ class discordlinkCmd extends cmd {
 		}
 		$message = str_replace("|", "\n", $message);
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-		$_options = array('title' => 'Etat des dépendances', 'description' => $message, 'colors' => $colors, 'footer' => 'By DiscordLink');
+		$_options = array('title' => 'Etat des dépendances', 'description' => $message, 'colors' => $colors, 'footer' => 'DiscordLink');
 		$cmd->execCmd($_options);
 		return 'requestHandledInternally';
 	}
@@ -1282,7 +1282,7 @@ class discordlinkCmd extends cmd {
 		}
 		$message = str_replace("|", "\n", $message);
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-		$_options = array('title' => 'Résumé général', 'description' => $message, 'colors' => '#0033ff', 'footer' => 'By DiscordLink');
+		$_options = array('title' => 'Résumé général', 'description' => $message, 'colors' => '#0033ff', 'footer' => 'DiscordLink');
 		$cmd->execCmd($_options);
 
 		return 'requestHandledInternally';
@@ -1332,7 +1332,7 @@ class discordlinkCmd extends cmd {
 				'title' => 'Résumé Batteries : (' . $index . '/' . count($groupedMessages) . ')',
 				'description' => $message,
 				'colors' => $colors,
-				'footer' => 'By DiscordLink'
+				'footer' => 'DiscordLink'
 			);
 			$cmd->execCmd($_options);
 			$index++;
@@ -1344,7 +1344,7 @@ class discordlinkCmd extends cmd {
 			'title' => 'Résumé Batterie',
 			'description' => $message2,
 			'colors' => $colors,
-			'footer' => 'By DiscordLink'
+			'footer' => 'DiscordLink'
 		);
 		$cmd->execCmd($_options2);
 
@@ -1372,7 +1372,7 @@ class discordlinkCmd extends cmd {
 		}
 		$message = str_replace("|", "\n", $message);
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-		$_options = array('title' => 'Résumé : ' . $object->getName(), 'description' => $message, 'colors' => '#0033ff', 'footer' => 'By DiscordLink');
+		$_options = array('title' => 'Résumé : ' . $object->getName(), 'description' => $message, 'colors' => '#0033ff', 'footer' => 'DiscordLink');
 		$cmd->execCmd($_options);
 
 		return 'requestHandledInternally';
@@ -1414,7 +1414,7 @@ class discordlinkCmd extends cmd {
 		}
 
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-		$_options = array('title' => ':gear: CENTRE DE MISES A JOUR :gear:', 'description' => $msg, 'colors' => '#ff0000', 'footer' => 'By DiscordLink');
+		$_options = array('title' => ':gear: CENTRE DE MISES A JOUR :gear:', 'description' => $msg, 'colors' => '#ff0000', 'footer' => 'DiscordLink');
 		$cmd->execCmd($_options);
 
 		// -------------------------------------------------------------------------------------- //
@@ -1431,7 +1431,7 @@ class discordlinkCmd extends cmd {
 				'title' => ':clipboard: CENTRE DE MESSAGES :clipboard:',
 				'description' => "*Le centre de message est vide !*",
 				'colors' => '#ff8040',
-				'footer' => 'By DiscordLink'
+				'footer' => 'DiscordLink'
 			);
 			$cmd->execCmd($_options);
 		} else {
@@ -1445,7 +1445,7 @@ class discordlinkCmd extends cmd {
 					'title' => ':clipboard: CENTRE DE MESSAGES ' . ($index) . '/' . count($groupedMessages) . ' :clipboard:',
 					'description' => $msg,
 					'colors' => '#ff8040',
-					'footer' => 'By DiscordLink'
+					'footer' => 'DiscordLink'
 				);
 				$cmd->execCmd($_options);
 				$index++;
@@ -1460,7 +1460,7 @@ class discordlinkCmd extends cmd {
 		if (isset($_options['cron']) && !$result['cronOk']) return 'requestHandledInternally';
 
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-		$_options = array('title' => $result['title'], 'description' => str_replace("|", "\n", $result['message']), 'colors' => '#ff00ff', 'footer' => 'By DiscordLink');
+		$_options = array('title' => $result['title'], 'description' => str_replace("|", "\n", $result['message']), 'colors' => '#ff00ff', 'footer' => 'DiscordLink');
 		$cmd->execCmd($_options);
 		return 'requestHandledInternally';
 	}
