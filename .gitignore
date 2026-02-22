@@ -8,6 +8,7 @@ yarn.lock
 
 # Jeedom
 resources/dependance.lib
+data/quickreply.json
 
 # Logs
 *.log
