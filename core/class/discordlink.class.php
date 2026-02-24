@@ -763,9 +763,13 @@ class discordlink extends eqLogic {
 		);
 	}
 
-	public static function createQuickReplyFile() {
-		$str = '{"hello":{"emoji":"👋","text":"Bonjour à toi !","timeout":60},"bye":{"emoji":"👋","text":"Au revoir !"}}';
-		$path = dirname(__FILE__) . '/../../data/quickreply.json';
+	public static function createQuickActionFile() {
+		$old_path = dirname(__FILE__) . '/../../data/quickreply.json';
+		if (file_exists($old_path)) {
+			unlink($old_path);
+		}
+		$str = '{}';
+		$path = dirname(__FILE__) . '/../../data/quickaction.json';
 		file_put_contents($path, json_encode(json_decode($str), JSON_PRETTY_PRINT));
 	}
 
@@ -799,6 +803,28 @@ class discordlink extends eqLogic {
 			return $isBeta ? 'beta' : 'stable';
 		}
 		return $isBeta;
+	}
+
+	public static function getQuickActionFileContent() {
+		$quickActionFile = dirname(__FILE__) . '/../../data/quickaction.json';
+		$quickActionData = array();
+		if (file_exists($quickActionFile)) {
+			$quickActionData = json_decode(file_get_contents($quickActionFile), true);
+		}
+		return $quickActionData;
+	}
+
+	public static function getQuickActionOptions() {
+		$quickActionData = self::getQuickActionFileContent();
+		$options = array();
+		if (is_array($quickActionData)) {
+			foreach ($quickActionData as $item) {
+				if (isset($item['label']) && isset($item['key'])) {
+					$options[] = array('id' => $item['key'], 'name' => $item['label']);
+				}
+			}
+		}
+		return $options;
 	}
 
 	/*     * ********************** Getter Setter *************************** */
@@ -917,24 +943,24 @@ class discordlinkCmd extends cmd {
 
 		// 1. Tags replacement
 		$text = scenarioExpression::setTags($_text);
-		
+
 		// 2. Random text decoding
 		$text = self::decodeRandomText($text);
-		
+
 		// 3. Emoji conversion (only if markdown supported)
 		if ($_supportMarkdown) {
 			$text = discordlink::emojiConvert($text);
 		}
-		
+
 		// 4. Newline replacement
 		$text = str_replace('|', "\n", $text);
-		
+
 		return $text;
 	}
 
 	private function buildMessageRequest($_options = array(), $default = "Une erreur est survenue") {
 		$message = isset($_options['message']) && $_options['message'] != '' ? $_options['message'] : $default;
-		
+
 		// Call unified formatter (Message supports Markdown/Emojis)
 		$message = $this->formatDiscordText($message, true);
 
@@ -964,7 +990,7 @@ class discordlinkCmd extends cmd {
 		}
 
 		$message = isset($_options['message']) ? $_options['message'] : "";
-		
+
 		// Use unified formatter (Message supports Markdown/Emojis)
 		$message = $this->formatDiscordText($message, true);
 
@@ -1009,7 +1035,7 @@ class discordlinkCmd extends cmd {
 		$fields = [];
 		$timeout = 0;
 		$answerCount = "";
-		$quickreply = [];
+		$quickaction = [];
 		$files = [];
 
 		/** @var discordlink $eqLogic */
@@ -1104,15 +1130,15 @@ class discordlinkCmd extends cmd {
 				}
 			}
 
-			// Quickreply handling
-			if (!empty($_options['quickreply'])) {
-				if (is_array($_options['quickreply'])) {
-					$quickreply = $_options['quickreply'];
+			// Quickaction handling
+			if (!empty($_options['quickaction'])) {
+				if (is_array($_options['quickaction'])) {
+					$quickaction = $_options['quickaction'];
 				} else {
-					$splits = explode(',', (string)$_options['quickreply']);
+					$splits = explode(',', (string)$_options['quickaction']);
 					foreach ($splits as $q) {
 						$clean = trim($q);
-						if (!empty($clean)) $quickreply[] = $clean;
+						if (!empty($clean)) $quickaction[] = $clean;
 					}
 				}
 			}
@@ -1162,7 +1188,7 @@ class discordlinkCmd extends cmd {
 				'color' => $colors,
 				'defaultColor' => $defaultColor,
 				'fields' => $fields,
-				'quickreply' => $quickreply,
+				'quickaction' => $quickaction,
 				'files' => $files,
 				'answerCount' => $answerCount,
 				'timeout' => $timeout
@@ -1485,6 +1511,12 @@ class discordlinkCmd extends cmd {
 			}
 		}
 
+		$quickActionOptionsHtml = '';
+		foreach (discordlink::getQuickActionOptions() as $option) {
+			$quickActionOptionsHtml .= '<option value="' . $option['id'] . '">' . $option['name'] . '</option>';
+		}
+
+
 		/** @var discordlink $eqLogic */
 		$eqLogic = $this->getEqLogic();
 		$defaultColor = $eqLogic->getDefaultColor();
@@ -1496,6 +1528,7 @@ class discordlinkCmd extends cmd {
 			'#defaultFooter#' => '',
 			'#defaultPath#' => '',
 			'#defaultDisplayName#' => '',
+			'#quickActionOptions#' => $quickActionOptionsHtml,
 		];
 		$data = str_replace(array_keys($replace), array_values($replace), $data);
 

@@ -34,6 +34,11 @@ $eqLogics = eqLogic::byType($plugin->getId());
                 <br>
                 <span>{{Emojis}}</span>
             </div>
+            <div class="cursor eqLogicAction logoSecondary" data-action="quickActionSettings">
+                <i class="fas fa-reply icon_green"></i>
+                <br>
+                <span>{{Actions rapides}}</span>
+            </div>
             <div class="cursor eqLogicAction logoSecondary" data-action="createCommunityPost">
                 <i class="fas fa-ambulance icon_blue"></i>
                 <br>
@@ -124,7 +129,6 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                 <div class="col-sm-6">
                                     <label class="checkbox-inline"><input type="checkbox" class="eqLogicAttr" data-l1key="isEnable" title="Activer l'équipement" checked />{{Activer}}</label>
                                     <label class="checkbox-inline"><input type="checkbox" class="eqLogicAttr" data-l1key="isVisible" title="Rendre l'équipement visible" checked />{{Visible}}</label>
-                                    <label class="checkbox-inline"><input type="checkbox" class="eqLogicAttr" data-l1key="configuration" title="Activer les interactions avec Jeedom" data-l2key="interactionJeedom" />{{Interactions avec Jeedom}}</label>
                                 </div>
                             </div>
 
@@ -136,7 +140,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                         <div class="input-group">
                                             <select class="form-control eqLogicAttr roundedLeft" data-l1key="configuration" data-l2key="channelId">
                                                 <?php
-                                                $channels = config::byKey('channels', 'discordlink', array());                                                
+                                                $channels = config::byKey('channels', 'discordlink', array());
                                                 $i = 0;
                                                 if (is_array($channels)) {
                                                     foreach ($channels as $channel) {
@@ -146,7 +150,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                                 }
 
                                                 if ($i == 0) {
-                                                    echo '<option value="null">Pas de channel disponible</option>';
+                                                    echo '<option value="null">' . __('Pas de channel disponible', __FILE__) . '</option>';
                                                 }
                                                 ?>
                                             </select>
@@ -157,6 +161,36 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                             </span>
                                         </div>
                                     </div>
+                            </fieldset>
+
+                            <fieldset>
+                                <legend><i class="fas fa-key"></i> {{Autorisations}}</legend>
+                                <div class="form-group">
+                                    <label class="col-sm-4 control-label">{{Interactions avec Jeedom}}</label>
+                                    <div class="col-sm-6">
+                                        <label class="checkbox-inline"><input id="interactionJeedom" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="interactionJeedom" />{{Activer}}</label>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="col-sm-4 control-label">{{Commandes Jeedom}}
+                                        <sup>
+                                            <i class="fas fa-question-circle floatright" style="color: var(--al-info-color) !important;" title="{{Les commandes Jeedom sont des commandes qui peuvent être exécutées depuis Discord.<br/>Aucune vérification n'est effectuée sur les permissions de l'utilisateur.}}"></i>
+                                        </sup>
+                                    </label>
+                                    <div class="col-sm-6">
+                                        <label class="checkbox-inline"><input id="commandesJeedom" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="commandJeedom" />{{Activer}}</label>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="col-sm-4 control-label">{{Scénario Jeedom}}
+                                        <sup>
+                                            <i class="fas fa-question-circle floatright" style="color: var(--al-info-color) !important;" title="{{Les scénarios Jeedom sont des scénarios qui peuvent être exécutés depuis Discord.<br/>Aucune vérification n'est effectuée sur les permissions de l'utilisateur.}}"></i>
+                                        </sup>
+                                    </label>
+                                    <div class="col-sm-6">
+                                        <label class="checkbox-inline"><input id="scenarioJeedom" type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="scenarioJeedom" />{{Activer}}</label>
+                                    </div>
+                                </div>
                             </fieldset>
 
                             <fieldset>
@@ -178,7 +212,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                             <div class="input-group">
                                                 <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autoRefreshDaemon" placeholder="{{Cron de vérification}}" />
                                                 <span class="input-group-btn">
-                                                    <a class="btn btn-default cursor jeeHelper roundedRight" id="bt_cronDaemonGenerator" data-helper="cron" title="Assistant cron">
+                                                    <a class="btn btn-default cursor jeeHelper roundedRight" id="bt_cronDaemonGenerator" data-helper="cron" title="{{Assistant cron}}">
                                                         <i class="fas fa-question-circle"></i>
                                                     </a>
                                                 </span>
@@ -204,7 +238,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                             <div class="input-group">
                                                 <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autoRefreshDependency" placeholder="{{Cron de vérification}}" />
                                                 <span class="input-group-btn">
-                                                    <a class="btn btn-default cursor jeeHelper roundedRight" id="bt_cronDependencyGenerator" data-helper="cron" title="Assistant cron">
+                                                    <a class="btn btn-default cursor jeeHelper roundedRight" id="bt_cronDependencyGenerator" data-helper="cron" title="{{Assistant cron}}">
                                                         <i class="fas fa-question-circle"></i>
                                                     </a>
                                                 </span>

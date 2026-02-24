@@ -29,7 +29,7 @@ function discordlink_install() {
     discordlink::createCmd();
     discordlink::setEmoji();
     discordlink::updateObject();
-    discordlink::createQuickReplyFile();
+    discordlink::createQuickActionFile();
 }
 
 function discordlink_update() {
@@ -98,10 +98,10 @@ function discordlink_update() {
         }
     }
 
-    $quickReplyPath = dirname(__FILE__) . '/../data/quickreply.json';
-    if (!file_exists($quickReplyPath)) {
-        log::add('discordlink', 'info', 'Création du fichier quickreply.json par défaut');
-        discordlink::createQuickReplyFile();
+    $quickActionPath = dirname(__FILE__) . '/../data/quickaction.json';
+    if (!file_exists($quickActionPath)) {
+        log::add('discordlink', 'info', 'Création du fichier quickaction.json par défaut');
+        discordlink::createQuickActionFile();
     }
 
     // 3. Correction et Nettoyage des Commandes
