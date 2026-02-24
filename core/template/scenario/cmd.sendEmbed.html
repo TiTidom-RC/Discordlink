@@ -61,9 +61,9 @@
 <div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
   <span class="input-group-addon roundedLeft" style="width: 100px">Réponse rapide</span>
   <select class="form-control input-sm expressionAttr roundedRight" data-uid="#uid#"
-    style="width: 50%; display: inline-block;" data-l1key="options" data-l2key="quickreply">
+    style="width: 50%; display: inline-block;" data-l1key="options" data-l2key="quickaction">
     <option value="">{{Aucun}}</option>
-    #quickReplyOptions#
+    #quickActionOptions#
   </select>
 </div>
 
@@ -151,14 +151,14 @@
     document.querySelector('.colorChooser[data-uid="#uid#"]').value = '#defaultColor#'
     document.querySelector('.colorChooser[data-uid="#uid#"]').dispatchEvent(new Event('change'))
   }
-  var quickreplySelect = document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=quickreply]');
-  if ('#quickreply#' == '#' + 'quickreply' + '#') {
-    document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=quickreply]').value = '#quickReplyOptions#'
-    quickreplySelect.selectedIndex = 0;
-    document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=quickreply]').value = quickreplySelect.value;
+  var quickactionSelect = document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=quickaction]');
+  if ('#quickaction#' == '#' + 'quickaction' + '#') {
+    document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=quickaction]').value = '#quickActionOptions#'
+    quickactionSelect.selectedIndex = 0;
+    document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=quickaction]').value = quickactionSelect.value;
   }
   else {
-    quickreplySelect.value = '#quickreply#';
+    quickactionSelect.value = '#quickaction#';
   }
   if ('#files#' == '#' + 'files#') document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=files]').value = ''
 </script>

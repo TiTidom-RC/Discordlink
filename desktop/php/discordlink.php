@@ -34,10 +34,10 @@ $eqLogics = eqLogic::byType($plugin->getId());
                 <br>
                 <span>{{Emojis}}</span>
             </div>
-            <div class="cursor eqLogicAction logoSecondary" data-action="quickReplySettings">
+            <div class="cursor eqLogicAction logoSecondary" data-action="quickActionSettings">
                 <i class="fas fa-reply icon_green"></i>
                 <br>
-                <span>{{Réponses rapides}}</span>
+                <span>{{Actions rapides}}</span>
             </div>
             <div class="cursor eqLogicAction logoSecondary" data-action="createCommunityPost">
                 <i class="fas fa-ambulance icon_blue"></i>
@@ -164,7 +164,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                             </fieldset>
 
                             <fieldset>
-                                <legend><i class="fas fa-key"></i> {{Autorisation}}</legend>
+                                <legend><i class="fas fa-key"></i> {{Autorisations}}</legend>
                                 <div class="form-group">
                                     <label class="col-sm-4 control-label">{{Interactions avec Jeedom}}</label>
                                     <div class="col-sm-6">

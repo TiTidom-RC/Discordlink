@@ -96,29 +96,29 @@ try {
         ajax::success();
     }
 
-    if (init('action') == 'saveQuickReply') {
-        $quickReplyData = init('quickReplyData');
+    if (init('action') == 'saveQuickAction') {
+        $quickActionData = init('quickActionData');
         $daemonRestart = init('daemonRestart') == '1';
-        if (is_string($quickReplyData)) {
-            $quickReplyArray = json_decode($quickReplyData, true);
+        if (is_string($quickActionData)) {
+            $quickActionArray = json_decode($quickActionData, true);
         } else {
-            $quickReplyArray = $quickReplyData;
+            $quickActionArray = $quickActionData;
         }
 
-        if (!is_array($quickReplyArray)) {
+        if (!is_array($quickActionArray)) {
             ajax::error(__('Erreur de format des données', __FILE__));
         }
 
-        $filePath = dirname(__FILE__) . '/../../data/quickreply.json';
+        $filePath = dirname(__FILE__) . '/../../data/quickaction.json';
         if (!file_exists($filePath)) {
             ajax::error(__('Fichier non existant : ' . $filePath, __FILE__));
         } elseif (!is_writable($filePath)) {
             ajax::error(__('Fichier non accessible en écriture : ' . $filePath, __FILE__));
         }
 
-        $jsonData = json_encode($quickReplyArray, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        $jsonData = json_encode($quickActionArray, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
         if (file_put_contents($filePath, $jsonData) === false) {
-            ajax::error(__('Impossible d\'enregistrer le fichier quickreply.json', __FILE__));
+            ajax::error(__('Impossible d\'enregistrer le fichier quickaction.json', __FILE__));
         }
 
         if ($daemonRestart) discordlink::deamon_start();

@@ -1,0 +1,42 @@
+[
+    {
+        "key": "poubelle_ok",
+        "emoji": "✅",
+        "label": "poubelles sorties",
+        "timeout": 600,
+        "type": "interaction",
+        "value": "poubelles OK"
+    },
+    {
+        "key": "volet_stop",
+        "emoji": "❌",
+        "label": "désactiver volet auto",
+        "timeout": 299,
+        "type": "interaction",
+        "value": "volet stop"
+    },
+    {
+        "key": "alarm_off",
+        "emoji": "🔕",
+        "label": "désactiver alarm",
+        "timeout": 120,
+        "type": "interaction",
+        "value": "alarm off"
+    },
+    {
+        "key": "machine_done",
+        "emoji": "🚿",
+        "label": "machine done",
+        "timeout": 120,
+        "type": "interaction",
+        "value": "machine done"
+    },
+    {
+        "key": "cmd_id",
+        "emoji": "⚒️",
+        "label": "Commande test",
+        "timeout": 120,
+        "type": "command",
+        "value": "1961"
+    }
+]

@@ -19,10 +19,10 @@
 
     const AJAX_URL = 'plugins/discordlink/core/ajax/discordlink.ajax.php';
 
-    function initQuickReply(quickReplyData) {
+    function initQuickAction(quickActionData) {
 
-        quickReplyData.forEach(function (item) {
-            // console.log('Adding quick reply item:', item);
+        quickActionData.forEach(function (item) {
+            // console.log('Adding quick action item:', item);
             addItem(item)
         });
 
@@ -32,7 +32,7 @@
 
         document.addEventListener('click', function (e) {
             if (e.target.closest('.removeItem')) {
-                e.target.closest('.quickReplyItem').remove();
+                e.target.closest('.quickActionItem').remove();
             }
         });
 
@@ -41,21 +41,21 @@
                 const typeSelect = e.target.closest('select.typeSelect');
 
                 if (typeSelect.value === 'interaction') {
-                    typeSelect.closest('.quickReplyItem').querySelector('.valueInput').setAttribute('placeholder', '{{Texte de l\'intervention}}');
+                    typeSelect.closest('.quickActionItem').querySelector('.valueInput').setAttribute('placeholder', '{{Texte de l\'intervention}}');
                 }
                 else if (typeSelect.value === 'command') {
-                    typeSelect.closest('.quickReplyItem').querySelector('.valueInput').setAttribute('placeholder', '{{ID de la commande Jeedom (ex: 1234)}}');
+                    typeSelect.closest('.quickActionItem').querySelector('.valueInput').setAttribute('placeholder', '{{ID de la commande Jeedom (ex: 1234)}}');
                 }
                 else if (typeSelect.value === 'scenario') {
-                    typeSelect.closest('.quickReplyItem').querySelector('.valueInput').setAttribute('placeholder', '{{ID du scénario Jeedom (ex: 17)}}');
+                    typeSelect.closest('.quickActionItem').querySelector('.valueInput').setAttribute('placeholder', '{{ID du scénario Jeedom (ex: 17)}}');
                 }
             }
         });
 
-        document.getElementById('saveQuickReply').addEventListener('click', function () {
-            const quickReplyArray = [];
+        document.getElementById('saveQuickAction').addEventListener('click', function () {
+            const quickActionArray = [];
             let isValid = true;
-            document.querySelectorAll('.quickReplyItem').forEach(function (item) {
+            document.querySelectorAll('.quickActionItem').forEach(function (item) {
                 const key = item.querySelector('.keyInput').value.trim();
                 const label = item.querySelector('.labelInput').value.trim();
                 const emoji = item.querySelector('.emojiInput').value.trim();
@@ -74,13 +74,13 @@
                     return;
                 }
 
-                if (quickReplyArray.filter(item => item.key === key).length > 0) {
+                if (quickActionArray.filter(item => item.key === key).length > 0) {
                     jeedomUtils.showAlert({ message: '{{Clé}} "' + key + '" {{déjà utilisée.}}', level: 'danger' });
                     isValid = false;
                     return;
                 }
 
-                quickReplyArray.push({
+                quickActionArray.push({
                     key: key,
                     emoji: emoji,
                     label: label,
@@ -99,8 +99,8 @@
                 type: "POST",
                 url: AJAX_URL,
                 data: {
-                    action: "saveQuickReply",
-                    quickReplyData: JSON.stringify(quickReplyArray),
+                    action: "saveQuickAction",
+                    quickActionData: JSON.stringify(quickActionArray),
                     daemonRestart: document.getElementById('daemonRestart').checked ? 1 : 0
                 },
                 dataType: 'json',
@@ -119,9 +119,9 @@
     }
 
     function addItem(item) {
-        const container = document.getElementById('quickReplyContainer');
+        const container = document.getElementById('quickActionContainer');
         const newItem = `
-            <tr class="quickReplyItem">
+            <tr class="quickActionItem">
                 <td>
                     <input type="text" class="form-control keyInput" placeholder="{{Clé}}" value="${item.key || ''}" required>
                 </td>
@@ -145,12 +145,12 @@
                     <input type="number" class="form-control timeoutInput" placeholder="{{Timeout (en secondes)}}" value="${item.timeout || 120}" min="0" required>
                 </td>
                 <td>
-                    <button type="button" class="btn btn-danger removeItem"><i class="fas fa-minus"></i></button>
+                    <i class="fas fa-minus-circle removeItem icon_red" title="{{Supprimer l'action}}"></i>
                 </td>
             </tr>
         `;
         container.insertAdjacentHTML('beforeend', newItem);
     }
 
-    window.initQuickReply = initQuickReply;
+    window.initQuickAction = initQuickAction;
 })();

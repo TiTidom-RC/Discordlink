@@ -3,7 +3,7 @@ if (!isConnect('admin')) {
     throw new Exception('{{401 - Accès non autorisé}}');
 }
 
-$quickReplyData = discordlink::getQuickReplyFileContent();
+$quickActionData = discordlink::getQuickActionFileContent();
 ?>
 
 <div class="row">
@@ -13,14 +13,14 @@ $quickReplyData = discordlink::getQuickReplyFileContent();
                 <sup><i class="fas fa-question-circle tippied" title="{{Redémarrer le démon après sauvegarde pour prise en compte des modifications}}"></i></sup>
             </label>
             <input type="checkbox" id="daemonRestart" checked style="margin-left: 15px;" />
-            <button type="button" class="btn btn-primary" id="saveQuickReply"><i class="fas fa-save"></i> {{Sauvegarder}}</button>
+            <button type="button" class="btn btn-primary" id="saveQuickAction"><i class="fas fa-save"></i> {{Sauvegarder}}</button>
         </div>
     </div>
 </div>
 
 <div class="row row-overflow">
     <div class="col-sm-12">
-        <form id="quickReplyForm">
+        <form id="quickActionForm">
             <table class="table table-bordered table-condensed">
                 <thead>
                     <tr>
@@ -33,7 +33,7 @@ $quickReplyData = discordlink::getQuickReplyFileContent();
                         <th>{{Actions}}</th>
                     </tr>
                 </thead>
-                <tbody id="quickReplyContainer">
+                <tbody id="quickActionContainer">
                 </tbody>
             </table>
             <div>
@@ -43,10 +43,10 @@ $quickReplyData = discordlink::getQuickReplyFileContent();
     </div>
 </div>
 
-<?php include_file('desktop', 'quickreply.discordlink', 'js', 'discordlink'); ?>
+<?php include_file('desktop', 'quickaction.discordlink', 'js', 'discordlink'); ?>
 
 <script>
-    if (typeof initQuickReply === 'function') {
-        initQuickReply(<?= json_encode($quickReplyData) ?>);
+    if (typeof initQuickAction === 'function') {
+        initQuickAction(<?= json_encode($quickActionData) ?>);
     }
 </script>

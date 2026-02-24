@@ -763,9 +763,13 @@ class discordlink extends eqLogic {
 		);
 	}
 
-	public static function createQuickReplyFile() {
+	public static function createQuickActionFile() {
+		$old_path = dirname(__FILE__) . '/../../data/quickreply.json';
+		if (file_exists($old_path)) {
+			unlink($old_path);
+		}
 		$str = '{}';
-		$path = dirname(__FILE__) . '/../../data/quickreply.json';
+		$path = dirname(__FILE__) . '/../../data/quickaction.json';
 		file_put_contents($path, json_encode(json_decode($str), JSON_PRETTY_PRINT));
 	}
 
@@ -801,20 +805,20 @@ class discordlink extends eqLogic {
 		return $isBeta;
 	}
 
-	public static function getQuickReplyFileContent() {
-		$quickReplyFile = dirname(__FILE__) . '/../../data/quickreply.json';
-		$quickReplyData = array();
-		if (file_exists($quickReplyFile)) {
-			$quickReplyData = json_decode(file_get_contents($quickReplyFile), true);
+	public static function getQuickActionFileContent() {
+		$quickActionFile = dirname(__FILE__) . '/../../data/quickaction.json';
+		$quickActionData = array();
+		if (file_exists($quickActionFile)) {
+			$quickActionData = json_decode(file_get_contents($quickActionFile), true);
 		}
-		return $quickReplyData;
+		return $quickActionData;
 	}
 
-	public static function getQuickReplyOptions() {
-		$quickReplyData = self::getQuickReplyFileContent();
+	public static function getQuickActionOptions() {
+		$quickActionData = self::getQuickActionFileContent();
 		$options = array();
-		if (is_array($quickReplyData)) {
-			foreach ($quickReplyData as $item) {
+		if (is_array($quickActionData)) {
+			foreach ($quickActionData as $item) {
 				if (isset($item['label']) && isset($item['key'])) {
 					$options[] = array('id' => $item['key'], 'name' => $item['label']);
 				}
@@ -1031,7 +1035,7 @@ class discordlinkCmd extends cmd {
 		$fields = [];
 		$timeout = 0;
 		$answerCount = "";
-		$quickreply = [];
+		$quickaction = [];
 		$files = [];
 
 		/** @var discordlink $eqLogic */
@@ -1126,15 +1130,15 @@ class discordlinkCmd extends cmd {
 				}
 			}
 
-			// Quickreply handling
-			if (!empty($_options['quickreply'])) {
-				if (is_array($_options['quickreply'])) {
-					$quickreply = $_options['quickreply'];
+			// Quickaction handling
+			if (!empty($_options['quickaction'])) {
+				if (is_array($_options['quickaction'])) {
+					$quickaction = $_options['quickaction'];
 				} else {
-					$splits = explode(',', (string)$_options['quickreply']);
+					$splits = explode(',', (string)$_options['quickaction']);
 					foreach ($splits as $q) {
 						$clean = trim($q);
-						if (!empty($clean)) $quickreply[] = $clean;
+						if (!empty($clean)) $quickaction[] = $clean;
 					}
 				}
 			}
@@ -1184,7 +1188,7 @@ class discordlinkCmd extends cmd {
 				'color' => $colors,
 				'defaultColor' => $defaultColor,
 				'fields' => $fields,
-				'quickreply' => $quickreply,
+				'quickaction' => $quickaction,
 				'files' => $files,
 				'answerCount' => $answerCount,
 				'timeout' => $timeout
@@ -1507,9 +1511,9 @@ class discordlinkCmd extends cmd {
 			}
 		}
 
-		$quickReplyOptionsHtml = '';
-		foreach (discordlink::getQuickReplyOptions() as $option) {
-			$quickReplyOptionsHtml .= '<option value="' . $option['id'] . '">' . $option['name'] . '</option>';
+		$quickActionOptionsHtml = '';
+		foreach (discordlink::getQuickActionOptions() as $option) {
+			$quickActionOptionsHtml .= '<option value="' . $option['id'] . '">' . $option['name'] . '</option>';
 		}
 
 
@@ -1524,7 +1528,7 @@ class discordlinkCmd extends cmd {
 			'#defaultFooter#' => '',
 			'#defaultPath#' => '',
 			'#defaultDisplayName#' => '',
-			'#quickReplyOptions#' => $quickReplyOptionsHtml,
+			'#quickActionOptions#' => $quickActionOptionsHtml,
 		];
 		$data = str_replace(array_keys($replace), array_values($replace), $data);
 

@@ -215,15 +215,15 @@ config.logger(" - argv[6] (pluginKey): " + pluginKey, "DEBUG");
 config.logger(" - argv[7] (activityStatus): " + activityStatus, "DEBUG");
 config.logger(" - argv[8] (listeningPort): " + listeningPort, "DEBUG");
 
-// Charger la configuration quickreply depuis le répertoire data du plugin
+// Charger la configuration quickaction depuis le répertoire data du plugin
 const path = require("path");
-let quickreplyConf = {};
-const quickreplyPath = path.join(__dirname, "..", "data", "quickreply.json");
+let quickactionConf = {};
+const quickactionPath = path.join(__dirname, "..", "data", "quickaction.json");
 
 try {
-  quickreplyConf = JSON.parse(fs.readFileSync(quickreplyPath, "utf8"));
+  quickactionConf = JSON.parse(fs.readFileSync(quickactionPath, "utf8"));
 } catch (e) {
-  config.logger("Erreur chargement quickreply.json: " + e.message, "WARNING");
+  config.logger("Erreur chargement quickaction.json: " + e.message, "WARNING");
 }
 
 if (!token) {
@@ -454,7 +454,7 @@ app.post("/sendEmbed", async (req, res) => {
       fields, // Array of objects {name, value, inline}
       footer,
       defaultColor,
-      quickreply, // Array of strings
+      quickaction, // Array of strings
       files, // Array of strings (paths)
       answerCount, // Number or String
       timeout // Number
@@ -473,13 +473,13 @@ app.post("/sendEmbed", async (req, res) => {
       });
     }
 
-    // Gestion QuickReply
+    // Gestion QuickAction
     let quickReplies = [];
-    if (quickreply && Array.isArray(quickreply)) {
-      quickReplies = quickreply
+    if (quickaction && Array.isArray(quickaction)) {
+      quickReplies = quickaction
         .filter(q => {
-          if (!quickreplyConf.find(qrc => qrc.key === q)) {
-            config.logger(`QuickReply "${q}" non trouvé dans quickreply.json`, "WARNING");
+          if (!quickactionConf.find(qrc => qrc.key === q)) {
+            config.logger(`QuickAction "${q}" non trouvé dans quickaction.json`, "WARNING");
             return false;
           }
           return true;
@@ -605,9 +605,9 @@ app.post("/sendEmbed", async (req, res) => {
 
     const m = await channel.send(sendOptions);
 
-    // Apply QuickReplies (Reactions)
+    // Apply QuickActions (Reactions)
     for (const q of quickReplies) {
-      const conf = quickreplyConf.filter(qc => qc.key === q)[0];
+      const conf = quickactionConf.filter(qc => qc.key === q)[0];
       if (!conf) continue;
 
       const emoji = conf.emoji; // e.g. "👍" or custom ID
@@ -1071,7 +1071,7 @@ const cleanChannel = async (channel, options = {}) => {
  * @param {Object} params - Les paramètres
  * @param {string} params.channelId - L'ID du channel
  * @param {string} params.userId - L'ID de l'utilisateur
- * @param {string} params.execType - Le type d'exécution (slash ou quickreply)
+ * @param {string} params.execType - Le type d'exécution (slash ou quickaction)
  * @param {string} params.request - La requête/message
  * @param {string} params.username - Le nom d'utilisateur
  * @param {Object} params.callback - Fonction pour envoyer la réponse

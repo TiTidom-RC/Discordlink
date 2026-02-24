@@ -148,12 +148,12 @@
       });
     }
 
-    // Quick Reply Settings
-    if (e.target.closest('[data-action="quickReplySettings"]')) {
+    // Quick Action Settings
+    if (e.target.closest('[data-action="quickActionSettings"]')) {
       jeeDialog.dialog({
-        id: 'md_quickReplyDiscordlink',
-        title: "{{Réponses rapides}}",
-        contentUrl: 'index.php?v=d&plugin=discordlink&modal=quickreply.discordlink',
+        id: 'md_quickActionDiscordlink',
+        title: "{{Actions rapides}}",
+        contentUrl: 'index.php?v=d&plugin=discordlink&modal=quickaction.discordlink',
         width: '90%',
         height: '80%',
         top: '10vh'
