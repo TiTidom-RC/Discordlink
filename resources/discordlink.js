@@ -19,6 +19,7 @@ const {
   REST,
   Routes,
   SlashCommandBuilder,
+  MessageFlags,
 } = require("discord.js");
 
 const BASE_INTENTS = [
@@ -1127,7 +1128,7 @@ const attachDiscordEvents = () => {
       if (subCommand === "msg") {
         try {
           // ajout du mode éphémère pour éviter les erreurs et la suppression du msg
-          await interaction.deferReply({ ephemeral: true });
+          await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         } catch (error) {
           if (error.code === 10062) {
             config.logger("Interaction expirée ou inconnue avant traitement (Ignoré)", "DEBUG");
@@ -1163,7 +1164,7 @@ const attachDiscordEvents = () => {
       if (subCommand === "keep") {
         try {
           // ajout du mode éphémère pour éviter les erreurs et la suppression du msg
-          await interaction.deferReply({ ephemeral: true });
+          await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         } catch (error) {
           if (error.code === 10062) {
             config.logger("Interaction expirée ou inconnue avant traitement (Ignoré)", "DEBUG");
