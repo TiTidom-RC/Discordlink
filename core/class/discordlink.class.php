@@ -764,7 +764,7 @@ class discordlink extends eqLogic {
 	}
 
 	public static function createQuickReplyFile() {
-		$str = '{"hello":{"emoji":"👋","text":"Bonjour à toi !","timeout":60},"bye":{"emoji":"👋","text":"Au revoir !"}}';
+		$str = '{}';
 		$path = dirname(__FILE__) . '/../../data/quickreply.json';
 		file_put_contents($path, json_encode(json_decode($str), JSON_PRETTY_PRINT));
 	}
@@ -799,6 +799,28 @@ class discordlink extends eqLogic {
 			return $isBeta ? 'beta' : 'stable';
 		}
 		return $isBeta;
+	}
+
+	public static function getQuickReplyFileContent() {
+		$quickReplyFile = dirname(__FILE__) . '/../../data/quickreply.json';
+		$quickReplyData = array();
+		if (file_exists($quickReplyFile)) {
+			$quickReplyData = json_decode(file_get_contents($quickReplyFile), true);
+		}
+		return $quickReplyData;
+	}
+
+	public static function getQuickReplyOptions() {
+		$quickReplyData = self::getQuickReplyFileContent();
+		$options = array();
+		if (is_array($quickReplyData)) {
+			foreach ($quickReplyData as $item) {
+				if (isset($item['label']) && isset($item['key'])) {
+					$options[] = array('id' => $item['key'], 'name' => $item['label']);
+				}
+			}
+		}
+		return $options;
 	}
 
 	/*     * ********************** Getter Setter *************************** */
@@ -917,24 +939,24 @@ class discordlinkCmd extends cmd {
 
 		// 1. Tags replacement
 		$text = scenarioExpression::setTags($_text);
-		
+
 		// 2. Random text decoding
 		$text = self::decodeRandomText($text);
-		
+
 		// 3. Emoji conversion (only if markdown supported)
 		if ($_supportMarkdown) {
 			$text = discordlink::emojiConvert($text);
 		}
-		
+
 		// 4. Newline replacement
 		$text = str_replace('|', "\n", $text);
-		
+
 		return $text;
 	}
 
 	private function buildMessageRequest($_options = array(), $default = "Une erreur est survenue") {
 		$message = isset($_options['message']) && $_options['message'] != '' ? $_options['message'] : $default;
-		
+
 		// Call unified formatter (Message supports Markdown/Emojis)
 		$message = $this->formatDiscordText($message, true);
 
@@ -964,7 +986,7 @@ class discordlinkCmd extends cmd {
 		}
 
 		$message = isset($_options['message']) ? $_options['message'] : "";
-		
+
 		// Use unified formatter (Message supports Markdown/Emojis)
 		$message = $this->formatDiscordText($message, true);
 
@@ -1485,6 +1507,12 @@ class discordlinkCmd extends cmd {
 			}
 		}
 
+		$quickReplyOptionsHtml = '';
+		foreach (discordlink::getQuickReplyOptions() as $option) {
+			$quickReplyOptionsHtml .= '<option value="' . $option['id'] . '">' . $option['name'] . '</option>';
+		}
+
+
 		/** @var discordlink $eqLogic */
 		$eqLogic = $this->getEqLogic();
 		$defaultColor = $eqLogic->getDefaultColor();
@@ -1496,6 +1524,7 @@ class discordlinkCmd extends cmd {
 			'#defaultFooter#' => '',
 			'#defaultPath#' => '',
 			'#defaultDisplayName#' => '',
+			'#quickReplyOptions#' => $quickReplyOptionsHtml,
 		];
 		$data = str_replace(array_keys($replace), array_values($replace), $data);
 

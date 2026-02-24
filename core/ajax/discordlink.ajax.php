@@ -26,27 +26,27 @@ try {
     ajax::init();
 
     if (init('action') == 'saveEmoji') {
-        
+
         // Handle JSON string input 
         $rawEmoji = init('arrayEmoji');
         if (is_string($rawEmoji)) {
-             $arrayEmoji = json_decode($rawEmoji, true);
+            $arrayEmoji = json_decode($rawEmoji, true);
         } else {
-             $arrayEmoji = $rawEmoji;
+            $arrayEmoji = $rawEmoji;
         }
 
         if (!is_array($arrayEmoji)) {
-             log::add('discordlink', 'error', 'AJAX saveEmoji: Data is not an array.');
-             ajax::error('Data format error');
+            log::add('discordlink', 'error', 'AJAX saveEmoji: Data is not an array.');
+            ajax::error('Data format error');
         }
-        
+
         $emojiConfig = array();
 
         foreach ($arrayEmoji as $emoji) {
             $key = $emoji['keyEmoji'];
             $emojiConfig[$key] = $emoji['codeEmoji'];
         }
-        
+
         config::save('emoji', $emojiConfig, 'discordlink');
         ajax::success();
     }
@@ -64,7 +64,7 @@ try {
         unset($channel); // Break reference
 
         $result = array('channels' => $channels);
-        
+
         $id = init('id');
         if (!empty($id) && is_numeric($id)) {
             $eqLogic = eqLogic::byId($id);
@@ -72,7 +72,7 @@ try {
                 $result['current'] = (string)$eqLogic->getConfiguration('channelId');
             }
         }
-        
+
         ajax::success($result);
     }
 
@@ -93,6 +93,36 @@ try {
 
     if (init('action') == 'resetEmoji') {
         discordlink::setEmoji(1);
+        ajax::success();
+    }
+
+    if (init('action') == 'saveQuickReply') {
+        $quickReplyData = init('quickReplyData');
+        $daemonRestart = init('daemonRestart') == '1';
+        if (is_string($quickReplyData)) {
+            $quickReplyArray = json_decode($quickReplyData, true);
+        } else {
+            $quickReplyArray = $quickReplyData;
+        }
+
+        if (!is_array($quickReplyArray)) {
+            ajax::error(__('Erreur de format des données', __FILE__));
+        }
+
+        $filePath = dirname(__FILE__) . '/../../data/quickreply.json';
+        if (!file_exists($filePath)) {
+            ajax::error(__('Fichier non existant : ' . $filePath, __FILE__));
+        } elseif (!is_writable($filePath)) {
+            ajax::error(__('Fichier non accessible en écriture : ' . $filePath, __FILE__));
+        }
+
+        $jsonData = json_encode($quickReplyArray, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        if (file_put_contents($filePath, $jsonData) === false) {
+            ajax::error(__('Impossible d\'enregistrer le fichier quickreply.json', __FILE__));
+        }
+
+        if ($daemonRestart) discordlink::deamon_start();
+
         ajax::success();
     }
 

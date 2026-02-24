@@ -148,6 +148,18 @@
       });
     }
 
+    // Quick Reply Settings
+    if (e.target.closest('[data-action="quickReplySettings"]')) {
+      jeeDialog.dialog({
+        id: 'md_quickReplyDiscordlink',
+        title: "{{Réponses rapides}}",
+        contentUrl: 'index.php?v=d&plugin=discordlink&modal=quickreply.discordlink',
+        width: '90%',
+        height: '80%',
+        top: '10vh'
+      });
+    }
+
     // Cron Daemon Generator
     if (e.target.closest('#bt_cronDaemonGenerator')) {
       jeedom.getCronSelectModal({}, function (result) {
