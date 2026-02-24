@@ -150,7 +150,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                                 }
 
                                                 if ($i == 0) {
-                                                    echo '<option value="null">Pas de channel disponible</option>';
+                                                    echo '<option value="null">' . __('Pas de channel disponible', __FILE__) . '</option>';
                                                 }
                                                 ?>
                                             </select>
@@ -212,7 +212,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                             <div class="input-group">
                                                 <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autoRefreshDaemon" placeholder="{{Cron de vérification}}" />
                                                 <span class="input-group-btn">
-                                                    <a class="btn btn-default cursor jeeHelper roundedRight" id="bt_cronDaemonGenerator" data-helper="cron" title="Assistant cron">
+                                                    <a class="btn btn-default cursor jeeHelper roundedRight" id="bt_cronDaemonGenerator" data-helper="cron" title="{{Assistant cron}}">
                                                         <i class="fas fa-question-circle"></i>
                                                     </a>
                                                 </span>
@@ -238,7 +238,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                             <div class="input-group">
                                                 <input type="text" class="eqLogicAttr form-control roundedLeft" data-l1key="configuration" data-l2key="autoRefreshDependency" placeholder="{{Cron de vérification}}" />
                                                 <span class="input-group-btn">
-                                                    <a class="btn btn-default cursor jeeHelper roundedRight" id="bt_cronDependencyGenerator" data-helper="cron" title="Assistant cron">
+                                                    <a class="btn btn-default cursor jeeHelper roundedRight" id="bt_cronDependencyGenerator" data-helper="cron" title="{{Assistant cron}}">
                                                         <i class="fas fa-question-circle"></i>
                                                     </a>
                                                 </span>

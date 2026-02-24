@@ -216,7 +216,7 @@
             } else {
               const option = document.createElement('option');
               option.value = 'null';
-              option.text = 'Pas de channel disponible';
+              option.text = '{{Pas de channel disponible}}';
               select.appendChild(option);
             }
 
@@ -227,7 +227,7 @@
             }
           } else {
             jeedomUtils.showAlert({
-              message: 'Impossible de récupérer les channels.',
+              message: '{{Impossible de récupérer les channels}}',
               level: 'danger'
             });
           }
