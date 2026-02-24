@@ -182,7 +182,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                     </div>
                                 </div>
                                 <div class="form-group">
-                                    <label class="col-sm-4 control-label">{{Scénario Jeedom}}
+                                    <label class="col-sm-4 control-label">{{Scénarios Jeedom}}
                                         <sup>
                                             <i class="fas fa-question-circle floatright" style="color: var(--al-info-color) !important;" title="{{Les scénarios Jeedom sont des scénarios qui peuvent être exécutés depuis Discord.<br/>Aucune vérification n'est effectuée sur les permissions de l'utilisateur.}}"></i>
                                         </sup>
