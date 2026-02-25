@@ -1497,10 +1497,7 @@ class discordlinkCmd extends cmd {
 		// si on est sur un scenario
 		list($command,) = explode('?', $this->getConfiguration('request'), 2);
 
-		if ($command == 'sendMsg') $templateFilename =  'cmd.sendMsg';
-		if ($command == 'sendMsgTTS') $templateFilename =  'cmd.sendMsgtts';
-		if ($command == 'sendEmbed') $templateFilename =  'cmd.sendEmbed';
-		if ($command == 'sendFile') $templateFilename =  'cmd.sendFile';
+		$templateFilename =  'cmd.' . $command;
 
 		$quickActionOptionsHtml = '';
 		foreach (discordlink::getQuickActionOptions() as $option) {
