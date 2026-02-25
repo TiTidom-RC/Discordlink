@@ -1505,7 +1505,7 @@ class discordlinkCmd extends cmd {
 		if ($command == 'sendFile')
 			$data = getTemplate('core', 'scenario', 'cmd.sendFile', 'discordlink');
 
-		if (preg_match_all('/{{(.*?)}}/', $data, $matches)) {
+		if (preg_match_all('/{' . '{(.*?)}' . '}/', $data, $matches)) {
 			foreach ($matches[1] as $match) {
 				$data = str_replace('{{' . $match . '}}', __($match, __FILE__), $data);
 			}
