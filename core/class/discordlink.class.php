@@ -1494,28 +1494,18 @@ class discordlinkCmd extends cmd {
 	public function getWidgetTemplateCode($_version = 'dashboard', $_clean = true, $_widgetName = '') {
 		if ($_version != 'scenario') return parent::getWidgetTemplateCode($_version, $_clean, $_widgetName);
 
+		// si on est sur un scenario
 		list($command,) = explode('?', $this->getConfiguration('request'), 2);
-		$data = '';
-		if ($command == 'sendMsg')
-			$data = getTemplate('core', 'scenario', 'cmd.sendMsg', 'discordlink');
-		if ($command == 'sendMsgTTS')
-			$data = getTemplate('core', 'scenario', 'cmd.sendMsgtts', 'discordlink');
-		if ($command == 'sendEmbed')
-			$data = getTemplate('core', 'scenario', 'cmd.sendEmbed', 'discordlink');
-		if ($command == 'sendFile')
-			$data = getTemplate('core', 'scenario', 'cmd.sendFile', 'discordlink');
 
-		if (preg_match_all('/{{(.*?)}}/', $data, $matches)) {
-			foreach ($matches[1] as $match) {
-				$data = str_replace('{{' . $match . '}}', __($match, __FILE__), $data);
-			}
-		}
+		if ($command == 'sendMsg') $templateFilename =  'cmd.sendMsg';
+		if ($command == 'sendMsgTTS') $templateFilename =  'cmd.sendMsgtts';
+		if ($command == 'sendEmbed') $templateFilename =  'cmd.sendEmbed';
+		if ($command == 'sendFile') $templateFilename =  'cmd.sendFile';
 
 		$quickActionOptionsHtml = '';
 		foreach (discordlink::getQuickActionOptions() as $option) {
 			$quickActionOptionsHtml .= '<option value="' . $option['id'] . '">' . $option['name'] . '</option>';
 		}
-
 
 		/** @var discordlink $eqLogic */
 		$eqLogic = $this->getEqLogic();
@@ -1530,11 +1520,14 @@ class discordlinkCmd extends cmd {
 			'#defaultDisplayName#' => '',
 			'#quickActionOptions#' => $quickActionOptionsHtml,
 		];
-		$data = str_replace(array_keys($replace), array_values($replace), $data);
 
-		if (!is_null($data)) {
-			if (!is_array($data)) return array('template' => $data, 'isCoreWidget' => false);
+		$html = template_replace($replace, getTemplate('core', 'scenario', $templateFilename, 'discordlink'));
+		$html = translate::exec($html, 'plugins/discordlink/core/template/scenario/' . $templateFilename . '.html');
+
+		if (!is_null($html) && !is_array($html)) {
+			return array('template' => $html, 'isCoreWidget' => false);
 		}
+
 		return parent::getWidgetTemplateCode($_version, $_clean, $_widgetName);
 	}
 
