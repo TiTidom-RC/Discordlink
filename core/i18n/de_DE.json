@@ -6,8 +6,6 @@
         "Impossible d\\'enregistrer le fichier quickaction.json": "Die Datei quickaction.json kann nicht gespeichert werden."
     },
     "plugins\/discordlink\/core\/class\/discordlink.class.php": {
-        "' . $match . '": "' . $match . '",
-        "(.*?)": "(.*?)",
         "Expression cron non valide pour ": "Ungültiger Cron-Ausdruck für ",
         "Serveur injoignable": "Server nicht erreichbar",
         "Veuillez vérifier la configuration": "Bitte überprüfen Sie die Konfiguration."
@@ -24,7 +22,9 @@
     },
     "plugins\/discordlink\/core\/template\/scenario\/cmd.sendEmbed.html": {
         "Aucun": "Keine",
+        "Chemin vers un ou plusieurs fichiers (séparés par ,) - Max 4": "Pfad zu einer oder mehreren Dateien (durch , getrennt) – max. 4",
         "Couleur": "Farbe",
+        "Couleur (Hexa)": "Farbe (Hexa)",
         "Fichier(s)": "Datei(en)",
         "Footer": "Fußzeile",
         "Lien": "Link",
