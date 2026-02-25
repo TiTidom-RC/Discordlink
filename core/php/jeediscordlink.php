@@ -62,14 +62,15 @@ switch ($name) {
 		break;
 
 	case 'slashCommand':
-		log::add('discordlink', 'debug', 'SlashCommand reçue : cmd => ' . $result['command'] . ' request => ' . $result['request'] . ' (User: ' . $result['username'] . ', ID: ' . $result['userId'] . ')');
+		log::add('discordlink', 'debug', 'SlashCommand reçue : execType => ' . $result['execType'] . ' request => ' . $result['request'] . ' (User: ' . $result['username'] . ', ID: ' . $result['userId'] . ')');
 
-		if ($result['command'] == 'interaction') {
-			if (!is_object($discordEquipment)) {
-				log::add('discordlink', 'error', 'SlashCommand : Équipement introuvable pour le channel ' . $result['channelId']);
-				echo "Erreur : Équipement introuvable";
-				die();
-			}
+		if (!is_object($discordEquipment)) {
+			log::add('discordlink', 'error', 'SlashCommand : Équipement introuvable pour le channel ' . $result['channelId']);
+			echo "Erreur : Équipement introuvable";
+			die();
+		}
+
+		if ($result['execType'] == 'interaction') {
 
 			if ($discordEquipment->getConfiguration('interactionJeedom') != 1) {
 				log::add('discordlink', 'warning', 'SlashCommand : Les interactions sont désactivées pour l\'équipement ' . $discordEquipment->getHumanName());
@@ -97,8 +98,61 @@ switch ($name) {
 				log::add('discordlink', 'error', 'SlashCommand : Pas de champ "reply" dans la réponse du moteur');
 				echo "Erreur interne Jeedom (pas de réponse interaction)";
 			}
+		} elseif ($result['execType'] == 'command') {
+			if ($discordEquipment->getConfiguration('commandJeedom') != 1) {
+				log::add('discordlink', 'warning', 'SlashCommand : Les commandes sont désactivées pour l\'équipement ' . $discordEquipment->getHumanName());
+				echo "L'exécution des commandes est désactivée pour cet équipement.";
+				die();
+			}
+
+			$cmdId = $result['request'];
+			log::add('discordlink', 'debug', 'SlashCommand : Exécution de la commande Jeedom ID ' . $cmdId);
+
+			$cmd = cmd::byId($cmdId);
+			if (!is_object($cmd)) {
+				log::add('discordlink', 'error', 'SlashCommand : Commande introuvable pour ID ' . $cmdId);
+				echo "Erreur : Commande introuvable";
+				die();
+			}
+
+			$cmd->execCmd();
+			echo "Commande exécutée";
+			log::add('discordlink', 'debug', 'SlashCommand : Commande exécutée avec succès');
+		} elseif ($result['execType'] == 'scenario') {
+			if ($discordEquipment->getConfiguration('scenarioJeedom') != 1) {
+				log::add('discordlink', 'warning', 'SlashCommand : Les scénarios sont désactivés pour l\'équipement ' . $discordEquipment->getHumanName());
+				echo "L'exécution des scénarios est désactivée pour cet équipement.";
+				die();
+			}
+
+			$scId = $result['request'];
+			log::add('discordlink', 'debug', 'SlashCommand : Exécution du scénario Jeedom ID ' . $scId);
+
+			$scenario = scenario::byId($scId);
+			if (!is_object($scenario)) {
+				log::add('discordlink', 'error', 'SlashCommand : Scénario introuvable pour ID ' . $scId);
+				echo "Erreur : Scénario introuvable";
+				die();
+			}
+
+
+			if (version_compare(jeedom::version(), '4.5', '<')) {
+				$scenario_return = $scenario->launch('DiscordLink', 'Lancement du scénario ' . $scenario->getHumanName() . ' (' . $scId . ') via slashcommand');
+			} else {
+				$scenario->addTag('trigger', 'DiscordLink');
+				$scenario->addTag('trigger_message', 'Lancement du scénario ' . $scenario->getHumanName() . ' (' . $scId . ') via slashcommand');
+				$scenario_return = $scenario->launch();
+			}
+
+			if (is_bool($scenario_return)) {
+				$return = $scenario_return ? "Scénario exécuté avec succès" : "Le scénario a été lancé mais a rencontré une erreur d'exécution";
+			} else {
+				$return = $scenario_return;
+			}
+			echo $return;
+			log::add('discordlink', 'debug', 'SlashCommand - Réponse scénario : ' . $return);
 		} else {
-			log::add('discordlink', 'warning', 'SlashCommand : Commande inconnue "' . $result['command'] . '"');
+			log::add('discordlink', 'warning', 'SlashCommand : Commande inconnue "' . $result['execType'] . '"');
 			echo "Commande inconnue";
 		}
 		die();

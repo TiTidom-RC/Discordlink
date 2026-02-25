@@ -19,6 +19,7 @@ const {
   REST,
   Routes,
   SlashCommandBuilder,
+  MessageFlags,
 } = require("discord.js");
 
 const BASE_INTENTS = [
@@ -215,15 +216,15 @@ config.logger(" - argv[6] (pluginKey): " + pluginKey, "DEBUG");
 config.logger(" - argv[7] (activityStatus): " + activityStatus, "DEBUG");
 config.logger(" - argv[8] (listeningPort): " + listeningPort, "DEBUG");
 
-// Charger la configuration quickreply depuis le répertoire data du plugin
+// Charger la configuration quickaction depuis le répertoire data du plugin
 const path = require("path");
-let quickreplyConf = {};
-const quickreplyPath = path.join(__dirname, "..", "data", "quickreply.json");
+let quickactionConf = {};
+const quickactionPath = path.join(__dirname, "..", "data", "quickaction.json");
 
 try {
-  quickreplyConf = JSON.parse(fs.readFileSync(quickreplyPath, "utf8"));
+  quickactionConf = JSON.parse(fs.readFileSync(quickactionPath, "utf8"));
 } catch (e) {
-  config.logger("Erreur chargement quickreply.json: " + e.message, "WARNING");
+  config.logger("Erreur chargement quickaction.json: " + e.message, "WARNING");
 }
 
 if (!token) {
@@ -454,7 +455,7 @@ app.post("/sendEmbed", async (req, res) => {
       fields, // Array of objects {name, value, inline}
       footer,
       defaultColor,
-      quickreply, // Array of strings
+      quickaction, // Array of strings
       files, // Array of strings (paths)
       answerCount, // Number or String
       timeout // Number
@@ -473,13 +474,13 @@ app.post("/sendEmbed", async (req, res) => {
       });
     }
 
-    // Gestion QuickReply
+    // Gestion QuickAction
     let quickReplies = [];
-    if (quickreply && Array.isArray(quickreply)) {
-      quickReplies = quickreply
+    if (quickaction && Array.isArray(quickaction)) {
+      quickReplies = quickaction
         .filter(q => {
-          if (!quickreplyConf[q]) {
-            config.logger(`QuickReply "${q}" non trouvé dans quickreply.json`, "WARNING");
+          if (!quickactionConf.find(qrc => qrc.key === q)) {
+            config.logger(`QuickAction "${q}" non trouvé dans quickaction.json`, "WARNING");
             return false;
           }
           return true;
@@ -605,13 +606,13 @@ app.post("/sendEmbed", async (req, res) => {
 
     const m = await channel.send(sendOptions);
 
-    // Apply QuickReplies (Reactions)
+    // Apply QuickActions (Reactions)
     for (const q of quickReplies) {
-      const conf = quickreplyConf[q];
+      const conf = quickactionConf.filter(qc => qc.key === q)[0];
       if (!conf) continue;
 
       const emoji = conf.emoji; // e.g. "👍" or custom ID
-      const quickText = conf.text;
+      const quickValue = conf.value;
       let qTimeout = parseInt(conf.timeout, 10);
       if (isNaN(qTimeout) || qTimeout <= 0) qTimeout = 120;
 
@@ -637,8 +638,8 @@ app.post("/sendEmbed", async (req, res) => {
         await handleSlashCommand({
           channelId: m.channel.id,
           userId: user.id,
-          command: 'interaction',
-          request: quickText,
+          execType: conf.type,
+          request: quickValue,
           username: user.username,
           callback: (response) => m.channel.send(response),
         });
@@ -982,7 +983,7 @@ const cleanChannel = async (channel, options = {}) => {
       // Si -1, on supprime tout jusqu'à maintenant
       // Sinon, on garde 'days' jours avant aujourd'hui minuit
       const cutoffTimestamp = days === -1 ? nowTimestamp : todayTimestamp - (days * ONE_DAY_MS);
-      
+
       // Filtre : on ne garde pour suppression que les messages plus vieux que la date butoir
       filter = (msg) => msg.createdTimestamp < cutoffTimestamp;
 
@@ -1071,19 +1072,19 @@ const cleanChannel = async (channel, options = {}) => {
  * @param {Object} params - Les paramètres
  * @param {string} params.channelId - L'ID du channel
  * @param {string} params.userId - L'ID de l'utilisateur
- * @param {string} params.command - Le nom de la commande
+ * @param {string} params.execType - Le type d'exécution (slash ou quickaction)
  * @param {string} params.request - La requête/message
  * @param {string} params.username - Le nom d'utilisateur
  * @param {Object} params.callback - Fonction pour envoyer la réponse
  */
-const handleSlashCommand = async ({ channelId, userId, command, request, username, callback }) => {
+const handleSlashCommand = async ({ channelId, userId, execType, request, username, callback }) => {
   try {
     config.logger(`SlashCommand: "${request}" from user ${userId}`, "DEBUG");
 
     const response = await httpPost("slashCommand", {
       channelId,
       userId,
-      command,
+      execType,
       request,
       username,
     });
@@ -1127,7 +1128,7 @@ const attachDiscordEvents = () => {
       if (subCommand === "msg") {
         try {
           // ajout du mode éphémère pour éviter les erreurs et la suppression du msg
-          await interaction.deferReply({ ephemeral: true });
+          await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         } catch (error) {
           if (error.code === 10062) {
             config.logger("Interaction expirée ou inconnue avant traitement (Ignoré)", "DEBUG");
@@ -1163,7 +1164,7 @@ const attachDiscordEvents = () => {
       if (subCommand === "keep") {
         try {
           // ajout du mode éphémère pour éviter les erreurs et la suppression du msg
-          await interaction.deferReply({ ephemeral: true });
+          await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         } catch (error) {
           if (error.code === 10062) {
             config.logger("Interaction expirée ou inconnue avant traitement (Ignoré)", "DEBUG");
@@ -1227,7 +1228,7 @@ const attachDiscordEvents = () => {
       await handleSlashCommand({
         channelId: interaction.channelId,
         userId: interaction.user.id,
-        command: subCommand,
+        execType: subCommand,
         request: request,
         username: interaction.user.username,
         callback: (response) => interaction.editReply(response),

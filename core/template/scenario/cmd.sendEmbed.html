@@ -1,25 +1,15 @@
 <div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
-  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">Titre</span>
+  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">{{Titre}}</span>
   <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="title" rows="1"
     style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#title#</textarea>
   <span class="input-group-btn">
-    <button class="btn btn-default listDeviceInfoTitle roundedRight" type="button"
-      title="{{Sélectionner la commande}}" data-cmd_id="#id#" data-uid="#uid#"><i class="fas fa-list-alt"></i></button>
+    <button class="btn btn-default listDeviceInfoTitle roundedRight" type="button" title="{{Sélectionner la commande}}"
+      data-cmd_id="#id#" data-uid="#uid#"><i class="fas fa-list-alt"></i></button>
   </span>
 </div>
 
 <div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
-  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">Lien</span>
-  <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="url" rows="1"
-    style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#url#</textarea>
-  <span class="input-group-btn">
-    <button class="btn btn-default listDeviceInfoUrl roundedRight" type="button"
-      title="{{Sélectionner la commande}}" data-cmd_id="#id#" data-uid="#uid#"><i class="fas fa-list-alt"></i></button>
-  </span>
-</div>
-
-<div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
-  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">Description</span>
+  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">{{Message}}</span>
   <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="description"
     rows="1" style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#description#</textarea>
   <span class="input-group-btn">
@@ -29,35 +19,54 @@
 </div>
 
 <div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
-  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">Footer</span>
+  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">{{Footer}}</span>
   <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="footer" rows="1"
     style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#footer#</textarea>
   <span class="input-group-btn">
-    <button class="btn btn-default listDeviceInfoFooter roundedRight" type="button"
-      title="{{Sélectionner la commande}}" data-cmd_id="#id#" data-uid="#uid#"><i class="fas fa-list-alt"></i></button>
+    <button class="btn btn-default listDeviceInfoFooter roundedRight" type="button" title="{{Sélectionner la commande}}"
+      data-cmd_id="#id#" data-uid="#uid#"><i class="fas fa-list-alt"></i></button>
   </span>
 </div>
 
 <div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
-  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">Fichier(s)</span>
-  <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="files" rows="1"
-    style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#" placeholder="Chemin vers un ou plusieurs fichiers (séparés par ,) - Max 4">#files#</textarea>
+  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">{{Lien}}</span>
+  <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="url" rows="1"
+    style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#url#</textarea>
   <span class="input-group-btn">
-    <button class="btn btn-default listDeviceInfoFiles roundedRight" type="button"
-      title="{{Sélectionner la commande}}" data-cmd_id="#id#" data-uid="#uid#"><i class="fas fa-list-alt"></i></button>
+    <button class="btn btn-default listDeviceInfoUrl roundedRight" type="button" title="{{Sélectionner la commande}}"
+      data-cmd_id="#id#" data-uid="#uid#"><i class="fas fa-list-alt"></i></button>
+  </span>
+</div>
+
+<div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
+  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">{{Fichier(s)}}</span>
+  <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="files" rows="1"
+    style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#"
+    placeholder="Chemin vers un ou plusieurs fichiers (séparés par ,) - Max 4">#files#</textarea>
+  <span class="input-group-btn">
+    <button class="btn btn-default listDeviceInfoFiles roundedRight" type="button" title="{{Sélectionner la commande}}"
+      data-cmd_id="#id#" data-uid="#uid#"><i class="fas fa-list-alt"></i></button>
   </span>
 </div>
 
 
-<div class="input-group input-group-sm" style="width: 100%">
-  <span class="input-group-addon roundedLeft" style="width: 100px">Couleur</span>
+<div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
+  <span class="input-group-addon roundedLeft" style="width: 100px">{{Couleur}}</span>
   <input type="color" class="form-control input-sm cursor colorChooser" data-uid="#uid#" value="#colors#"
     style="width: 20%; display: inline-block;" />
   <input class="expressionAttr form-control input-sm" data-l1key="options" data-l2key="colors" value="#colors#"
     data-uid="#uid#" style="width: 80%; display: inline-block;" placeholder="Couleur (Hexa)" />
 </div>
-<script>
-</script>
+
+<div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
+  <span class="input-group-addon roundedLeft" style="width: 100px">{{Réponse rapide}}</span>
+  <select class="form-control input-sm expressionAttr roundedRight" data-uid="#uid#"
+    style="width: 50%; display: inline-block;" data-l1key="options" data-l2key="quickaction">
+    <option value="">{{Aucun}}</option>
+    #quickActionOptions#
+  </select>
+</div>
+
 
 <script>
   document.querySelector('.listDeviceInfoTitle[data-uid="#uid#"]').addEventListener('click', function () {
@@ -141,6 +150,15 @@
   if ('#colors#' == '#' + 'colors#') {
     document.querySelector('.colorChooser[data-uid="#uid#"]').value = '#defaultColor#'
     document.querySelector('.colorChooser[data-uid="#uid#"]').dispatchEvent(new Event('change'))
+  }
+  var quickactionSelect = document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=quickaction]');
+  if ('#quickaction#' == '#' + 'quickaction' + '#') {
+    document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=quickaction]').value = '#quickActionOptions#'
+    quickactionSelect.selectedIndex = 0;
+    document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=quickaction]').value = quickactionSelect.value;
+  }
+  else {
+    quickactionSelect.value = '#quickaction#';
   }
   if ('#files#' == '#' + 'files#') document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=files]').value = ''
 </script>

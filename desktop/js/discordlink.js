@@ -148,6 +148,18 @@
       });
     }
 
+    // Quick Action Settings
+    if (e.target.closest('[data-action="quickActionSettings"]')) {
+      jeeDialog.dialog({
+        id: 'md_quickActionDiscordlink',
+        title: "{{Actions rapides}}",
+        contentUrl: 'index.php?v=d&plugin=discordlink&modal=quickaction.discordlink',
+        width: '90%',
+        height: '80%',
+        top: '10vh'
+      });
+    }
+
     // Cron Daemon Generator
     if (e.target.closest('#bt_cronDaemonGenerator')) {
       jeedom.getCronSelectModal({}, function (result) {
@@ -204,7 +216,7 @@
             } else {
               const option = document.createElement('option');
               option.value = 'null';
-              option.text = 'Pas de channel disponible';
+              option.text = '{{Pas de channel disponible}}';
               select.appendChild(option);
             }
 
@@ -215,7 +227,7 @@
             }
           } else {
             jeedomUtils.showAlert({
-              message: 'Impossible de récupérer les channels.',
+              message: '{{Impossible de récupérer les channels}}',
               level: 'danger'
             });
           }
