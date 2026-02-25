@@ -33,7 +33,8 @@
 		"de_DE",
 		"en_US",
 		"es_ES",
-		"fr_FR"
+		"fr_FR",
+		"it_IT"
 	],
 	"compatibility": [
 		"atlas",
