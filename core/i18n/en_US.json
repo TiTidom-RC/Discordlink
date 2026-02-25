@@ -1,7 +1,9 @@
 {
     "plugins\/discordlink\/core\/ajax\/discordlink.ajax.php": {
         "401 - Accès non autorisé": "401 - Unauthorized access",
-        "Aucune méthode correspondante à : ": "No methods match: "
+        "Aucune méthode correspondante à : ": "No methods match: ",
+        "Erreur de format des données": "Data format error",
+        "Impossible d\\'enregistrer le fichier quickaction.json": "Unable to save the quickaction.json file"
     },
     "plugins\/discordlink\/core\/class\/discordlink.class.php": {
         "' . $match . '": "' . $match . '",
@@ -13,30 +15,71 @@
     "plugins\/discordlink\/core\/php\/jeediscordlink.php": {
         "Vous n\\'êtes pas autorisé à effectuer cette action": "You are not authorized to perform this action."
     },
+    "plugins\/discordlink\/core\/template\/dashboard\/cmd.action.message.embed.html": {
+        "Couleur (Hexa)": "Color (Hex)",
+        "Description (message)": "Description (message)",
+        "Footer (optionnel)": "Footer (optional)",
+        "Titre": "Title",
+        "URL (optionnel)": "URL (optional)"
+    },
     "plugins\/discordlink\/core\/template\/scenario\/cmd.sendEmbed.html": {
-        "Sélectionner la commande": "Select the command"
+        "Aucun": "None",
+        "Couleur": "Color",
+        "Fichier(s)": "File(s)",
+        "Footer": "Footer",
+        "Lien": "Link",
+        "Message": "Message",
+        "Réponse rapide": "Quick response",
+        "Sélectionner la commande": "Select the command",
+        "Titre": "Title"
     },
     "plugins\/discordlink\/core\/template\/scenario\/cmd.sendFile.html": {
+        "Chemin vers un ou plusieurs fichiers (séparés par ,) - Max 4": "Path to one or more files (separated by ,) - Max 4",
+        "Fichier(s)": "File(s)",
+        "Message": "Message",
         "Sélectionner la commande": "Select the command"
     },
     "plugins\/discordlink\/core\/template\/scenario\/cmd.sendMsg.html": {
+        "Message": "Message",
         "Sélectionner la commande": "Select the command"
     },
     "plugins\/discordlink\/core\/template\/scenario\/cmd.sendMsgtts.html": {
+        "Message TTS": "TTS message",
         "Sélectionner la commande": "Select the command"
     },
     "plugins\/discordlink\/desktop\/js\/discordlink.js": {
+        "Actions rapides": "Quick actions",
         "Afficher": "Display",
         "Choisir une icône": "Select an icon",
         "Emojis": "Emojis",
         "Historiser": "Historize",
+        "Impossible de récupérer les channels": "Unable to retrieve channels",
         "Inverser": "Reverse",
         "Max": "Max",
         "Min": "Min",
         "Nom de la commande": "Name of the command",
+        "Pas de channel disponible": "No channel available",
         "Supprimer la commande": "Delete command",
         "Tester": "Test",
         "Unité": "Unit"
+    },
+    "plugins\/discordlink\/desktop\/js\/quickaction.discordlink.js": {
+        "Cette clé doit être en minuscules et ne contenir que des lettres, des chiffres ou des underscores.": "This key must be in lowercase and contain only letters, numbers, or underscores.",
+        "Clé": "Key",
+        "Commande": "Command",
+        "ID de la commande Jeedom (ex: 1234)": "Jeedom command ID (e.g., 1234)",
+        "ID du scénario Jeedom (ex: 17)": "Jeedom scenario ID (e.g., 17)",
+        "Intéraction": "Interaction",
+        "Libellé à afficher": "Label to display",
+        "Sauvegarde réussie": "Backup successful",
+        "Scénario": "Scenario",
+        "Supprimer l'action": "Delete action",
+        "Texte de l'intéraction": "Interaction text",
+        "Texte de l\\'intervention": "Text of the speech",
+        "Timeout (en secondes)": "Timeout (in seconds)",
+        "Veuillez corriger les erreurs dans le formulaire.": "Please correct the errors in the form.",
+        "déjà utilisée.": "already in use.",
+        "Émoji": "Emoji"
     },
     "plugins\/discordlink\/desktop\/modal\/emoji.discordlink.php": {
         "401 - Accès non autorisé": "401 - Unauthorized access",
@@ -47,19 +90,37 @@
         "Reset Emoji": "Reset Emoji",
         "Sauvegarder": "Save"
     },
+    "plugins\/discordlink\/desktop\/modal\/quickaction.discordlink.php": {
+        "401 - Accès non autorisé": "401 - Unauthorized access",
+        "Actions": "Actions",
+        "Ajouter une entrée": "Add an entry",
+        "Clé": "Key",
+        "Libellé": "Label",
+        "Redémarrer le démon après sauvegarde": "Restart the daemon after saving",
+        "Redémarrer le démon après sauvegarde pour prise en compte des modifications": "Restart the daemon after saving to apply the changes",
+        "Sauvegarder": "Save",
+        "Timeout": "Timeout",
+        "Type": "Type",
+        "Valeur": "Value",
+        "Émoji": "Emoji"
+    },
     "plugins\/discordlink\/desktop\/php\/discordlink.php": {
         "401 - Accès non autorisé": "401 - Unauthorized access",
         "Actions": "Actions",
+        "Actions rapides": "Quick actions",
         "Activer": "Activate",
         "Activer la Vérification": "Enable Verification",
         "Ajouter": "Add",
         "Ajouter une commande": "Add a command",
         "Annonce sur Discord les connexions des utilisateurs Jeedom": "Announcement on Discord about Jeedom user connections",
         "Annoncer les connexions": "Announce connections",
+        "Assistant cron": "Cron assistant",
         "Aucun": "None",
+        "Autorisations": "Permissions",
         "Catégorie": "Category",
         "Channel": "Channel",
         "Commandes": "Commands",
+        "Commandes Jeedom": "Jeedom commands",
         "Configuration": "Configuration",
         "Configuration Discord": "Discord configuration",
         "Configuration avancée": "Advanced configuration",
@@ -83,6 +144,8 @@
         "Indique le nombre de jours d'historique de messages à conserver<br\/>Valeur -1 pour tout supprimer": "Specifies the number of days of message history to keep<br\/>Value -1 to delete everything",
         "Informations": "Information",
         "Interactions avec Jeedom": "Interactions with Jeedom",
+        "Les commandes Jeedom sont des commandes qui peuvent être exécutées depuis Discord.<br\/>Aucune vérification n'est effectuée sur les permissions de l'utilisateur.": "Jeedom commands are commands that can be executed from Discord. No verification is performed on user permissions.",
+        "Les scénarios Jeedom sont des scénarios qui peuvent être exécutés depuis Discord.<br\/>Aucune vérification n'est effectuée sur les permissions de l'utilisateur.": "Jeedom scenarios are scenarios that can be executed from Discord. No verification is performed on user permissions.",
         "Mes Channels": "My Channels",
         "Nettoyage": "Cleaning",
         "Nettoyage automatique": "Automatic cleaning",
@@ -93,11 +156,13 @@
         "Objet parent": "Parent object",
         "Options": "Options",
         "Paramètres généraux": "General settings",
+        "Pas de channel disponible": "No channel available",
         "Personnalisation": "Customization",
         "Post Community": "Post Community",
         "Rafraîchir les channels": "Refresh channels",
         "Rechercher": "Search",
         "Sauvegarder": "Save",
+        "Scénarios Jeedom": "Jeedom scenarios",
         "Supprimer": "Delete",
         "Surveille l'installation des dépendances de tous les plugins Jeedom et envoie un état des lieux": "Monitors the installation of dependencies for all Jeedom plugins and sends a status report",
         "Surveille l'état de tous les démons Jeedom et envoie un état des lieux": "Monitors the status of all Jeedom daemons and sends a status report",
@@ -112,6 +177,7 @@
         "Plugin": "Plugin",
         "Port Socket Interne": "Internal Port Socket",
         "Token : ": "Token: ",
+        "Travailler main dans la main avec votre Jeedom": "Working hand in hand with your Jeedom",
         "Version Plugin": "Plugin version",
         "Version du Plugin (A indiquer sur Community)": "Plugin version (to be indicated on Community)",
         "[ATTENTION] Ne changez ce paramètre qu'en cas de nécessité. (Défaut = 3466)": "[WARNING] Only change this setting if necessary. (Default = 3466)"
