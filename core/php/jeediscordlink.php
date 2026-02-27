@@ -46,8 +46,6 @@ if (!is_array($result)) {
 	die();
 }
 
-$discordEquipment = eqLogic::byLogicalId($result['channelId'], 'discordlink');
-
 switch ($name) {
 
 	case 'createJeedomMessage':
@@ -62,6 +60,7 @@ switch ($name) {
 		break;
 
 	case 'slashCommand':
+		$discordEquipment = eqLogic::byLogicalId($result['channelId'], 'discordlink');
 		log::add('discordlink', 'debug', 'SlashCommand reçue : execType => ' . $result['execType'] . ' request => ' . $result['request'] . ' (User: ' . $result['username'] . ', ID: ' . $result['userId'] . ')');
 
 		if (!is_object($discordEquipment)) {
@@ -84,7 +83,11 @@ switch ($name) {
 			$parameters['channel'] = $result['channelId'];
 
 			log::add('discordlink', 'debug', 'SlashCommand : Envoi au moteur d\'interaction...');
-			$reply = interactQuery::tryToReply(trim($result['request']), $parameters);
+			// Le @ supprime le PHP Notice "Only variables should be passed by reference" généré par
+			// interactQuery.class.php (core Jeedom) lors de l'appel à tryToReply().
+			// Ce notice est produit par le core lui-même (expression temporaire passée par référence)
+			// et ne peut pas être corrigé côté plugin.
+			$reply = @interactQuery::tryToReply(trim($result['request']), $parameters);
 			log::add('discordlink', 'debug', 'SlashCommand : Réponse brute moteur : ' . json_encode($reply, JSON_UNESCAPED_UNICODE));
 
 			if (isset($reply['reply'])) {
@@ -159,12 +162,8 @@ switch ($name) {
 		break;
 
 	default:
-		if (!is_object($discordEquipment)) {
-			log::add('discordlink', 'debug',  'Device non trouvé: ' . $result['channelId']);
-			die();
-		} else {
-			log::add('discordlink', 'debug',  'Device trouvé: ' . $result['channelId']);
-		}
+		log::add('discordlink', 'warning', 'Route inconnue reçue : "' . $name . '" - payload : ' . json_encode($result, JSON_UNESCAPED_UNICODE));
+		die();
 }
 
 function getDeviceAndUpdate($name, $value, $jeedomCommand, $_channelId, $_userId) {
