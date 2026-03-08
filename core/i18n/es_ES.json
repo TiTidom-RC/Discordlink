@@ -6,7 +6,6 @@
         "Impossible d\\'enregistrer le fichier quickaction.json": "No se puede guardar el archivo quickaction.json"
     },
     "plugins\/discordlink\/core\/class\/discordlink.class.php": {
-        "Expression cron non valide pour ": "Expresión cron no válida para ",
         "Serveur injoignable": "Servidor inaccesible",
         "Veuillez vérifier la configuration": "Compruebe la configuración."
     },
