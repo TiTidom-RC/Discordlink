@@ -123,8 +123,7 @@ function discordlink_update() {
                 'Dernière Connexion utilisateur' => 'lastUser',
                 'Dernier message' => 'lastMessage',
                 'Avant dernier message' => 'previousMessage1',
-                'Avant Avant dernier message' => 'previousMessage2',
-                'Avant avant dernier message' => 'previousMessage2'
+                'Avant Avant dernier message' => 'previousMessage2'
             );
 
             foreach ($eqLogic->getCmd() as $cmd) {
@@ -233,7 +232,7 @@ function discordlink_update() {
         'lastUser' => 'Dernière Connexion utilisateur',
         'lastMessage' => 'Dernier message',
         'previousMessage1' => 'Avant dernier message',
-        'previousMessage2' => 'Avant avant dernier message'
+        'previousMessage2' => 'Avant Avant dernier message'
     ];
 
     $hasProblematicCommands = false;
