@@ -102,6 +102,24 @@
     const dependencyCheck = document.getElementById('dependencyCheck');
     if (daemonCheck) daemonCheck.dispatchEvent(new Event('change'));
     if (dependencyCheck) dependencyCheck.dispatchEvent(new Event('change'));
+
+    // Garantir que le channelId configuré est toujours présent dans le select,
+    // même si le cache est vide ou périmé, pour éviter d'écraser la config lors d'une sauvegarde
+    // avant que le refresh asynchrone soit terminé.
+    const channelId = _json.configuration && _json.configuration.channelId;
+    if (channelId && channelId !== 'null') {
+      const select = document.querySelector('select[data-l2key=channelId]');
+      if (select && !select.querySelector(`option[value="${channelId}"]`)) {
+        const option = document.createElement('option');
+        option.value = channelId;
+        option.text = `(Discord) ID: ${channelId}`;
+        select.appendChild(option);
+      }
+      if (select) select.value = channelId;
+    }
+
+    // Rafraîchissement automatique des channels en arrière-plan
+    refreshChannels({ showError: false });
   };
 
   /**
@@ -180,61 +198,66 @@
     const refreshBtn = e.target.closest('#bt_refreshChannels');
     if (refreshBtn) {
       e.preventDefault();
-      const eqIdInput = document.querySelector('.eqLogicAttr[data-l1key=id]');
-      const eqId = eqIdInput ? eqIdInput.value : null;
-
-      const icon = refreshBtn.querySelector('i');
-      if (icon) icon.classList.add('fa-spin');
-
-      domUtils.ajax({
-        type: "POST",
-        url: AJAX_URL,
-        data: {
-          action: "getChannels",
-          id: eqId
-        },
-        dataType: 'json',
-        error: function (request, status, error) {
-          handleAjaxError(request, status, error);
-          if (icon) icon.classList.remove('fa-spin');
-        },
-        success: function (data) {
-          if (icon) icon.classList.remove('fa-spin');
-
-          const select = document.querySelector('select[data-l2key=channelId]');
-          if (data.result && data.result.channels && select) {
-            const currentVal = select.value;
-            select.innerHTML = ''; // Clear options
-
-            if (data.result.channels.length > 0) {
-              data.result.channels.forEach(channel => {
-                const option = document.createElement('option');
-                option.value = channel.id;
-                option.text = `(${channel.guildName}) ${channel.name}`;
-                select.appendChild(option);
-              });
-            } else {
-              const option = document.createElement('option');
-              option.value = 'null';
-              option.text = '{{Pas de channel disponible}}';
-              select.appendChild(option);
-            }
-
-            if (data.result.current) {
-              select.value = String(data.result.current);
-            } else if (currentVal && currentVal !== 'null' && select.querySelector(`option[value="${currentVal}"]`)) {
-              select.value = currentVal;
-            }
-          } else {
-            jeedomUtils.showAlert({
-              message: '{{Impossible de récupérer les channels}}',
-              level: 'danger'
-            });
-          }
-        }
-      });
+      refreshChannels({ showError: true });
     }
   });
+
+  function refreshChannels(options) {
+    options = options || {};
+    const eqIdInput = document.querySelector('.eqLogicAttr[data-l1key=id]');
+    const eqId = eqIdInput ? eqIdInput.value : null;
+
+    const icon = document.querySelector('#bt_refreshChannels i');
+    if (icon) icon.classList.add('fa-spin');
+
+    domUtils.ajax({
+      type: "POST",
+      url: AJAX_URL,
+      data: {
+        action: "getChannels",
+        id: eqId
+      },
+      dataType: 'json',
+      error: function (request, status, error) {
+        if (icon) icon.classList.remove('fa-spin');
+        if (options.showError) handleAjaxError(request, status, error);
+      },
+      success: function (data) {
+        if (icon) icon.classList.remove('fa-spin');
+
+        const select = document.querySelector('select[data-l2key=channelId]');
+        if (data.result && data.result.channels && select) {
+          const currentVal = select.value;
+          select.innerHTML = ''; // Clear options
+
+          if (data.result.channels.length > 0) {
+            data.result.channels.forEach(channel => {
+              const option = document.createElement('option');
+              option.value = channel.id;
+              option.text = `(${channel.guildName}) ${channel.name}`;
+              select.appendChild(option);
+            });
+          } else {
+            const option = document.createElement('option');
+            option.value = 'null';
+            option.text = '{{Pas de channel disponible}}';
+            select.appendChild(option);
+          }
+
+          if (data.result.current) {
+            select.value = String(data.result.current);
+          } else if (currentVal && currentVal !== 'null' && select.querySelector(`option[value="${currentVal}"]`)) {
+            select.value = currentVal;
+          }
+        } else if (options.showError) {
+          jeedomUtils.showAlert({
+            message: '{{Impossible de récupérer les channels}}',
+            level: 'danger'
+          });
+        }
+      }
+    });
+  }
 
   document.body.addEventListener('change', function (e) {
     // Daemon Checkbox Visibility

@@ -179,11 +179,6 @@ class discordlink extends eqLogic {
 		config::save('emoji', $emojiArray, 'discordlink');
 	}
 
-	public static function updateInfo() {
-		static::updateObject();
-		static::setChannel();
-	}
-
 	public static function emojiConvert($_text): string {
 		$_returnText = '';
 		$textParts = explode(" ", $_text);
@@ -199,27 +194,22 @@ class discordlink extends eqLogic {
 		return $_returnText;
 	}
 
-	private static function executeCronIfDue($eqLogic, $cronExpr, $cmdLogicId, $debugLabel, $dateRun, $_options) {
+	private static function executeCronIfDue($eqLogic, $cronExpr, $cmdLogicId, $debugLabel, $_options) {
 		if (empty($cronExpr)) {
 			log::add('discordlink', 'debug', $debugLabel . ' pour ' . $eqLogic->getName() . ' : aucun cron configuré');
 			return;
 		}
 
-		try {
-			$c = new Cron\CronExpression($cronExpr, new Cron\FieldFactory);
-			if ($c->isDue($dateRun)) {
-				log::add('discordlink', 'info', $debugLabel . ' pour ' . $eqLogic->getName() . ' (cron: ' . $cronExpr . ') - Exécution');
-				$cmd = $eqLogic->getCmd('action', $cmdLogicId);
-				if (is_object($cmd)) {
-					$cmd->execCmd($_options);
-				} else {
-					log::add('discordlink', 'warning', $debugLabel . ' pour ' . $eqLogic->getName() . ' : commande ' . $cmdLogicId . ' introuvable');
-				}
+		if (cronIsDue($cronExpr)) {
+			log::add('discordlink', 'info', $debugLabel . ' pour ' . $eqLogic->getName() . ' (cron: ' . $cronExpr . ') - Exécution');
+			$cmd = $eqLogic->getCmd('action', $cmdLogicId);
+			if (is_object($cmd)) {
+				$cmd->execCmd($_options);
 			} else {
-				log::add('discordlink', 'debug', $debugLabel . ' pour ' . $eqLogic->getName() . ' (cron: ' . $cronExpr . ') - Non dû à cette date');
+				log::add('discordlink', 'warning', $debugLabel . ' pour ' . $eqLogic->getName() . ' : commande ' . $cmdLogicId . ' introuvable');
 			}
-		} catch (Exception $exc) {
-			log::add('discordlink', 'error', __('Expression cron non valide pour ', __FILE__) . $eqLogic->getHumanName() . ' : ' . $cronExpr);
+		} else {
+			log::add('discordlink', 'debug', $debugLabel . ' pour ' . $eqLogic->getName() . ' (cron: ' . $cronExpr . ') - Non dû à cette date');
 		}
 	}
 
@@ -236,14 +226,15 @@ class discordlink extends eqLogic {
 		}
 
 		log::add('discordlink', 'debug', 'runScheduledChecks() : Début vérification de ' . count($eqLogics) . ' équipement(s)');
-		$dateRun = new DateTime();
 		$options = ['cron' => true];
 
 		foreach ($eqLogics as $eqLogic) {
+			if (!$eqLogic->getIsEnable()) continue;
+
 			// Vérification démon
 			if ((bool)$eqLogic->getConfiguration('daemonCheck', 0)) {
 				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - daemonCheck activé, cron configuré: ' . $eqLogic->getConfiguration('autoRefreshDaemon', 'non défini'));
-				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autoRefreshDaemon'), 'daemonInfo', 'DaemonCheck', $dateRun, $options);
+				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autoRefreshDaemon'), 'daemonInfo', 'DaemonCheck', $options);
 			} else {
 				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - daemonCheck désactivé (valeur: ' . var_export($eqLogic->getConfiguration('daemonCheck', 0), true) . ')');
 			}
@@ -251,7 +242,7 @@ class discordlink extends eqLogic {
 			// Vérification dépendances
 			if ((bool)$eqLogic->getConfiguration('dependencyCheck', 0)) {
 				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - dependencyCheck activé, cron configuré: ' . $eqLogic->getConfiguration('autoRefreshDependency', 'non défini'));
-				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autoRefreshDependency'), 'dependencyInfo', 'DependencyCheck', $dateRun, $options);
+				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autoRefreshDependency'), 'dependencyInfo', 'DependencyCheck', $options);
 			} else {
 				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - dependencyCheck désactivé (valeur: ' . var_export($eqLogic->getConfiguration('dependencyCheck', 0), true) . ')');
 			}
@@ -281,16 +272,11 @@ class discordlink extends eqLogic {
 	}
 
 	/*
-     * Fonction exécutée automatiquement toutes les heures par Jeedom*/
-	public static function cronHourly() {
-		static::updateInfo();
-	}
-
-	/*
      * Fonction exécutée automatiquement tous les jours par Jeedom*/
 	public static function cronDaily() {
 		$eqLogics = eqLogic::byType('discordlink');
 		foreach ($eqLogics as $eqLogic) {
+			if (!$eqLogic->getIsEnable()) continue;
 			if (!(bool)$eqLogic->getConfiguration('clearChannel', 0)) continue;
 
 			$cmd = $eqLogic->getCmd('action', 'deleteMessage');
@@ -389,7 +375,8 @@ class discordlink extends eqLogic {
 			if (static::deamon_info()['state'] == 'ok') {
 				message::removeAll('discordlink', 'unableStartDeamon');
 				log::add('discordlink', 'info', 'Démon discordlink lancé');
-				static::updateInfo();
+				static::updateObject();
+				static::setChannel();
 				return true;
 			}
 			sleep(1);
@@ -461,9 +448,9 @@ class discordlink extends eqLogic {
 		$channel = $this->getConfiguration('channelId');
 		if (!empty($channel) && $channel != 'null') {
 			$this->setLogicalId($channel);
-			log::add('discordlink', 'debug', 'preSave - setLogicalId for empty channel: ' . $channel);
+			log::add('discordlink', 'debug', 'preSave - setLogicalId: ' . $channel);
 		} else {
-			$this->setConfiguration('channelId', $this->getLogicalId());
+			log::add('discordlink', 'debug', 'preSave - channelId vide, logicalId conservé : ' . $this->getLogicalId());
 		}
 	}
 
@@ -1031,7 +1018,7 @@ class discordlinkCmd extends cmd {
 		$url = "";
 		$description = "";
 		$footer = "";
-		$colors = "";
+		$color = "";
 		$fields = [];
 		$timeout = 0;
 		$answerCount = "";
@@ -1044,7 +1031,7 @@ class discordlinkCmd extends cmd {
 
 		if (isset($_options['answer'])) {
 			if (("" != ($_options['title']))) $title = $_options['title'];
-			$colors = $defaultColor;
+			$color = $defaultColor;
 
 			// Ajout du Footer pour indiquer une requête Jeedom Ask
 			$footer = 'Jeedom Ask';
@@ -1106,7 +1093,8 @@ class discordlinkCmd extends cmd {
 			if (!empty($_options['message']) && empty($description)) $description = $_options['message'];
 
 			if (!empty($_options['footer'])) $footer = $_options['footer'];
-			if (!empty($_options['colors'])) $colors = $_options['colors'];
+			// TODO: Retirer la clé 'colors' (shim BC) une fois tous les scénarios existants migrés vers 'color'
+			$color = $_options['color'] ?? $_options['colors'] ?? '';
 
 			// Fields handling
 			if (!empty($_options['field'])) {
@@ -1170,8 +1158,8 @@ class discordlinkCmd extends cmd {
 		}
 
 		// Si aucune couleur n'est définie, utiliser la couleur par défaut
-		if (empty($colors)) {
-			$colors = $defaultColor;
+		if (empty($color)) {
+			$color = $defaultColor;
 		}
 
 		$channelID = $this->getEqLogic()->getConfiguration('channelId');
@@ -1185,7 +1173,7 @@ class discordlinkCmd extends cmd {
 				'description' => $description,
 				'url' => $url,
 				'footer' => $footer,
-				'color' => $colors,
+				'color' => $color,
 				'defaultColor' => $defaultColor,
 				'fields' => $fields,
 				'quickaction' => $quickaction,
@@ -1232,34 +1220,34 @@ class discordlinkCmd extends cmd {
 
 	public function buildDaemonInfo($_options = array()) {
 		$message = '';
-		$colors = '#00ff08';
+		$color = '#00ff08';
 
 		foreach (plugin::listPlugin(true) as $plugin) {
 			if ($plugin->getHasOwnDeamon() && config::byKey('deamonAutoMode', $plugin->getId(), 1) == 1) {
 				$daemonInfo = $plugin->deamon_info();
 				if ($daemonInfo['state'] != 'ok') {
 					$message .= '|' . discordlink::getIcon("deamon_nok") . $plugin->getName() . ' (' . $plugin->getId() . ')';
-					if ($colors != '#ff0000') $colors = '#ff0000';
+					if ($color != '#ff0000') $color = '#ff0000';
 				} else {
 					$message .= '|' . discordlink::getIcon("deamon_ok") . $plugin->getName() . ' (' . $plugin->getId() . ')';
 				}
 			}
 		}
 
-		if (isset($_options['cron']) and $colors == '#00ff08') {
+		if (isset($_options['cron']) and $color == '#00ff08') {
 			log::add('discordlink', 'debug', 'Vérification démons pour ' . $this->getEqLogic()->getName() . ' : Tous les démons sont OK, pas de notification Discord');
 			return 'requestHandledInternally';
 		}
 		$message = str_replace("|", "\n", $message);
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-		$_options = array('title' => 'Etat des démons', 'description' => $message, 'colors' => $colors, 'footer' => 'DiscordLink');
+		$_options = array('title' => 'Etat des démons', 'description' => $message, 'color' => $color, 'footer' => 'DiscordLink');
 		$cmd->execCmd($_options);
 		return 'requestHandledInternally';
 	}
 
 	public function buildDependencyInfo($_options = array()) {
 		$message = '';
-		$colors = '#00ff08';
+		$color = '#00ff08';
 
 		foreach (plugin::listPlugin(true) as $plugin) {
 			if ($plugin->getHasDependency()) {
@@ -1268,21 +1256,21 @@ class discordlinkCmd extends cmd {
 					$message .= '|' . discordlink::getIcon("dep_ok") . $plugin->getName() . ' (' . $plugin->getId() . ')';
 				} elseif ($dependencyInfo['state'] == 'in_progress') {
 					$message .= '|' . discordlink::getIcon("dep_progress") . $plugin->getName() . ' (' . $plugin->getId() . ')';
-					if ($colors == '#00ff08') $colors = '#ffae00';
+					if ($color == '#00ff08') $color = '#ffae00';
 				} else {
 					$message .= '|' . discordlink::getIcon("dep_nok") . ' (' . $plugin->getId() . ')';
-					if ($colors != '#ff0000') $colors = '#ff0000';
+					if ($color != '#ff0000') $color = '#ff0000';
 				}
 			}
 		}
 
-		if (isset($_options['cron']) && $colors == '#00ff08') {
+		if (isset($_options['cron']) && $color == '#00ff08') {
 			log::add('discordlink', 'debug', 'Vérification dépendances pour ' . $this->getEqLogic()->getName() . ' : Toutes les dépendances sont OK, pas de notification Discord');
 			return 'requestHandledInternally';
 		}
 		$message = str_replace("|", "\n", $message);
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-		$_options = array('title' => 'Etat des dépendances', 'description' => $message, 'colors' => $colors, 'footer' => 'DiscordLink');
+		$_options = array('title' => 'Etat des dépendances', 'description' => $message, 'color' => $color, 'footer' => 'DiscordLink');
 		$cmd->execCmd($_options);
 		return 'requestHandledInternally';
 	}
@@ -1294,7 +1282,7 @@ class discordlinkCmd extends cmd {
 		if (!is_array($def)) {
 			log::add('discordlink', 'error', 'Configuration object:summary invalide ou non définie');
 			$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-			$_options = array('title' => 'Erreur', 'description' => '⚠️ Configuration des résumés non initialisée. Veuillez vérifier votre configuration Jeedom.', 'colors' => '#ff0000');
+			$_options = array('title' => 'Erreur', 'description' => '⚠️ Configuration des résumés non initialisée. Veuillez vérifier votre configuration Jeedom.', 'color' => '#ff0000');
 			$cmd->execCmd($_options);
 			return 'requestHandledInternally';
 		}
@@ -1308,14 +1296,14 @@ class discordlinkCmd extends cmd {
 		}
 		$message = str_replace("|", "\n", $message);
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-		$_options = array('title' => 'Résumé général', 'description' => $message, 'colors' => '#0033ff', 'footer' => 'DiscordLink');
+		$_options = array('title' => 'Résumé général', 'description' => $message, 'color' => '#0033ff', 'footer' => 'DiscordLink');
 		$cmd->execCmd($_options);
 
 		return 'requestHandledInternally';
 	}
 
 	public function buildGlobalBattery($_options = array()) {
-		$colors = '#00ff08';
+		$color = '#00ff08';
 		$alertThreshold = config::byKey('battery::warning', 'core', 30);
 		$criticalThreshold = config::byKey('battery::danger', 'core', 10);
 		$alertCount = 0;
@@ -1331,11 +1319,11 @@ class discordlinkCmd extends cmd {
 					if (eqLogic::byId($eqLogic->getId())->getStatus('battery') <= $criticalThreshold) {
 						$icon = "batterie_nok";
 						$criticalCount++;
-						if ($colors != '#ff0000') $colors = '#ff0000';
+						if ($color != '#ff0000') $color = '#ff0000';
 					} else {
 						$icon = "batterie_progress";
 						$alertCount++;
-						if ($colors == '#00ff08') $colors = '#ffae00';
+						if ($color == '#00ff08') $color = '#ffae00';
 					}
 				} else {
 					$icon = "batterie_ok";
@@ -1357,7 +1345,7 @@ class discordlinkCmd extends cmd {
 			$_options = array(
 				'title' => 'Résumé Batteries : (' . $index . '/' . count($groupedMessages) . ')',
 				'description' => $message,
-				'colors' => $colors,
+				'color' => $color,
 				'footer' => 'DiscordLink'
 			);
 			$cmd->execCmd($_options);
@@ -1369,7 +1357,7 @@ class discordlinkCmd extends cmd {
 		$_options2 = array(
 			'title' => 'Résumé Batterie',
 			'description' => $message2,
-			'colors' => $colors,
+			'color' => $color,
 			'footer' => 'DiscordLink'
 		);
 		$cmd->execCmd($_options2);
@@ -1385,7 +1373,7 @@ class discordlinkCmd extends cmd {
 		if (!is_array($def)) {
 			log::add('discordlink', 'error', 'Configuration object:summary invalide ou non définie');
 			$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-			$_options = array('title' => 'Erreur', 'description' => '⚠️ Configuration des résumés non initialisée. Veuillez vérifier votre configuration Jeedom.', 'colors' => '#ff0000');
+			$_options = array('title' => 'Erreur', 'description' => '⚠️ Configuration des résumés non initialisée. Veuillez vérifier votre configuration Jeedom.', 'color' => '#ff0000');
 			$cmd->execCmd($_options);
 			return 'requestHandledInternally';
 		}
@@ -1398,7 +1386,7 @@ class discordlinkCmd extends cmd {
 		}
 		$message = str_replace("|", "\n", $message);
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-		$_options = array('title' => 'Résumé : ' . $object->getName(), 'description' => $message, 'colors' => '#0033ff', 'footer' => 'DiscordLink');
+		$_options = array('title' => 'Résumé : ' . $object->getName(), 'description' => $message, 'color' => '#0033ff', 'footer' => 'DiscordLink');
 		$cmd->execCmd($_options);
 
 		return 'requestHandledInternally';
@@ -1440,7 +1428,7 @@ class discordlinkCmd extends cmd {
 		}
 
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-		$_options = array('title' => ':gear: CENTRE DE MISES A JOUR :gear:', 'description' => $msg, 'colors' => '#ff0000', 'footer' => 'DiscordLink');
+		$_options = array('title' => ':gear: CENTRE DE MISES A JOUR :gear:', 'description' => $msg, 'color' => '#ff0000', 'footer' => 'DiscordLink');
 		$cmd->execCmd($_options);
 
 		// -------------------------------------------------------------------------------------- //
@@ -1456,7 +1444,7 @@ class discordlinkCmd extends cmd {
 			$_options = array(
 				'title' => ':clipboard: CENTRE DE MESSAGES :clipboard:',
 				'description' => "*Le centre de message est vide !*",
-				'colors' => '#ff8040',
+				'color' => '#ff8040',
 				'footer' => 'DiscordLink'
 			);
 			$cmd->execCmd($_options);
@@ -1470,7 +1458,7 @@ class discordlinkCmd extends cmd {
 				$_options = array(
 					'title' => ':clipboard: CENTRE DE MESSAGES ' . ($index) . '/' . count($groupedMessages) . ' :clipboard:',
 					'description' => $msg,
-					'colors' => '#ff8040',
+					'color' => '#ff8040',
 					'footer' => 'DiscordLink'
 				);
 				$cmd->execCmd($_options);
@@ -1486,7 +1474,7 @@ class discordlinkCmd extends cmd {
 		if (isset($_options['cron']) && !$result['cronOk']) return 'requestHandledInternally';
 
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
-		$_options = array('title' => $result['title'], 'description' => str_replace("|", "\n", $result['message']), 'colors' => '#ff00ff', 'footer' => 'DiscordLink');
+		$_options = array('title' => $result['title'], 'description' => str_replace("|", "\n", $result['message']), 'color' => '#ff00ff', 'footer' => 'DiscordLink');
 		$cmd->execCmd($_options);
 		return 'requestHandledInternally';
 	}
@@ -1497,26 +1485,33 @@ class discordlinkCmd extends cmd {
 		// si on est sur un scenario
 		list($command,) = explode('?', $this->getConfiguration('request'), 2);
 
-		$templateFilename =  'cmd.' . $command;
-
-		$quickActionOptionsHtml = '';
-		foreach (discordlink::getQuickActionOptions() as $option) {
-			$quickActionOptionsHtml .= '<option value="' . $option['id'] . '">' . $option['name'] . '</option>';
+		// objectSummary utilise le template select générique Jeedom ; listValue est maintenu par updateObject().
+		if ($command === 'objectSummary') {
+			return parent::getWidgetTemplateCode($_version, $_clean, $_widgetName);
 		}
 
-		/** @var discordlink $eqLogic */
-		$eqLogic = $this->getEqLogic();
-		$defaultColor = $eqLogic->getDefaultColor();
-		$replace = [
-			'#defaultColor#' => $defaultColor,
-			'#defaultTitle#' => '',
-			'#defaultUrl#' => '',
-			'#defaultDescription#' => '',
-			'#defaultFooter#' => '',
-			'#defaultPath#' => '',
-			'#defaultDisplayName#' => '',
-			'#quickActionOptions#' => $quickActionOptionsHtml,
-		];
+		$templateFilename =  'cmd.' . $command;
+
+		$replace = [];
+
+		if ($command === 'sendEmbed') {
+			/** @var discordlink $eqLogic */
+			$eqLogic = $this->getEqLogic();
+			$quickActionOptionsHtml = '';
+			foreach (discordlink::getQuickActionOptions() as $option) {
+				$quickActionOptionsHtml .= '<option value="' . $option['id'] . '">' . $option['name'] . '</option>';
+			}
+			$replace = [
+				'#defaultColor#' => $eqLogic->getDefaultColor(),
+				'#defaultTitle#' => '',
+				'#defaultUrl#' => '',
+				'#defaultDescription#' => '',
+				'#defaultFooter#' => '',
+				'#quickActionOptions#' => $quickActionOptionsHtml,
+			];
+		} elseif ($command === 'sendFile') {
+			$replace = ['#defaultPath#' => ''];
+		}
 
 		$html = template_replace($replace, getTemplate('core', 'scenario', $templateFilename, 'discordlink'));
 		$html = translate::exec($html, 'plugins/discordlink/core/template/scenario/' . $templateFilename . '.html');

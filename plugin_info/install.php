@@ -177,18 +177,21 @@ function discordlink_update() {
 
         foreach ($configMigrations as $oldKey => $newKey) {
             if (isset($configuration[$oldKey]) && $configuration[$oldKey] !== '') {
-                $eqLogic->setConfiguration($newKey, $configuration[$oldKey]);
+                // Ne migrer que si la nouvelle clé n'a pas déjà une valeur valide
+                if (!isset($configuration[$newKey]) || $configuration[$newKey] === '') {
+                    $eqLogic->setConfiguration($newKey, $configuration[$oldKey]);
+                    log::add('discordlink', 'info', '  - ' . $eqLogic->getHumanName() . ': ' . $oldKey . ' → ' . $newKey);
+                } else {
+                    log::add('discordlink', 'info', '  - ' . $eqLogic->getHumanName() . ': ' . $oldKey . ' ignoré (' . $newKey . ' déjà défini à "' . $configuration[$newKey] . '")');
+                }
+                // Supprimer réellement l'ancienne clé de l'équipement
+                $eqLogic->setConfiguration($oldKey, null);
                 unset($configuration[$oldKey]);
                 $needSave = true;
-                log::add('discordlink', 'info', '  - ' . $eqLogic->getHumanName() . ': ' . $oldKey . ' → ' . $newKey);
             }
         }
 
         if ($needSave) {
-            // Nettoyage des clés supprimées
-            foreach (array_keys($configuration) as $key) {
-                if (!isset($configuration[$key])) $eqLogic->setConfiguration($key, null);
-            }
             $eqLogic->save();
         }
     }
