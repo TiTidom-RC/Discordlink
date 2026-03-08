@@ -13,7 +13,7 @@
 	"utilization": "Ce plugin nécessite la création d'une 'Application' Discord et d'un 'Bot' associé depuis le portail développeur Discord.",
 	"licence": "AGPL",
 	"author": "TiTidom",
-	"require": "4.4.2",
+	"require": "4.4.8",
 	"category": "communication",
 	"hasDependency": true,
 	"hasOwnDeamon": true,
