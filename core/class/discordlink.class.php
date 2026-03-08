@@ -194,27 +194,22 @@ class discordlink extends eqLogic {
 		return $_returnText;
 	}
 
-	private static function executeCronIfDue($eqLogic, $cronExpr, $cmdLogicId, $debugLabel, $dateRun, $_options) {
+	private static function executeCronIfDue($eqLogic, $cronExpr, $cmdLogicId, $debugLabel, $_options) {
 		if (empty($cronExpr)) {
 			log::add('discordlink', 'debug', $debugLabel . ' pour ' . $eqLogic->getName() . ' : aucun cron configuré');
 			return;
 		}
 
-		try {
-			$c = new Cron\CronExpression($cronExpr, new Cron\FieldFactory);
-			if ($c->isDue($dateRun)) {
-				log::add('discordlink', 'info', $debugLabel . ' pour ' . $eqLogic->getName() . ' (cron: ' . $cronExpr . ') - Exécution');
-				$cmd = $eqLogic->getCmd('action', $cmdLogicId);
-				if (is_object($cmd)) {
-					$cmd->execCmd($_options);
-				} else {
-					log::add('discordlink', 'warning', $debugLabel . ' pour ' . $eqLogic->getName() . ' : commande ' . $cmdLogicId . ' introuvable');
-				}
+		if (cronIsDue($cronExpr)) {
+			log::add('discordlink', 'info', $debugLabel . ' pour ' . $eqLogic->getName() . ' (cron: ' . $cronExpr . ') - Exécution');
+			$cmd = $eqLogic->getCmd('action', $cmdLogicId);
+			if (is_object($cmd)) {
+				$cmd->execCmd($_options);
 			} else {
-				log::add('discordlink', 'debug', $debugLabel . ' pour ' . $eqLogic->getName() . ' (cron: ' . $cronExpr . ') - Non dû à cette date');
+				log::add('discordlink', 'warning', $debugLabel . ' pour ' . $eqLogic->getName() . ' : commande ' . $cmdLogicId . ' introuvable');
 			}
-		} catch (Exception $exc) {
-			log::add('discordlink', 'error', __('Expression cron non valide pour ', __FILE__) . $eqLogic->getHumanName() . ' : ' . $cronExpr);
+		} else {
+			log::add('discordlink', 'debug', $debugLabel . ' pour ' . $eqLogic->getName() . ' (cron: ' . $cronExpr . ') - Non dû à cette date');
 		}
 	}
 
@@ -231,14 +226,15 @@ class discordlink extends eqLogic {
 		}
 
 		log::add('discordlink', 'debug', 'runScheduledChecks() : Début vérification de ' . count($eqLogics) . ' équipement(s)');
-		$dateRun = new DateTime();
 		$options = ['cron' => true];
 
 		foreach ($eqLogics as $eqLogic) {
+			if (!$eqLogic->getIsEnable()) continue;
+
 			// Vérification démon
 			if ((bool)$eqLogic->getConfiguration('daemonCheck', 0)) {
 				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - daemonCheck activé, cron configuré: ' . $eqLogic->getConfiguration('autoRefreshDaemon', 'non défini'));
-				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autoRefreshDaemon'), 'daemonInfo', 'DaemonCheck', $dateRun, $options);
+				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autoRefreshDaemon'), 'daemonInfo', 'DaemonCheck', $options);
 			} else {
 				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - daemonCheck désactivé (valeur: ' . var_export($eqLogic->getConfiguration('daemonCheck', 0), true) . ')');
 			}
@@ -246,7 +242,7 @@ class discordlink extends eqLogic {
 			// Vérification dépendances
 			if ((bool)$eqLogic->getConfiguration('dependencyCheck', 0)) {
 				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - dependencyCheck activé, cron configuré: ' . $eqLogic->getConfiguration('autoRefreshDependency', 'non défini'));
-				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autoRefreshDependency'), 'dependencyInfo', 'DependencyCheck', $dateRun, $options);
+				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autoRefreshDependency'), 'dependencyInfo', 'DependencyCheck', $options);
 			} else {
 				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - dependencyCheck désactivé (valeur: ' . var_export($eqLogic->getConfiguration('dependencyCheck', 0), true) . ')');
 			}
@@ -280,6 +276,7 @@ class discordlink extends eqLogic {
 	public static function cronDaily() {
 		$eqLogics = eqLogic::byType('discordlink');
 		foreach ($eqLogics as $eqLogic) {
+			if (!$eqLogic->getIsEnable()) continue;
 			if (!(bool)$eqLogic->getConfiguration('clearChannel', 0)) continue;
 
 			$cmd = $eqLogic->getCmd('action', 'deleteMessage');
