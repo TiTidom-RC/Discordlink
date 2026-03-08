@@ -161,6 +161,72 @@ switch ($name) {
 		die();
 		break;
 
+	case 'scenarioSearch':
+		$discordEquipment = eqLogic::byLogicalId($result['channelId'], 'discordlink');
+		log::add('discordlink', 'debug', 'ScenarioSearch reçue pour "' . $result['name'] . '" (User: ' . $result['username'] . ', ID: ' . $result['userId'] . ')');
+
+		if (!is_object($discordEquipment)) {
+			log::add('discordlink', 'error', 'ScenarioSearch : Équipement introuvable pour le channel ' . $result['channelId']);
+			echo json_encode(['found' => false, 'message' => 'Équipement introuvable'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		if ($discordEquipment->getConfiguration('scenarioJeedom') != 1) {
+			log::add('discordlink', 'warning', 'ScenarioSearch : Les scénarios sont désactivés pour l\'équipement ' . $discordEquipment->getHumanName());
+			echo json_encode(['found' => false, 'message' => 'L\'exécution des scénarios est désactivée pour cet équipement.'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$searchName = trim($result['name'] ?? '');
+		if (empty($searchName)) {
+			echo json_encode(['found' => false, 'message' => 'Nom de scénario vide'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$allScenarios = scenario::all();
+		$matches = [];
+
+		foreach ($allScenarios as $sc) {
+			if (!$sc->getIsActive()) {
+				continue;
+			}
+			$scName = $sc->getName();
+			$score  = 0;
+
+			// Correspondance exacte (insensible à la casse)
+			if (strtolower($scName) === strtolower($searchName)) {
+				$score = 100;
+			} elseif (stripos($scName, $searchName) !== false || stripos($searchName, $scName) !== false) {
+				// Sous-chaîne
+				$score = 80;
+			} else {
+				// Similarité textuelle
+				similar_text(strtolower($scName), strtolower($searchName), $percent);
+				if ($percent >= 50) {
+					$score = (float) $percent;
+				}
+			}
+
+			if ($score > 0) {
+				$matches[] = ['score' => $score, 'id' => (int) $sc->getId(), 'name' => $scName];
+			}
+		}
+
+		// Trier par score décroissant, limiter à 9 (max emojis numériques)
+		usort($matches, fn($a, $b) => $b['score'] <=> $a['score']);
+		$matches = array_slice($matches, 0, 9);
+		$results = array_map(fn($m) => ['id' => $m['id'], 'name' => $m['name']], $matches);
+
+		if (!empty($results)) {
+			log::add('discordlink', 'debug', 'ScenarioSearch : ' . count($results) . ' résultat(s) trouvé(s) pour "' . $searchName . '"');
+			echo json_encode(['found' => true, 'results' => $results], JSON_UNESCAPED_UNICODE);
+		} else {
+			log::add('discordlink', 'debug', 'ScenarioSearch : Aucun résultat pour "' . $searchName . '"');
+			echo json_encode(['found' => false], JSON_UNESCAPED_UNICODE);
+		}
+		die();
+		break;
+
 	default:
 		log::add('discordlink', 'warning', 'Route inconnue reçue : "' . $name . '" - payload : ' . json_encode($result, JSON_UNESCAPED_UNICODE));
 		die();

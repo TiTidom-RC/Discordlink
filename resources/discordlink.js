@@ -70,6 +70,17 @@ const registerCommands = async (clientId, token) => {
               .setDescription('Requête Jeedom')
               .setRequired(true)
           )
+      )
+      .addSubcommand(subcommand =>
+        subcommand
+          .setName('scenario')
+          .setDescription('Rechercher et lancer un scénario Jeedom par son nom')
+          .addStringOption(option =>
+            option
+              .setName('name')
+              .setDescription('Nom du scénario à rechercher')
+              .setRequired(true)
+          )
       ),
 
     new SlashCommandBuilder()
@@ -1233,6 +1244,121 @@ const attachDiscordEvents = () => {
         username: interaction.user.username,
         callback: (response) => interaction.editReply(response),
       });
+    }
+
+    if (subCommand === "scenario") {
+      try {
+        await interaction.deferReply();
+      } catch (error) {
+        if (error.code === 10062) {
+          config.logger("Interaction expirée ou inconnue avant traitement (Ignoré)", "DEBUG");
+          return;
+        }
+        config.logger("Erreur lors du deferReply: " + error.message, "ERROR");
+        return;
+      }
+
+      const scenarioName = interaction.options.getString("name");
+
+      const rawResponse = await httpPost("scenarioSearch", {
+        channelId: interaction.channelId,
+        userId: interaction.user.id,
+        username: interaction.user.username,
+        name: scenarioName,
+      });
+
+      let searchResult;
+      try {
+        searchResult = rawResponse ? JSON.parse(rawResponse) : null;
+      } catch (e) {
+        config.logger("ScenarioSearch : erreur parsing JSON : " + e.message, "ERROR");
+        await interaction.editReply("Erreur lors de la recherche du scénario.");
+        return;
+      }
+
+      if (!searchResult || !searchResult.found || !searchResult.results || searchResult.results.length === 0) {
+        const reason = (searchResult && searchResult.message) ? searchResult.message : `Aucun scénario trouvé pour \`${scenarioName}\`.`;
+        await interaction.editReply(reason);
+        return;
+      }
+
+      const results = searchResult.results;
+
+      const launchScenario = async (sc, replyMsg) => {
+        const launchResponse = await httpPost("slashCommand", {
+          channelId: interaction.channelId,
+          userId: interaction.user.id,
+          execType: 'scenario',
+          request: String(sc.id),
+          username: interaction.user.username,
+        });
+        await interaction.editReply(`✅ **${sc.name}** : ${launchResponse || "Scénario lancé !"}`);
+        try { await replyMsg.reactions.removeAll(); } catch (e) { /* permissions insuffisantes */ }
+      };
+
+      if (results.length === 1) {
+        const sc = results[0];
+        const confirmMsg = await interaction.editReply(
+          `Scénario trouvé : **${sc.name}**\nConfirmez-vous le lancement ? ✅ Oui  ❌ Non`
+        );
+
+        try {
+          await confirmMsg.react('✅');
+          await confirmMsg.react('❌');
+        } catch (err) {
+          config.logger("Impossible d'ajouter les réactions de confirmation : " + err.message, "WARNING");
+        }
+
+        const reactionFilter = (reaction, user) =>
+          ['✅', '❌'].includes(reaction.emoji.name) && user.id === interaction.user.id;
+
+        try {
+          const collected = await confirmMsg.awaitReactions({ filter: reactionFilter, max: 1, time: 60000, errors: ['time'] });
+          const reaction = collected.first();
+          if (reaction.emoji.name === '✅') {
+            await launchScenario(sc, confirmMsg);
+          } else {
+            await interaction.editReply("❌ Lancement annulé.");
+            try { await confirmMsg.reactions.removeAll(); } catch (e) { }
+          }
+        } catch (e) {
+          await interaction.editReply("⏰ Confirmation expirée. Lancement annulé.");
+          try { await confirmMsg.reactions.removeAll(); } catch (e) { }
+        }
+      } else {
+        const NUMBER_EMOJIS = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
+        const listText = results.map((sc, i) => `${NUMBER_EMOJIS[i]} **${sc.name}**`).join('\n');
+        const choiceMsg = await interaction.editReply(
+          `Plusieurs scénarios correspondent à \`${scenarioName}\` :\n${listText}\n❌ Annuler`
+        );
+
+        const emojisToAdd = [...NUMBER_EMOJIS.slice(0, results.length), '❌'];
+        for (const emoji of emojisToAdd) {
+          try { await choiceMsg.react(emoji); } catch (err) {
+            config.logger(`Impossible de réagir avec ${emoji} : ${err.message}`, "WARNING");
+          }
+        }
+
+        const reactionFilter = (reaction, user) =>
+          emojisToAdd.includes(reaction.emoji.name) && user.id === interaction.user.id;
+
+        try {
+          const collected = await choiceMsg.awaitReactions({ filter: reactionFilter, max: 1, time: 60000, errors: ['time'] });
+          const reaction = collected.first();
+          if (reaction.emoji.name === '❌') {
+            await interaction.editReply("❌ Lancement annulé.");
+            try { await choiceMsg.reactions.removeAll(); } catch (e) { }
+          } else {
+            const idx = NUMBER_EMOJIS.indexOf(reaction.emoji.name);
+            if (idx !== -1 && idx < results.length) {
+              await launchScenario(results[idx], choiceMsg);
+            }
+          }
+        } catch (e) {
+          await interaction.editReply("⏰ Sélection expirée. Lancement annulé.");
+          try { await choiceMsg.reactions.removeAll(); } catch (e) { }
+        }
+      }
     }
   });
 
