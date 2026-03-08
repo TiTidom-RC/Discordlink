@@ -179,11 +179,6 @@ class discordlink extends eqLogic {
 		config::save('emoji', $emojiArray, 'discordlink');
 	}
 
-	public static function updateInfo() {
-		static::updateObject();
-		static::setChannel();
-	}
-
 	public static function emojiConvert($_text): string {
 		$_returnText = '';
 		$textParts = explode(" ", $_text);
@@ -278,12 +273,6 @@ class discordlink extends eqLogic {
 	 */
 	public static function cron() {
 		static::runScheduledChecks();
-	}
-
-	/*
-     * Fonction exécutée automatiquement toutes les heures par Jeedom*/
-	public static function cronHourly() {
-		static::updateInfo();
 	}
 
 	/*
@@ -389,7 +378,8 @@ class discordlink extends eqLogic {
 			if (static::deamon_info()['state'] == 'ok') {
 				message::removeAll('discordlink', 'unableStartDeamon');
 				log::add('discordlink', 'info', 'Démon discordlink lancé');
-				static::updateInfo();
+				static::updateObject();
+				static::setChannel();
 				return true;
 			}
 			sleep(1);
@@ -461,9 +451,9 @@ class discordlink extends eqLogic {
 		$channel = $this->getConfiguration('channelId');
 		if (!empty($channel) && $channel != 'null') {
 			$this->setLogicalId($channel);
-			log::add('discordlink', 'debug', 'preSave - setLogicalId for empty channel: ' . $channel);
+			log::add('discordlink', 'debug', 'preSave - setLogicalId: ' . $channel);
 		} else {
-			$this->setConfiguration('channelId', $this->getLogicalId());
+			log::add('discordlink', 'debug', 'preSave - channelId vide, logicalId conservé : ' . $this->getLogicalId());
 		}
 	}
 
@@ -1497,26 +1487,33 @@ class discordlinkCmd extends cmd {
 		// si on est sur un scenario
 		list($command,) = explode('?', $this->getConfiguration('request'), 2);
 
-		$templateFilename =  'cmd.' . $command;
-
-		$quickActionOptionsHtml = '';
-		foreach (discordlink::getQuickActionOptions() as $option) {
-			$quickActionOptionsHtml .= '<option value="' . $option['id'] . '">' . $option['name'] . '</option>';
+		// objectSummary utilise le template select générique Jeedom ; listValue est maintenu par updateObject().
+		if ($command === 'objectSummary') {
+			return parent::getWidgetTemplateCode($_version, $_clean, $_widgetName);
 		}
 
-		/** @var discordlink $eqLogic */
-		$eqLogic = $this->getEqLogic();
-		$defaultColor = $eqLogic->getDefaultColor();
-		$replace = [
-			'#defaultColor#' => $defaultColor,
-			'#defaultTitle#' => '',
-			'#defaultUrl#' => '',
-			'#defaultDescription#' => '',
-			'#defaultFooter#' => '',
-			'#defaultPath#' => '',
-			'#defaultDisplayName#' => '',
-			'#quickActionOptions#' => $quickActionOptionsHtml,
-		];
+		$templateFilename =  'cmd.' . $command;
+
+		$replace = [];
+
+		if ($command === 'sendEmbed') {
+			/** @var discordlink $eqLogic */
+			$eqLogic = $this->getEqLogic();
+			$quickActionOptionsHtml = '';
+			foreach (discordlink::getQuickActionOptions() as $option) {
+				$quickActionOptionsHtml .= '<option value="' . $option['id'] . '">' . $option['name'] . '</option>';
+			}
+			$replace = [
+				'#defaultColor#' => $eqLogic->getDefaultColor(),
+				'#defaultTitle#' => '',
+				'#defaultUrl#' => '',
+				'#defaultDescription#' => '',
+				'#defaultFooter#' => '',
+				'#quickActionOptions#' => $quickActionOptionsHtml,
+			];
+		} elseif ($command === 'sendFile') {
+			$replace = ['#defaultPath#' => ''];
+		}
 
 		$html = template_replace($replace, getTemplate('core', 'scenario', $templateFilename, 'discordlink'));
 		$html = translate::exec($html, 'plugins/discordlink/core/template/scenario/' . $templateFilename . '.html');
