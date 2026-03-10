@@ -79,6 +79,7 @@ function discordlink_update() {
         '/resources/dependance.lib',
         '/resources/i18n',
         '/resources/quickreply.json',
+        '/data/quickreply.json',
     );
 
     foreach ($pathsToRemove as $resource) {

@@ -512,7 +512,6 @@ class discordlink extends eqLogic {
 					try {
 						$cmd->save();
 					} catch (\Throwable $th) {
-						//throw $th;
 						log::add('discordlink', 'error', 'Erreur lors de la sauvegarde de la commande ' . $cmdConfig['label'] . ' (' . $cmdKey . ') pour ' . $eqLogic->getName() . ' : ' . $th->getMessage());
 					}
 					$order++;
@@ -694,14 +693,11 @@ class discordlink extends eqLogic {
 		$message .= "\n" . "\n" . $emojiMagRight . "__Récapitulatif des sessions actuelles :__ " . $emojiMag;
 		// Parcours des sessions pour vérifier le statut et le nombre de sessions
 		foreach ($connectedUserNames as $userIndex => $userName) {
-			$sessionIndex = 0;
 			$foundCount = 0;
 			$connectedUserStatuses[$userIndex] = 'hors ligne';
 			$connectedUserIPs[$userIndex] = '';
 
 			foreach ($sessions as $id => $session) {
-				$sessionIndex++;
-
 				$userDelay = strtotime(date("Y-m-d H:i:s")) - strtotime($session['datetime']);
 
 				if ($userName == $session['login']) {
@@ -710,7 +706,6 @@ class discordlink extends eqLogic {
 						$onlineCount++;
 						$connectedUserStatuses[$userIndex] = 'en ligne';
 						$connectedUserIPs[$userIndex] .= "\n" . "-> " . $emojiInternet . " IP : " . $session['ip'];
-					} else {
 					}
 				}
 			}
@@ -741,13 +736,8 @@ class discordlink extends eqLogic {
 	}
 
 	public static function createQuickActionFile() {
-		$old_path = dirname(__FILE__) . '/../../data/quickreply.json';
-		if (file_exists($old_path)) {
-			unlink($old_path);
-		}
-		$str = '{}';
 		$path = dirname(__FILE__) . '/../../data/quickaction.json';
-		file_put_contents($path, json_encode(json_decode($str), JSON_PRETTY_PRINT));
+		file_put_contents($path, '{}');
 	}
 
 
