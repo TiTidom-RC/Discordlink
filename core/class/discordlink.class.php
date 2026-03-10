@@ -1492,7 +1492,9 @@ class discordlinkCmd extends cmd {
 
 		$templateFilename =  'cmd.' . $command;
 
-		$replace = [];
+		$replace = [
+			'#uid#' => 'cmd' . $this->getId() . eqLogic::UIDDELIMITER . mt_rand() . eqLogic::UIDDELIMITER,
+		];
 
 		if ($command === 'sendEmbed') {
 			/** @var discordlink $eqLogic */
@@ -1501,7 +1503,7 @@ class discordlinkCmd extends cmd {
 			foreach (discordlink::getQuickActionOptions() as $option) {
 				$quickActionOptionsHtml .= '<option value="' . $option['id'] . '">' . $option['name'] . '</option>';
 			}
-			$replace = [
+			$replace += [
 				'#defaultColor#' => $eqLogic->getDefaultColor(),
 				'#defaultTitle#' => '',
 				'#defaultUrl#' => '',
@@ -1510,7 +1512,9 @@ class discordlinkCmd extends cmd {
 				'#quickActionOptions#' => $quickActionOptionsHtml,
 			];
 		} elseif ($command === 'sendFile') {
-			$replace = ['#defaultPath#' => ''];
+			$replace += [
+				'#defaultPath#' => '',
+			];
 		}
 
 		$html = template_replace($replace, getTemplate('core', 'scenario', $templateFilename, 'discordlink'));
