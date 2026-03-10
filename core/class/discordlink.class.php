@@ -71,11 +71,11 @@ class discordlink extends eqLogic {
 		return self::$_daemonBaseURL;
 	}
 
-	public static function getChannel($maxRetries = 5, $delayMs = 2000) {
+	public static function getChannels($maxRetries = 5, $delayMs = 2000) {
 		$attempt = 0;
 		while ($attempt < $maxRetries) {
 			try {
-				$requestHttp = new com_http(self::getDaemonBaseURL() . '/getchannel');
+				$requestHttp = new com_http(self::getDaemonBaseURL() . '/getchannels');
 				$requestHttp->setNoReportError(true);
 				$response = $requestHttp->exec(10, 2);
 				$httpCode = $requestHttp->getHttpCode();
@@ -97,7 +97,7 @@ class discordlink extends eqLogic {
 				log::add('discordlink', 'debug', 'Tentative ' . ($attempt + 1) . '/' . $maxRetries . ' échouée: ' . $e->getMessage());
 			}
 
-			if ($attempt < $maxRetries) {
+			if ($attempt < $maxRetries - 1) {
 				// Backoff progressif : on augmente le délai à chaque tentative
 				usleep($delayMs * 1000);
 				$delayMs += 2000; // +2s à chaque échec (2s, 4s, 6s, 8s, 10s = 30s total)
@@ -109,8 +109,8 @@ class discordlink extends eqLogic {
 		return array();
 	}
 
-	public static function setChannel() {
-		$channels = static::getChannel();
+	public static function syncChannels() {
+		$channels = static::getChannels();
 		if (empty($channels)) return;
 
 		array_walk($channels, function (&$channel) {
@@ -131,9 +131,14 @@ class discordlink extends eqLogic {
 		);
 		$text = strtr($text, $replacements);
 
+		// Supprime les caractères de liaison ZWJ (U+200D) et les sélecteurs de variation (U+FE0F) des emoji composés
+		$text = preg_replace('/[\x{200D}\x{FE0F}]/u', '', $text);
+
 		// Supprime les emoji Unicode tout en préservant les caractères ASCII (0-9, #, *)
-		// On utilise un lookahead négatif pour exclure les chiffres et symboles standards
-		return preg_replace('/(?:(?![0-9#*])\p{Emoji})+/u', '', $text);
+		$text = preg_replace('/(?:(?![0-9#*])\p{Emoji})+/u', '', $text);
+
+		// Normalise les espaces multiples (résidu d'emoji en milieu de nom) et retire les bords
+		return trim(preg_replace('/ {2,}/', ' ', $text));
 	}
 
 	public static function setEmoji($reset = 0) {
@@ -184,19 +189,18 @@ class discordlink extends eqLogic {
 		$textParts = explode(" ", $_text);
 		foreach ($textParts as $value) {
 			if (substr($value, 0, 4) === "emo_") {
-				$emoji = discordlink::getIcon(str_replace("emo_", "", $value));
-				$_returnText .= $emoji;
+				// getIcon() inclut déjà un espace séparateur, pas besoin d'en rajouter
+				$_returnText .= discordlink::getIcon(str_replace("emo_", "", $value));
 			} else {
-				$_returnText .= $value;
+				$_returnText .= $value . " ";
 			}
-			$_returnText .= " ";
 		}
-		return $_returnText;
+		return rtrim($_returnText);
 	}
 
 	private static function executeCronIfDue($eqLogic, $cronExpr, $cmdLogicId, $debugLabel, $_options) {
 		if (empty($cronExpr)) {
-			log::add('discordlink', 'debug', $debugLabel . ' pour ' . $eqLogic->getName() . ' : aucun cron configuré');
+			log::add('discordlink', 'warning', $debugLabel . ' pour ' . $eqLogic->getName() . ' : activé mais aucun cron configuré');
 			return;
 		}
 
@@ -221,11 +225,15 @@ class discordlink extends eqLogic {
 	public static function runScheduledChecks() {
 		$eqLogics = eqLogic::byType('discordlink');
 		if (empty($eqLogics)) {
-			log::add('discordlink', 'debug', 'runScheduledChecks() : Aucun équipement discordlink trouvé');
 			return;
 		}
 
-		log::add('discordlink', 'debug', 'runScheduledChecks() : Début vérification de ' . count($eqLogics) . ' équipement(s)');
+		// Sans démon actif, impossible d'envoyer des messages Discord — on abandonne silencieusement
+		if (static::deamon_info()['state'] !== 'ok') {
+			log::add('discordlink', 'debug', 'runScheduledChecks() : démon non actif, vérifications planifiées ignorées');
+			return;
+		}
+
 		$options = ['cron' => true];
 
 		foreach ($eqLogics as $eqLogic) {
@@ -233,32 +241,22 @@ class discordlink extends eqLogic {
 
 			// Vérification démon
 			if ((bool)$eqLogic->getConfiguration('daemonCheck', 0)) {
-				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - daemonCheck activé, cron configuré: ' . $eqLogic->getConfiguration('autoRefreshDaemon', 'non défini'));
 				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autoRefreshDaemon'), 'daemonInfo', 'DaemonCheck', $options);
-			} else {
-				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - daemonCheck désactivé (valeur: ' . var_export($eqLogic->getConfiguration('daemonCheck', 0), true) . ')');
 			}
 
 			// Vérification dépendances
 			if ((bool)$eqLogic->getConfiguration('dependencyCheck', 0)) {
-				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - dependencyCheck activé, cron configuré: ' . $eqLogic->getConfiguration('autoRefreshDependency', 'non défini'));
 				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autoRefreshDependency'), 'dependencyInfo', 'DependencyCheck', $options);
-			} else {
-				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - dependencyCheck désactivé (valeur: ' . var_export($eqLogic->getConfiguration('dependencyCheck', 0), true) . ')');
 			}
 
 			// Vérification connexions utilisateurs
 			if ((bool)$eqLogic->getConfiguration('connectionCheck', 0)) {
-				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - connectionCheck activé');
 				$cmd = $eqLogic->getCmd('action', 'lastUser');
 				if (is_object($cmd)) {
-					log::add('discordlink', 'debug', 'Vérification connexion utilisateur pour ' . $eqLogic->getName());
 					$cmd->execCmd($options);
 				} else {
 					log::add('discordlink', 'warning', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - commande lastUser introuvable');
 				}
-			} else {
-				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - connectionCheck désactivé (valeur: ' . var_export($eqLogic->getConfiguration('connectionCheck', 0), true) . ')');
 			}
 		}
 	}
@@ -311,9 +309,7 @@ class discordlink extends eqLogic {
 			if ($response !== false) {
 				$return['state'] = 'ok';
 				$json = json_decode($response, true);
-				if (is_array($json) && isset($json['status']) && $json['status'] == 'ok') {
-					log::add('discordlink', 'debug', 'Heartbeat OK (Uptime: ' . round($json['uptime'], 2) . 's)');
-				} else {
+				if (!is_array($json) || !isset($json['status']) || $json['status'] != 'ok') {
 					log::add('discordlink', 'warning', 'Heartbeat réponse inattendue : ' . $response);
 				}
 			}
@@ -339,7 +335,7 @@ class discordlink extends eqLogic {
 			throw new Exception(__('Veuillez vérifier la configuration', __FILE__));
 		}
 
-		log::add('discordlink', 'info', 'Lancement du bot');
+		log::add('discordlink', 'info', 'Lancement du démon Discord Link');
 
 		$apiKey = jeedom::getApiKey('discordlink');
 		$cmd = sprintf(
@@ -355,7 +351,7 @@ class discordlink extends eqLogic {
 			escapeshellarg(network::getNetworkAccess('external'))
 		);
 
-		log::add('discordlink', 'debug', 'Lancement démon discordlink : ' . $cmd);
+		log::add('discordlink', 'debug', 'Commande du démon Discord Link : ' . $cmd);
 
 		$fullCmd = sprintf(
 			'NODE_ENV=production nohup %s >> %s 2>&1 & echo $!',
@@ -374,20 +370,20 @@ class discordlink extends eqLogic {
 		for ($i = 0; $i < 30; $i++) {
 			if (static::deamon_info()['state'] == 'ok') {
 				message::removeAll('discordlink', 'unableStartDeamon');
-				log::add('discordlink', 'info', 'Démon discordlink lancé');
+				log::add('discordlink', 'info', 'Démon Discord Link lancé');
 				static::updateObject();
-				static::setChannel();
+				static::syncChannels();
 				return true;
 			}
 			sleep(1);
 		}
 
-		log::add('discordlink', 'error', 'Impossible de lancer le démon discordlink, vérifiez le port', 'unableStartDeamon');
+		log::add('discordlink', 'error', 'Impossible de lancer le démon Discord Link, vérifiez le port', 'unableStartDeamon');
 		return false;
 	}
 
 	public static function deamon_stop() {
-		log::add('discordlink', 'info', 'Arrêt du démon discordlink');
+		log::add('discordlink', 'info', 'Arrêt du démon Discord Link');
 
 		// Arrêt gracieux via API HTTP
 		try {
@@ -396,7 +392,7 @@ class discordlink extends eqLogic {
 			$requestHttp->setAllowEmptyReponse(true);
 			$requestHttp->exec(1, 1);
 		} catch (Exception $e) {
-			log::add('discordlink', 'error', 'Erreur Arrêt du Démon :: ' . $e->getMessage());
+			log::add('discordlink', 'error', 'Erreur arrêt du démon : ' . $e->getMessage());
 		}
 
 		// Attente dynamique de l'arrêt du processus (max 3s)
@@ -471,7 +467,6 @@ class discordlink extends eqLogic {
 
 		$eqLogics = eqLogic::byType('discordlink');
 		foreach ($eqLogics as $eqLogic) {
-			// log::add('discordlink', 'debug', 'Création/Mise à jour des commandes pour ' . $eqLogic->getName());
 
 			$commandsConfig = array(
 				'sendMsg' => array('requiredPlugin' => '0', 'label' => 'Envoi message', 'type' => 'action', 'subType' => 'message', 'request' => 'sendMsg', 'visible' => 1, 'template' => 'discordlink::message'),
@@ -522,7 +517,6 @@ class discordlink extends eqLogic {
 					try {
 						$cmd->save();
 					} catch (\Throwable $th) {
-						//throw $th;
 						log::add('discordlink', 'error', 'Erreur lors de la sauvegarde de la commande ' . $cmdConfig['label'] . ' (' . $cmdKey . ') pour ' . $eqLogic->getName() . ' : ' . $th->getMessage());
 					}
 					$order++;
@@ -665,7 +659,7 @@ class discordlink extends eqLogic {
 						$message .= "\n" . $emojiMagRight . "__Récapitulatif de ces " . $cronInterval . " dernières secondes :__ " . $emojiMag;
 					}
 
-					$onlineCount++;
+					$onlineCount++; // Comptage d'activité : événement de connexion dans l'intervalle cron
 					$message .= "\n" . $emojiCheck . "**" . $connectionLogNames[$logUserIndex] . "** s'est connecté par **" . $connectionLogTypes[$logUserIndex] . "** à **" . date("H", strtotime($connectionLogDates[$logUserIndex])) . "h" . date("i", strtotime($connectionLogDates[$logUserIndex])) . "**";
 
 					$hasCronActivity = true;
@@ -703,24 +697,22 @@ class discordlink extends eqLogic {
 
 		$message .= "\n" . "\n" . $emojiMagRight . "__Récapitulatif des sessions actuelles :__ " . $emojiMag;
 		// Parcours des sessions pour vérifier le statut et le nombre de sessions
+		// Note : $connectedUserStatuses et $connectedUserIPs sont réinitialisés à chaque itération :
+		// les sessions actives font autorité sur les données BDD/logs pour l'affichage final
 		foreach ($connectedUserNames as $userIndex => $userName) {
-			$sessionIndex = 0;
 			$foundCount = 0;
 			$connectedUserStatuses[$userIndex] = 'hors ligne';
 			$connectedUserIPs[$userIndex] = '';
 
 			foreach ($sessions as $id => $session) {
-				$sessionIndex++;
-
 				$userDelay = strtotime(date("Y-m-d H:i:s")) - strtotime($session['datetime']);
 
 				if ($userName == $session['login']) {
 					if ($userDelay < $offlineDelay * 60) {
 						$foundCount++;
-						$onlineCount++;
+						$onlineCount++; // Comptage d'activité : session active trouvée
 						$connectedUserStatuses[$userIndex] = 'en ligne';
 						$connectedUserIPs[$userIndex] .= "\n" . "-> " . $emojiInternet . " IP : " . $session['ip'];
-					} else {
 					}
 				}
 			}
@@ -751,13 +743,8 @@ class discordlink extends eqLogic {
 	}
 
 	public static function createQuickActionFile() {
-		$old_path = dirname(__FILE__) . '/../../data/quickreply.json';
-		if (file_exists($old_path)) {
-			unlink($old_path);
-		}
-		$str = '{}';
 		$path = dirname(__FILE__) . '/../../data/quickaction.json';
-		file_put_contents($path, json_encode(json_decode($str), JSON_PRETTY_PRINT));
+		file_put_contents($path, '{}');
 	}
 
 
@@ -838,54 +825,44 @@ class discordlinkCmd extends cmd {
 			return;
 		}
 
-		$deamon = discordlink::deamon_info();
-		if ($deamon['state'] == 'ok') {
-			$requestData = $this->buildRequest($_options);
+		$requestData = $this->buildRequest($_options);
 
-			if ($requestData === 'requestHandledInternally') {
-				return true;
-			}
-
-			// NEW: Handle Array return from buildRequest (POST/JSON migration)
-			if (is_array($requestData)) {
-				$endpoint = $requestData['endpoint'];
-				$payload = $requestData['payload'];
-				$method = $requestData['method'] ?? 'POST';
-
-				$url = discordlink::getDaemonBaseURL() . $endpoint;
-				log::add('discordlink', 'debug', "Executing $method $url");
-
-				$request_http = new com_http($url);
-				$request_http->setAllowEmptyReponse(true);
-				if ($this->getConfiguration('noSslCheck') == 1) $request_http->setNoSslCheck(true);
-				if ($this->getConfiguration('doNotReportHttpError') == 1) $request_http->setNoReportError(true);
-
-				if ($method === 'POST') {
-					$request_http->setPost(json_encode($payload));
-					$request_http->setHeader(array('Content-Type: application/json'));
-				}
-
-				if (isset($_options['speedAndNoErrorReport']) && $_options['speedAndNoErrorReport'] == true) {
-					$request_http->setNoReportError(true);
-					$request_http->exec(0.1, 1);
-					return;
-				}
-
-				$result = $request_http->exec($this->getConfiguration('timeout', 6), $this->getConfiguration('maxHttpRetry', 1));
-				if (!$result) throw new Exception(__('Serveur injoignable', __FILE__));
-				return true;
-			}
-
-
+		if (!is_array($requestData)) {
 			return true;
 		}
-		return false;
+
+		// Vérification rapide avant d'engager le timeout HTTP
+		if (discordlink::deamon_info()['state'] !== 'ok') {
+			log::add('discordlink', 'warning', '[' . $this->getEqLogic()->getName() . '][' . $this->getLogicalId() . '] Commande ignorée : le démon n\'est pas actif.');
+			return true;
+		}
+
+		$endpoint = $requestData['endpoint'];
+		$payload = $requestData['payload'];
+		$method = $requestData['method'] ?? 'POST';
+
+		$url = discordlink::getDaemonBaseURL() . $endpoint;
+		log::add('discordlink', 'debug', '[' . $this->getEqLogic()->getName() . '][' . $this->getLogicalId() . '] Envoi requête ' . $method . ' : ' . $url);
+
+		$request_http = new com_http($url);
+		$request_http->setAllowEmptyReponse(true);
+
+		if ($method === 'POST') {
+			$request_http->setPost(json_encode($payload));
+			$request_http->setHeader(array('Content-Type: application/json'));
+		}
+
+		$result = $request_http->exec(6, 0);
+		if (!$result) {
+			log::add('discordlink', 'error', '[' . $this->getEqLogic()->getName() . '][' . $this->getLogicalId() . '] Le démon ne répond pas. Vérifiez son état.');
+			return true;
+		}
+		return true;
 	}
 
 	private function buildRequest($_options = array()) {
-		if ($this->getType() != 'action') return 'requestHandledInternally';
+		if ($this->getType() != 'action') return null;
 
-		// Use Logical ID for stable command mapping
 		$command = $this->getLogicalId();
 
 		$commandMap = array(
@@ -900,7 +877,7 @@ class discordlinkCmd extends cmd {
 			'objectSummary' => 'buildObjectSummary',
 			'messageCenter' => 'buildMessageCenter',
 			'lastUser' => 'buildLastUser',
-			'deleteMessage' => 'buildClearChannelRequest' // New builder method
+			'deleteMessage' => 'buildClearChannelRequest'
 		);
 
 		if (isset($commandMap[$command])) {
@@ -909,37 +886,37 @@ class discordlinkCmd extends cmd {
 			}
 		}
 
-		return 'requestHandledInternally';
+		return null;
 	}
 
 	/**
-	 * Standardize text processing for Discord messages/embeds.
+	 * Traitement unifié du texte pour les messages et embeds Discord.
 	 *
-	 * Pipeline:
-	 * 1. Jeedom Tags (#[...]#)
-	 * 2. Random Text ({...})
-	 * 3. Custom Emojis (emo_...) - ONLY if $_supportMarkdown is true
-	 * 4. Newlines (| -> \n)
+	 * Pipeline :
+	 * 1. Remplacement des tags Jeedom (#[...]#)
+	 * 2. Décodage du texte aléatoire ({...})
+	 * 3. Conversion des emojis personnalisés (emo_...) — uniquement si $_supportMarkdown est vrai
+	 * 4. Remplacement des sauts de ligne (| -> \n)
 	 *
-	 * @param string $_text The text to process
-	 * @param bool $_supportMarkdown Whether the target field supports Markdown/Custom Emojis (default: false)
+	 * @param string $_text Le texte à traiter
+	 * @param bool $_supportMarkdown Si le champ cible supporte le Markdown/les emojis personnalisés (défaut : false)
 	 * @return string
 	 */
 	private function formatDiscordText($_text, $_supportMarkdown = false) {
 		if (empty($_text)) return $_text;
 
-		// 1. Tags replacement
+		// 1. Remplacement des tags
 		$text = scenarioExpression::setTags($_text);
 
-		// 2. Random text decoding
+		// 2. Décodage du texte aléatoire
 		$text = self::decodeRandomText($text);
 
-		// 3. Emoji conversion (only if markdown supported)
+		// 3. Conversion des emojis (uniquement si markdown supporté)
 		if ($_supportMarkdown) {
 			$text = discordlink::emojiConvert($text);
 		}
 
-		// 4. Newline replacement
+		// 4. Remplacement des sauts de ligne
 		$text = str_replace('|', "\n", $text);
 
 		return $text;
@@ -948,7 +925,6 @@ class discordlinkCmd extends cmd {
 	private function buildMessageRequest($_options = array(), $default = "Une erreur est survenue") {
 		$message = isset($_options['message']) && $_options['message'] != '' ? $_options['message'] : $default;
 
-		// Call unified formatter (Message supports Markdown/Emojis)
 		$message = $this->formatDiscordText($message, true);
 
 		$channelID = $this->getEqLogic()->getConfiguration('channelId');
@@ -969,7 +945,7 @@ class discordlinkCmd extends cmd {
 	private function buildFileRequest($_options = array(), $default = "Chemin du fichier non spécifié") {
 		$channelID = $this->getEqLogic()->getConfiguration('channelId');
 
-		// Handle files input
+		// Traitement des fichiers en entrée
 		$rawFiles = "";
 		if (isset($_options['files'])) {
 			$rawFiles = is_array($_options['files']) ? implode(',', $_options['files']) : (string)$_options['files'];
@@ -978,7 +954,6 @@ class discordlinkCmd extends cmd {
 
 		$message = isset($_options['message']) ? $_options['message'] : "";
 
-		// Use unified formatter (Message supports Markdown/Emojis)
 		$message = $this->formatDiscordText($message, true);
 
 		if (empty($rawFiles) && empty($message)) {
@@ -988,7 +963,7 @@ class discordlinkCmd extends cmd {
 			log::add('discordlink', 'info', 'sendFile : Aucun fichier spécifié, envoi du message seul.');
 		}
 
-		// Build array of files
+		// Construction du tableau de fichiers
 		$filesArray = [];
 		if (!empty($rawFiles)) {
 			$splits = explode(',', $rawFiles);
@@ -1075,7 +1050,7 @@ class discordlinkCmd extends cmd {
 					$description .= $choices[$a] . " : " . $answer[$a] . "\n";
 					$urlList[] = $answer[$a];
 				}
-				// Pass the array directly, JS will handle it
+				// Tableau passé directement au démon Node.js (mode ASK)
 				$url = $urlList;
 				$answerCount = count($answer);
 			} else {
@@ -1110,10 +1085,10 @@ class discordlinkCmd extends cmd {
 			if (!empty($fields)) {
 				foreach ($fields as &$field) {
 					if (isset($field['name'])) {
-						$field['name'] = $this->formatDiscordText($field['name'], false); // No Markdown in Field Name
+						$field['name'] = $this->formatDiscordText($field['name'], false); // Pas de Markdown dans le nom de champ
 					}
 					if (isset($field['value'])) {
-						$field['value'] = $this->formatDiscordText($field['value'], true); // Markdown OK in Field Value
+						$field['value'] = $this->formatDiscordText($field['value'], true); // Markdown OK dans la valeur de champ
 					}
 				}
 			}
@@ -1146,14 +1121,14 @@ class discordlinkCmd extends cmd {
 			}
 		}
 
-		// Tags processing using unified helper
-		$title = $this->formatDiscordText($title, false); // No Markdown in Title
-		$description = $this->formatDiscordText($description, true); // Markdown OK in Description
-		$footer = $this->formatDiscordText($footer, false); // No Markdown in Footer
+		// Traitement de la mise en forme du texte
+		$title = $this->formatDiscordText($title, false); // Pas de Markdown dans le titre
+		$description = $this->formatDiscordText($description, true); // Markdown OK dans la description
+		$footer = $this->formatDiscordText($footer, false); // Pas de Markdown dans le pied de page
 
-		// URL processing only if it's a string (standard embed URL), if it's an array (ASK mode), leave as is
+		// Traitement de l'URL uniquement si c'est une chaîne (embed standard) ; si c'est un tableau (mode ASK), on laisse tel quel
 		if (is_string($url)) {
-			// Basic tag replacement for URL, no emojis
+			// Remplacement des tags uniquement, sans emojis
 			$url = $this->formatDiscordText($url, false);
 		}
 
@@ -1234,15 +1209,15 @@ class discordlinkCmd extends cmd {
 			}
 		}
 
-		if (isset($_options['cron']) and $color == '#00ff08') {
+		if (isset($_options['cron']) && $color == '#00ff08') {
 			log::add('discordlink', 'debug', 'Vérification démons pour ' . $this->getEqLogic()->getName() . ' : Tous les démons sont OK, pas de notification Discord');
-			return 'requestHandledInternally';
+			return null;
 		}
 		$message = str_replace("|", "\n", $message);
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
 		$_options = array('title' => 'Etat des démons', 'description' => $message, 'color' => $color, 'footer' => 'DiscordLink');
 		$cmd->execCmd($_options);
-		return 'requestHandledInternally';
+		return null;
 	}
 
 	public function buildDependencyInfo($_options = array()) {
@@ -1258,7 +1233,7 @@ class discordlinkCmd extends cmd {
 					$message .= '|' . discordlink::getIcon("dep_progress") . $plugin->getName() . ' (' . $plugin->getId() . ')';
 					if ($color == '#00ff08') $color = '#ffae00';
 				} else {
-					$message .= '|' . discordlink::getIcon("dep_nok") . ' (' . $plugin->getId() . ')';
+					$message .= '|' . discordlink::getIcon("dep_nok") . $plugin->getName() . ' (' . $plugin->getId() . ')';
 					if ($color != '#ff0000') $color = '#ff0000';
 				}
 			}
@@ -1266,13 +1241,13 @@ class discordlinkCmd extends cmd {
 
 		if (isset($_options['cron']) && $color == '#00ff08') {
 			log::add('discordlink', 'debug', 'Vérification dépendances pour ' . $this->getEqLogic()->getName() . ' : Toutes les dépendances sont OK, pas de notification Discord');
-			return 'requestHandledInternally';
+			return null;
 		}
 		$message = str_replace("|", "\n", $message);
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
 		$_options = array('title' => 'Etat des dépendances', 'description' => $message, 'color' => $color, 'footer' => 'DiscordLink');
 		$cmd->execCmd($_options);
-		return 'requestHandledInternally';
+		return null;
 	}
 
 	public function buildGlobalSummary($_options = array()) {
@@ -1284,9 +1259,8 @@ class discordlinkCmd extends cmd {
 			$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
 			$_options = array('title' => 'Erreur', 'description' => '⚠️ Configuration des résumés non initialisée. Veuillez vérifier votre configuration Jeedom.', 'color' => '#ff0000');
 			$cmd->execCmd($_options);
-			return 'requestHandledInternally';
+			return null;
 		}
-		$values = array();
 		$message = '';
 		foreach ($def as $key => $value) {
 			$result = '';
@@ -1299,7 +1273,7 @@ class discordlinkCmd extends cmd {
 		$_options = array('title' => 'Résumé général', 'description' => $message, 'color' => '#0033ff', 'footer' => 'DiscordLink');
 		$cmd->execCmd($_options);
 
-		return 'requestHandledInternally';
+		return null;
 	}
 
 	public function buildGlobalBattery($_options = array()) {
@@ -1314,9 +1288,10 @@ class discordlinkCmd extends cmd {
 
 		$batteryList = array();
 		foreach ($eqLogics as $eqLogic) {
-			if ((is_numeric(eqLogic::byId($eqLogic->getId())->getStatus('battery')) == 1)) {
-				if (eqLogic::byId($eqLogic->getId())->getStatus('battery') <= $alertThreshold) {
-					if (eqLogic::byId($eqLogic->getId())->getStatus('battery') <= $criticalThreshold) {
+			$battery = $eqLogic->getStatus('battery');
+			if (is_numeric($battery)) {
+				if ($battery <= $alertThreshold) {
+					if ($battery <= $criticalThreshold) {
 						$icon = "batterie_nok";
 						$criticalCount++;
 						if ($color != '#ff0000') $color = '#ff0000';
@@ -1329,11 +1304,11 @@ class discordlinkCmd extends cmd {
 					$icon = "batterie_ok";
 				}
 
-				// TODO: Remettre cette syntaxe quand PHP 8 sera le minimum requis (Nullsafe operator)
-				// $batteryList[] = discordlink::getIcon($icon) . $eqLogic->getObject()?->getName() . '/' . $eqLogic->getName() . ' => __***' . eqLogic::byId($eqLogic->getId())->getStatus('battery') . "%***__";
 				$obj = $eqLogic->getObject();
 				$objName = is_object($obj) ? $obj->getName() : '';
-				$batteryList[] = discordlink::getIcon($icon) . $objName . '/' . $eqLogic->getName() . ' => __***' . eqLogic::byId($eqLogic->getId())->getStatus('battery') . "%***__";
+				// TODO: Utiliser le nullsafe operator quand PHP 8 sera le minimum requis pour Jeedom
+				// $batteryList[] = discordlink::getIcon($icon) . $eqLogic->getObject()?->getName() . '/' . $eqLogic->getName() . ' => __***' . $battery . "%***__";
+				$batteryList[] = discordlink::getIcon($icon) . $objName . '/' . $eqLogic->getName() . ' => __***' . $battery . "%***__";
 			}
 		}
 
@@ -1362,7 +1337,7 @@ class discordlinkCmd extends cmd {
 		);
 		$cmd->execCmd($_options2);
 
-		return 'requestHandledInternally';
+		return null;
 	}
 
 	public function buildObjectSummary($_options = array()) {
@@ -1375,7 +1350,7 @@ class discordlinkCmd extends cmd {
 			$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
 			$_options = array('title' => 'Erreur', 'description' => '⚠️ Configuration des résumés non initialisée. Veuillez vérifier votre configuration Jeedom.', 'color' => '#ff0000');
 			$cmd->execCmd($_options);
-			return 'requestHandledInternally';
+			return null;
 		}
 		$message = '';
 		foreach ($def as $key => $value) {
@@ -1389,7 +1364,7 @@ class discordlinkCmd extends cmd {
 		$_options = array('title' => 'Résumé : ' . $object->getName(), 'description' => $message, 'color' => '#0033ff', 'footer' => 'DiscordLink');
 		$cmd->execCmd($_options);
 
-		return 'requestHandledInternally';
+		return null;
 	}
 
 	public function buildMessageCenter($_options = array()) {
@@ -1466,17 +1441,17 @@ class discordlinkCmd extends cmd {
 			}
 		}
 
-		return 'requestHandledInternally';
+		return null;
 	}
 
 	public function buildLastUser($_options = array()) {
 		$result = discordlink::getLastUserConnections();
-		if (isset($_options['cron']) && !$result['cronOk']) return 'requestHandledInternally';
+		if (isset($_options['cron']) && !$result['cronOk']) return null;
 
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
 		$_options = array('title' => $result['title'], 'description' => str_replace("|", "\n", $result['message']), 'color' => '#ff00ff', 'footer' => 'DiscordLink');
 		$cmd->execCmd($_options);
-		return 'requestHandledInternally';
+		return null;
 	}
 
 	public function getWidgetTemplateCode($_version = 'dashboard', $_clean = true, $_widgetName = '') {
@@ -1492,7 +1467,9 @@ class discordlinkCmd extends cmd {
 
 		$templateFilename =  'cmd.' . $command;
 
-		$replace = [];
+		$replace = [
+			'#uid#' => 'cmd' . $this->getId() . eqLogic::UIDDELIMITER . mt_rand() . eqLogic::UIDDELIMITER,
+		];
 
 		if ($command === 'sendEmbed') {
 			/** @var discordlink $eqLogic */
@@ -1501,7 +1478,7 @@ class discordlinkCmd extends cmd {
 			foreach (discordlink::getQuickActionOptions() as $option) {
 				$quickActionOptionsHtml .= '<option value="' . $option['id'] . '">' . $option['name'] . '</option>';
 			}
-			$replace = [
+			$replace += [
 				'#defaultColor#' => $eqLogic->getDefaultColor(),
 				'#defaultTitle#' => '',
 				'#defaultUrl#' => '',
@@ -1510,7 +1487,9 @@ class discordlinkCmd extends cmd {
 				'#quickActionOptions#' => $quickActionOptionsHtml,
 			];
 		} elseif ($command === 'sendFile') {
-			$replace = ['#defaultPath#' => ''];
+			$replace += [
+				'#defaultPath#' => '',
+			];
 		}
 
 		$html = template_replace($replace, getTemplate('core', 'scenario', $templateFilename, 'discordlink'));
@@ -1530,7 +1509,7 @@ class discordlinkCmd extends cmd {
 	 * @param int $maxChars Nombre max de caractères par bloc
 	 * @return array Tableau de blocs concaténés
 	 */
-	function groupMessagesByCountAndLength(array $messages, int $maxMsg, int $maxChars = 4096) {
+	private static function groupMessagesByCountAndLength(array $messages, int $maxMsg, int $maxChars = 4096) {
 		$result = [];
 		$currentBlock = [];
 		$currentLength = 0;
