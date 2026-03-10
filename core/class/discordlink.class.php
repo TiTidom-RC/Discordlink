@@ -71,11 +71,11 @@ class discordlink extends eqLogic {
 		return self::$_daemonBaseURL;
 	}
 
-	public static function getChannel($maxRetries = 5, $delayMs = 2000) {
+	public static function getChannels($maxRetries = 5, $delayMs = 2000) {
 		$attempt = 0;
 		while ($attempt < $maxRetries) {
 			try {
-				$requestHttp = new com_http(self::getDaemonBaseURL() . '/getchannel');
+				$requestHttp = new com_http(self::getDaemonBaseURL() . '/getchannels');
 				$requestHttp->setNoReportError(true);
 				$response = $requestHttp->exec(10, 2);
 				$httpCode = $requestHttp->getHttpCode();
@@ -109,8 +109,8 @@ class discordlink extends eqLogic {
 		return array();
 	}
 
-	public static function setChannel() {
-		$channels = static::getChannel();
+	public static function syncChannels() {
+		$channels = static::getChannels();
 		if (empty($channels)) return;
 
 		array_walk($channels, function (&$channel) {
@@ -131,9 +131,14 @@ class discordlink extends eqLogic {
 		);
 		$text = strtr($text, $replacements);
 
+		// Supprime les caractères de liaison ZWJ (U+200D) et les sélecteurs de variation (U+FE0F) des emoji composés
+		$text = preg_replace('/[\x{200D}\x{FE0F}]/u', '', $text);
+
 		// Supprime les emoji Unicode tout en préservant les caractères ASCII (0-9, #, *)
-		// On utilise un lookahead négatif pour exclure les chiffres et symboles standards
-		return preg_replace('/(?:(?![0-9#*])\p{Emoji})+/u', '', $text);
+		$text = preg_replace('/(?:(?![0-9#*])\p{Emoji})+/u', '', $text);
+
+		// Normalise les espaces multiples (résidu d'emoji en milieu de nom) et retire les bords
+		return trim(preg_replace('/ {2,}/', ' ', $text));
 	}
 
 	public static function setEmoji($reset = 0) {
@@ -196,7 +201,7 @@ class discordlink extends eqLogic {
 
 	private static function executeCronIfDue($eqLogic, $cronExpr, $cmdLogicId, $debugLabel, $_options) {
 		if (empty($cronExpr)) {
-			log::add('discordlink', 'debug', $debugLabel . ' pour ' . $eqLogic->getName() . ' : aucun cron configuré');
+			log::add('discordlink', 'warning', $debugLabel . ' pour ' . $eqLogic->getName() . ' : activé mais aucun cron configuré');
 			return;
 		}
 
@@ -221,11 +226,9 @@ class discordlink extends eqLogic {
 	public static function runScheduledChecks() {
 		$eqLogics = eqLogic::byType('discordlink');
 		if (empty($eqLogics)) {
-			log::add('discordlink', 'debug', 'runScheduledChecks() : Aucun équipement discordlink trouvé');
 			return;
 		}
 
-		log::add('discordlink', 'debug', 'runScheduledChecks() : Début vérification de ' . count($eqLogics) . ' équipement(s)');
 		$options = ['cron' => true];
 
 		foreach ($eqLogics as $eqLogic) {
@@ -233,32 +236,22 @@ class discordlink extends eqLogic {
 
 			// Vérification démon
 			if ((bool)$eqLogic->getConfiguration('daemonCheck', 0)) {
-				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - daemonCheck activé, cron configuré: ' . $eqLogic->getConfiguration('autoRefreshDaemon', 'non défini'));
 				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autoRefreshDaemon'), 'daemonInfo', 'DaemonCheck', $options);
-			} else {
-				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - daemonCheck désactivé (valeur: ' . var_export($eqLogic->getConfiguration('daemonCheck', 0), true) . ')');
 			}
 
 			// Vérification dépendances
 			if ((bool)$eqLogic->getConfiguration('dependencyCheck', 0)) {
-				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - dependencyCheck activé, cron configuré: ' . $eqLogic->getConfiguration('autoRefreshDependency', 'non défini'));
 				static::executeCronIfDue($eqLogic, $eqLogic->getConfiguration('autoRefreshDependency'), 'dependencyInfo', 'DependencyCheck', $options);
-			} else {
-				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - dependencyCheck désactivé (valeur: ' . var_export($eqLogic->getConfiguration('dependencyCheck', 0), true) . ')');
 			}
 
 			// Vérification connexions utilisateurs
 			if ((bool)$eqLogic->getConfiguration('connectionCheck', 0)) {
-				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - connectionCheck activé');
 				$cmd = $eqLogic->getCmd('action', 'lastUser');
 				if (is_object($cmd)) {
-					log::add('discordlink', 'debug', 'Vérification connexion utilisateur pour ' . $eqLogic->getName());
 					$cmd->execCmd($options);
 				} else {
 					log::add('discordlink', 'warning', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - commande lastUser introuvable');
 				}
-			} else {
-				log::add('discordlink', 'debug', 'runScheduledChecks() : ' . $eqLogic->getName() . ' - connectionCheck désactivé (valeur: ' . var_export($eqLogic->getConfiguration('connectionCheck', 0), true) . ')');
 			}
 		}
 	}
@@ -311,9 +304,7 @@ class discordlink extends eqLogic {
 			if ($response !== false) {
 				$return['state'] = 'ok';
 				$json = json_decode($response, true);
-				if (is_array($json) && isset($json['status']) && $json['status'] == 'ok') {
-					log::add('discordlink', 'debug', 'Heartbeat OK (Uptime: ' . round($json['uptime'], 2) . 's)');
-				} else {
+				if (!is_array($json) || !isset($json['status']) || $json['status'] != 'ok') {
 					log::add('discordlink', 'warning', 'Heartbeat réponse inattendue : ' . $response);
 				}
 			}
@@ -339,7 +330,7 @@ class discordlink extends eqLogic {
 			throw new Exception(__('Veuillez vérifier la configuration', __FILE__));
 		}
 
-		log::add('discordlink', 'info', 'Lancement du bot');
+		log::add('discordlink', 'info', 'Lancement du démon Discord Link');
 
 		$apiKey = jeedom::getApiKey('discordlink');
 		$cmd = sprintf(
@@ -355,7 +346,7 @@ class discordlink extends eqLogic {
 			escapeshellarg(network::getNetworkAccess('external'))
 		);
 
-		log::add('discordlink', 'debug', 'Lancement démon discordlink : ' . $cmd);
+		log::add('discordlink', 'debug', 'Commande du démon Discord Link : ' . $cmd);
 
 		$fullCmd = sprintf(
 			'NODE_ENV=production nohup %s >> %s 2>&1 & echo $!',
@@ -374,20 +365,20 @@ class discordlink extends eqLogic {
 		for ($i = 0; $i < 30; $i++) {
 			if (static::deamon_info()['state'] == 'ok') {
 				message::removeAll('discordlink', 'unableStartDeamon');
-				log::add('discordlink', 'info', 'Démon discordlink lancé');
+				log::add('discordlink', 'info', 'Démon Discord Link lancé');
 				static::updateObject();
-				static::setChannel();
+				static::syncChannels();
 				return true;
 			}
 			sleep(1);
 		}
 
-		log::add('discordlink', 'error', 'Impossible de lancer le démon discordlink, vérifiez le port', 'unableStartDeamon');
+		log::add('discordlink', 'error', 'Impossible de lancer le démon Discord Link, vérifiez le port', 'unableStartDeamon');
 		return false;
 	}
 
 	public static function deamon_stop() {
-		log::add('discordlink', 'info', 'Arrêt du démon discordlink');
+		log::add('discordlink', 'info', 'Arrêt du démon Discord Link');
 
 		// Arrêt gracieux via API HTTP
 		try {
@@ -396,7 +387,7 @@ class discordlink extends eqLogic {
 			$requestHttp->setAllowEmptyReponse(true);
 			$requestHttp->exec(1, 1);
 		} catch (Exception $e) {
-			log::add('discordlink', 'error', 'Erreur Arrêt du Démon :: ' . $e->getMessage());
+			log::add('discordlink', 'error', 'Erreur arrêt du démon : ' . $e->getMessage());
 		}
 
 		// Attente dynamique de l'arrêt du processus (max 3s)
@@ -838,52 +829,34 @@ class discordlinkCmd extends cmd {
 			return;
 		}
 
-		$deamon = discordlink::deamon_info();
-		if ($deamon['state'] == 'ok') {
-			$requestData = $this->buildRequest($_options);
+		$requestData = $this->buildRequest($_options);
 
-			if ($requestData === 'requestHandledInternally') {
-				return true;
-			}
-
-			// NEW: Handle Array return from buildRequest (POST/JSON migration)
-			if (is_array($requestData)) {
-				$endpoint = $requestData['endpoint'];
-				$payload = $requestData['payload'];
-				$method = $requestData['method'] ?? 'POST';
-
-				$url = discordlink::getDaemonBaseURL() . $endpoint;
-				log::add('discordlink', 'debug', "Executing $method $url");
-
-				$request_http = new com_http($url);
-				$request_http->setAllowEmptyReponse(true);
-				if ($this->getConfiguration('noSslCheck') == 1) $request_http->setNoSslCheck(true);
-				if ($this->getConfiguration('doNotReportHttpError') == 1) $request_http->setNoReportError(true);
-
-				if ($method === 'POST') {
-					$request_http->setPost(json_encode($payload));
-					$request_http->setHeader(array('Content-Type: application/json'));
-				}
-
-				if (isset($_options['speedAndNoErrorReport']) && $_options['speedAndNoErrorReport'] == true) {
-					$request_http->setNoReportError(true);
-					$request_http->exec(0.1, 1);
-					return;
-				}
-
-				$result = $request_http->exec($this->getConfiguration('timeout', 6), $this->getConfiguration('maxHttpRetry', 1));
-				if (!$result) throw new Exception(__('Serveur injoignable', __FILE__));
-				return true;
-			}
-
-
+		if (!is_array($requestData)) {
 			return true;
 		}
-		return false;
+
+		$endpoint = $requestData['endpoint'];
+		$payload = $requestData['payload'];
+		$method = $requestData['method'] ?? 'POST';
+
+		$url = discordlink::getDaemonBaseURL() . $endpoint;
+		log::add('discordlink', 'debug', 'Envoi requête ' . $method . ' : ' . $url);
+
+		$request_http = new com_http($url);
+		$request_http->setAllowEmptyReponse(true);
+
+		if ($method === 'POST') {
+			$request_http->setPost(json_encode($payload));
+			$request_http->setHeader(array('Content-Type: application/json'));
+		}
+
+		$result = $request_http->exec(6, 0);
+		if (!$result) throw new Exception(__('Serveur injoignable', __FILE__));
+		return true;
 	}
 
 	private function buildRequest($_options = array()) {
-		if ($this->getType() != 'action') return 'requestHandledInternally';
+		if ($this->getType() != 'action') return null;
 
 		// Use Logical ID for stable command mapping
 		$command = $this->getLogicalId();
@@ -900,7 +873,7 @@ class discordlinkCmd extends cmd {
 			'objectSummary' => 'buildObjectSummary',
 			'messageCenter' => 'buildMessageCenter',
 			'lastUser' => 'buildLastUser',
-			'deleteMessage' => 'buildClearChannelRequest' // New builder method
+			'deleteMessage' => 'buildClearChannelRequest'
 		);
 
 		if (isset($commandMap[$command])) {
@@ -909,7 +882,7 @@ class discordlinkCmd extends cmd {
 			}
 		}
 
-		return 'requestHandledInternally';
+		return null;
 	}
 
 	/**
@@ -1236,13 +1209,13 @@ class discordlinkCmd extends cmd {
 
 		if (isset($_options['cron']) and $color == '#00ff08') {
 			log::add('discordlink', 'debug', 'Vérification démons pour ' . $this->getEqLogic()->getName() . ' : Tous les démons sont OK, pas de notification Discord');
-			return 'requestHandledInternally';
+			return null;
 		}
 		$message = str_replace("|", "\n", $message);
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
 		$_options = array('title' => 'Etat des démons', 'description' => $message, 'color' => $color, 'footer' => 'DiscordLink');
 		$cmd->execCmd($_options);
-		return 'requestHandledInternally';
+		return null;
 	}
 
 	public function buildDependencyInfo($_options = array()) {
@@ -1266,13 +1239,13 @@ class discordlinkCmd extends cmd {
 
 		if (isset($_options['cron']) && $color == '#00ff08') {
 			log::add('discordlink', 'debug', 'Vérification dépendances pour ' . $this->getEqLogic()->getName() . ' : Toutes les dépendances sont OK, pas de notification Discord');
-			return 'requestHandledInternally';
+			return null;
 		}
 		$message = str_replace("|", "\n", $message);
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
 		$_options = array('title' => 'Etat des dépendances', 'description' => $message, 'color' => $color, 'footer' => 'DiscordLink');
 		$cmd->execCmd($_options);
-		return 'requestHandledInternally';
+		return null;
 	}
 
 	public function buildGlobalSummary($_options = array()) {
@@ -1284,7 +1257,7 @@ class discordlinkCmd extends cmd {
 			$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
 			$_options = array('title' => 'Erreur', 'description' => '⚠️ Configuration des résumés non initialisée. Veuillez vérifier votre configuration Jeedom.', 'color' => '#ff0000');
 			$cmd->execCmd($_options);
-			return 'requestHandledInternally';
+			return null;
 		}
 		$values = array();
 		$message = '';
@@ -1299,7 +1272,7 @@ class discordlinkCmd extends cmd {
 		$_options = array('title' => 'Résumé général', 'description' => $message, 'color' => '#0033ff', 'footer' => 'DiscordLink');
 		$cmd->execCmd($_options);
 
-		return 'requestHandledInternally';
+		return null;
 	}
 
 	public function buildGlobalBattery($_options = array()) {
@@ -1362,7 +1335,7 @@ class discordlinkCmd extends cmd {
 		);
 		$cmd->execCmd($_options2);
 
-		return 'requestHandledInternally';
+		return null;
 	}
 
 	public function buildObjectSummary($_options = array()) {
@@ -1375,7 +1348,7 @@ class discordlinkCmd extends cmd {
 			$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
 			$_options = array('title' => 'Erreur', 'description' => '⚠️ Configuration des résumés non initialisée. Veuillez vérifier votre configuration Jeedom.', 'color' => '#ff0000');
 			$cmd->execCmd($_options);
-			return 'requestHandledInternally';
+			return null;
 		}
 		$message = '';
 		foreach ($def as $key => $value) {
@@ -1389,7 +1362,7 @@ class discordlinkCmd extends cmd {
 		$_options = array('title' => 'Résumé : ' . $object->getName(), 'description' => $message, 'color' => '#0033ff', 'footer' => 'DiscordLink');
 		$cmd->execCmd($_options);
 
-		return 'requestHandledInternally';
+		return null;
 	}
 
 	public function buildMessageCenter($_options = array()) {
@@ -1466,17 +1439,17 @@ class discordlinkCmd extends cmd {
 			}
 		}
 
-		return 'requestHandledInternally';
+		return null;
 	}
 
 	public function buildLastUser($_options = array()) {
 		$result = discordlink::getLastUserConnections();
-		if (isset($_options['cron']) && !$result['cronOk']) return 'requestHandledInternally';
+		if (isset($_options['cron']) && !$result['cronOk']) return null;
 
 		$cmd = $this->getEqLogic()->getCmd('action', 'sendEmbed');
 		$_options = array('title' => $result['title'], 'description' => str_replace("|", "\n", $result['message']), 'color' => '#ff00ff', 'footer' => 'DiscordLink');
 		$cmd->execCmd($_options);
-		return 'requestHandledInternally';
+		return null;
 	}
 
 	public function getWidgetTemplateCode($_version = 'dashboard', $_clean = true, $_widgetName = '') {

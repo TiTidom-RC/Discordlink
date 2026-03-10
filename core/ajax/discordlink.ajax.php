@@ -56,7 +56,7 @@ try {
             throw new Exception('Le démon n\'est pas démarré. Veuillez le démarrer avant de rafraîchir les channels.');
         }
 
-        $channels = discordlink::getChannel();
+        $channels = discordlink::getChannels(1, 0);
         // Force IDs to string to avoid snowflake precision issues in JSON/JS
         foreach ($channels as &$channel) {
             $channel['id'] = (string)$channel['id'];

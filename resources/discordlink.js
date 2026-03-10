@@ -134,7 +134,7 @@ const activityStatus = decodeURI(process.argv[7]);
 const listeningPort = process.argv[8] || 3466;
 const jeedomExtURL = process.argv[9];
 
-// Flag pour indiquer si le client Discord est prêt (évite les erreurs getChannel avant ready)
+// Flag pour indiquer si le client Discord est prêt (évite les erreurs getChannels avant ready)
 let discordReady = false;
 
 /**
@@ -309,19 +309,19 @@ app.get("/heartbeat", (req, res) => {
 });
 
 /***** Get channels *****/
-app.get("/getchannel", async (req, res) => {
+app.get("/getchannels", async (req, res) => {
   try {
     res.type("json");
 
     // Vérifier si le client Discord est prêt
     if (!discordReady) {
-      config.logger("GetChannel demandé mais Discord pas encore prêt", "WARNING");
+      config.logger("GetChannels demandé mais Discord pas encore prêt", "WARNING");
       return res.status(503).json({ error: "Discord not ready yet" });
     }
 
     let toReturn = [];
 
-    config.logger("GetChannel", "DEBUG");
+    config.logger("GetChannels : récupération des channels en cours...", "DEBUG");
 
     // Discord.js v14: .cache.array() n'existe plus
     const allChannels = Array.from(client.channels.cache.values());
@@ -338,10 +338,10 @@ app.get("/getchannel", async (req, res) => {
       }
     }
 
-    config.logger("GetChannel : " + toReturn.length + " channel(s) trouvé(s)", "DEBUG");
+    config.logger("GetChannels : " + toReturn.length + " channel(s) trouvé(s)", "DEBUG");
     res.status(200).json(toReturn);
   } catch (error) {
-    config.logger("DiscordLink ERROR getchannel: " + error.message, "ERROR");
+    config.logger("DiscordLink ERROR getchannels: " + error.message, "ERROR");
     res.status(500).json({ error: error.message });
   }
 });
@@ -1418,7 +1418,7 @@ const startServer = () => {
         config.logger("Erreur setActivity: " + e.message, "WARNING");
       }
 
-      // Pré-chargement des guilds & channels (important pour getChannel) 
+      // Pré-chargement des guilds & channels (important pour getChannels) 
       // ... Avec timeout pour éviter de bloquer le bot indéfiniment en cas de gros serveur ou de problème réseau
       try {
         const PRELOAD_TIMEOUT = 15000; // 15 secondes max
