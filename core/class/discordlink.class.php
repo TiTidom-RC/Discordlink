@@ -462,7 +462,6 @@ class discordlink extends eqLogic {
 
 		$eqLogics = eqLogic::byType('discordlink');
 		foreach ($eqLogics as $eqLogic) {
-			// log::add('discordlink', 'debug', 'Création/Mise à jour des commandes pour ' . $eqLogic->getName());
 
 			$commandsConfig = array(
 				'sendMsg' => array('requiredPlugin' => '0', 'label' => 'Envoi message', 'type' => 'action', 'subType' => 'message', 'request' => 'sendMsg', 'visible' => 1, 'template' => 'discordlink::message'),
@@ -858,7 +857,6 @@ class discordlinkCmd extends cmd {
 	private function buildRequest($_options = array()) {
 		if ($this->getType() != 'action') return null;
 
-		// Use Logical ID for stable command mapping
 		$command = $this->getLogicalId();
 
 		$commandMap = array(
@@ -886,33 +884,33 @@ class discordlinkCmd extends cmd {
 	}
 
 	/**
-	 * Standardize text processing for Discord messages/embeds.
+	 * Traitement unifié du texte pour les messages et embeds Discord.
 	 *
-	 * Pipeline:
-	 * 1. Jeedom Tags (#[...]#)
-	 * 2. Random Text ({...})
-	 * 3. Custom Emojis (emo_...) - ONLY if $_supportMarkdown is true
-	 * 4. Newlines (| -> \n)
+	 * Pipeline :
+	 * 1. Remplacement des tags Jeedom (#[...]#)
+	 * 2. Décodage du texte aléatoire ({...})
+	 * 3. Conversion des emojis personnalisés (emo_...) — uniquement si $_supportMarkdown est vrai
+	 * 4. Remplacement des sauts de ligne (| -> \n)
 	 *
-	 * @param string $_text The text to process
-	 * @param bool $_supportMarkdown Whether the target field supports Markdown/Custom Emojis (default: false)
+	 * @param string $_text Le texte à traiter
+	 * @param bool $_supportMarkdown Si le champ cible supporte le Markdown/les emojis personnalisés (défaut : false)
 	 * @return string
 	 */
 	private function formatDiscordText($_text, $_supportMarkdown = false) {
 		if (empty($_text)) return $_text;
 
-		// 1. Tags replacement
+		// 1. Remplacement des tags
 		$text = scenarioExpression::setTags($_text);
 
-		// 2. Random text decoding
+		// 2. Décodage du texte aléatoire
 		$text = self::decodeRandomText($text);
 
-		// 3. Emoji conversion (only if markdown supported)
+		// 3. Conversion des emojis (uniquement si markdown supporté)
 		if ($_supportMarkdown) {
 			$text = discordlink::emojiConvert($text);
 		}
 
-		// 4. Newline replacement
+		// 4. Remplacement des sauts de ligne
 		$text = str_replace('|', "\n", $text);
 
 		return $text;
@@ -921,7 +919,6 @@ class discordlinkCmd extends cmd {
 	private function buildMessageRequest($_options = array(), $default = "Une erreur est survenue") {
 		$message = isset($_options['message']) && $_options['message'] != '' ? $_options['message'] : $default;
 
-		// Call unified formatter (Message supports Markdown/Emojis)
 		$message = $this->formatDiscordText($message, true);
 
 		$channelID = $this->getEqLogic()->getConfiguration('channelId');
@@ -942,7 +939,7 @@ class discordlinkCmd extends cmd {
 	private function buildFileRequest($_options = array(), $default = "Chemin du fichier non spécifié") {
 		$channelID = $this->getEqLogic()->getConfiguration('channelId');
 
-		// Handle files input
+		// Traitement des fichiers en entrée
 		$rawFiles = "";
 		if (isset($_options['files'])) {
 			$rawFiles = is_array($_options['files']) ? implode(',', $_options['files']) : (string)$_options['files'];
@@ -951,7 +948,6 @@ class discordlinkCmd extends cmd {
 
 		$message = isset($_options['message']) ? $_options['message'] : "";
 
-		// Use unified formatter (Message supports Markdown/Emojis)
 		$message = $this->formatDiscordText($message, true);
 
 		if (empty($rawFiles) && empty($message)) {
@@ -961,7 +957,7 @@ class discordlinkCmd extends cmd {
 			log::add('discordlink', 'info', 'sendFile : Aucun fichier spécifié, envoi du message seul.');
 		}
 
-		// Build array of files
+		// Construction du tableau de fichiers
 		$filesArray = [];
 		if (!empty($rawFiles)) {
 			$splits = explode(',', $rawFiles);
@@ -1048,7 +1044,7 @@ class discordlinkCmd extends cmd {
 					$description .= $choices[$a] . " : " . $answer[$a] . "\n";
 					$urlList[] = $answer[$a];
 				}
-				// Pass the array directly, JS will handle it
+				// Tableau passé directement au démon Node.js (mode ASK)
 				$url = $urlList;
 				$answerCount = count($answer);
 			} else {
@@ -1083,10 +1079,10 @@ class discordlinkCmd extends cmd {
 			if (!empty($fields)) {
 				foreach ($fields as &$field) {
 					if (isset($field['name'])) {
-						$field['name'] = $this->formatDiscordText($field['name'], false); // No Markdown in Field Name
+						$field['name'] = $this->formatDiscordText($field['name'], false); // Pas de Markdown dans le nom de champ
 					}
 					if (isset($field['value'])) {
-						$field['value'] = $this->formatDiscordText($field['value'], true); // Markdown OK in Field Value
+						$field['value'] = $this->formatDiscordText($field['value'], true); // Markdown OK dans la valeur de champ
 					}
 				}
 			}
@@ -1119,14 +1115,14 @@ class discordlinkCmd extends cmd {
 			}
 		}
 
-		// Tags processing using unified helper
-		$title = $this->formatDiscordText($title, false); // No Markdown in Title
-		$description = $this->formatDiscordText($description, true); // Markdown OK in Description
-		$footer = $this->formatDiscordText($footer, false); // No Markdown in Footer
+		// Traitement de la mise en forme du texte
+		$title = $this->formatDiscordText($title, false); // Pas de Markdown dans le titre
+		$description = $this->formatDiscordText($description, true); // Markdown OK dans la description
+		$footer = $this->formatDiscordText($footer, false); // Pas de Markdown dans le pied de page
 
-		// URL processing only if it's a string (standard embed URL), if it's an array (ASK mode), leave as is
+		// Traitement de l'URL uniquement si c'est une chaîne (embed standard) ; si c'est un tableau (mode ASK), on laisse tel quel
 		if (is_string($url)) {
-			// Basic tag replacement for URL, no emojis
+			// Remplacement des tags uniquement, sans emojis
 			$url = $this->formatDiscordText($url, false);
 		}
 
@@ -1207,7 +1203,7 @@ class discordlinkCmd extends cmd {
 			}
 		}
 
-		if (isset($_options['cron']) and $color == '#00ff08') {
+		if (isset($_options['cron']) && $color == '#00ff08') {
 			log::add('discordlink', 'debug', 'Vérification démons pour ' . $this->getEqLogic()->getName() . ' : Tous les démons sont OK, pas de notification Discord');
 			return null;
 		}
@@ -1259,7 +1255,6 @@ class discordlinkCmd extends cmd {
 			$cmd->execCmd($_options);
 			return null;
 		}
-		$values = array();
 		$message = '';
 		foreach ($def as $key => $value) {
 			$result = '';
@@ -1287,9 +1282,10 @@ class discordlinkCmd extends cmd {
 
 		$batteryList = array();
 		foreach ($eqLogics as $eqLogic) {
-			if ((is_numeric(eqLogic::byId($eqLogic->getId())->getStatus('battery')) == 1)) {
-				if (eqLogic::byId($eqLogic->getId())->getStatus('battery') <= $alertThreshold) {
-					if (eqLogic::byId($eqLogic->getId())->getStatus('battery') <= $criticalThreshold) {
+			$battery = $eqLogic->getStatus('battery');
+			if (is_numeric($battery)) {
+				if ($battery <= $alertThreshold) {
+					if ($battery <= $criticalThreshold) {
 						$icon = "batterie_nok";
 						$criticalCount++;
 						if ($color != '#ff0000') $color = '#ff0000';
@@ -1302,11 +1298,11 @@ class discordlinkCmd extends cmd {
 					$icon = "batterie_ok";
 				}
 
-				// TODO: Remettre cette syntaxe quand PHP 8 sera le minimum requis (Nullsafe operator)
-				// $batteryList[] = discordlink::getIcon($icon) . $eqLogic->getObject()?->getName() . '/' . $eqLogic->getName() . ' => __***' . eqLogic::byId($eqLogic->getId())->getStatus('battery') . "%***__";
 				$obj = $eqLogic->getObject();
 				$objName = is_object($obj) ? $obj->getName() : '';
-				$batteryList[] = discordlink::getIcon($icon) . $objName . '/' . $eqLogic->getName() . ' => __***' . eqLogic::byId($eqLogic->getId())->getStatus('battery') . "%***__";
+				// TODO: Utiliser le nullsafe operator quand PHP 8 sera le minimum requis pour Jeedom
+				// $batteryList[] = discordlink::getIcon($icon) . $eqLogic->getObject()?->getName() . '/' . $eqLogic->getName() . ' => __***' . $battery . "%***__";
+				$batteryList[] = discordlink::getIcon($icon) . $objName . '/' . $eqLogic->getName() . ' => __***' . $battery . "%***__";
 			}
 		}
 
