@@ -1511,7 +1511,10 @@ class discordlinkCmd extends cmd {
 				'#uid#' => 'cmd' . $this->getId() . eqLogic::UIDDELIMITER . mt_rand() . eqLogic::UIDDELIMITER,
 			];
 		} elseif ($command === 'sendFile') {
-			$replace = ['#defaultPath#' => ''];
+			$replace = [
+				'#defaultPath#' => '',
+				'#uid#' => 'cmd' . $this->getId() . eqLogic::UIDDELIMITER . mt_rand() . eqLogic::UIDDELIMITER,
+			];
 		}
 
 		$html = template_replace($replace, getTemplate('core', 'scenario', $templateFilename, 'discordlink'));
