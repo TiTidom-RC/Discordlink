@@ -1508,6 +1508,7 @@ class discordlinkCmd extends cmd {
 				'#defaultDescription#' => '',
 				'#defaultFooter#' => '',
 				'#quickActionOptions#' => $quickActionOptionsHtml,
+				'#uid#' => 'cmd' . $this->getId() . eqLogic::UIDDELIMITER . mt_rand() . eqLogic::UIDDELIMITER,
 			];
 		} elseif ($command === 'sendFile') {
 			$replace = ['#defaultPath#' => ''];
