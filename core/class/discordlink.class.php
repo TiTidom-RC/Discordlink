@@ -831,6 +831,11 @@ class discordlinkCmd extends cmd {
 			return true;
 		}
 
+		// Vérification rapide avant d'engager le timeout HTTP
+		if (discordlink::deamon_info()['state'] !== 'ok') {
+			throw new Exception(__('Le démon Discord Link n\'est pas actif. Veuillez le démarrer avant d\'exécuter des commandes.', __FILE__));
+		}
+
 		$endpoint = $requestData['endpoint'];
 		$payload = $requestData['payload'];
 		$method = $requestData['method'] ?? 'POST';
