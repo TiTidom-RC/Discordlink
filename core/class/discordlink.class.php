@@ -228,6 +228,12 @@ class discordlink extends eqLogic {
 			return;
 		}
 
+		// Sans démon actif, impossible d'envoyer des messages Discord — on abandonne silencieusement
+		if (static::deamon_info()['state'] !== 'ok') {
+			log::add('discordlink', 'debug', 'runScheduledChecks() : démon non actif, vérifications planifiées ignorées');
+			return;
+		}
+
 		$options = ['cron' => true];
 
 		foreach ($eqLogics as $eqLogic) {
