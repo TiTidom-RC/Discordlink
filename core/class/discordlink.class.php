@@ -654,7 +654,7 @@ class discordlink extends eqLogic {
 						$message .= "\n" . $emojiMagRight . "__Récapitulatif de ces " . $cronInterval . " dernières secondes :__ " . $emojiMag;
 					}
 
-					$onlineCount++;
+					$onlineCount++; // Comptage d'activité : événement de connexion dans l'intervalle cron
 					$message .= "\n" . $emojiCheck . "**" . $connectionLogNames[$logUserIndex] . "** s'est connecté par **" . $connectionLogTypes[$logUserIndex] . "** à **" . date("H", strtotime($connectionLogDates[$logUserIndex])) . "h" . date("i", strtotime($connectionLogDates[$logUserIndex])) . "**";
 
 					$hasCronActivity = true;
@@ -692,6 +692,8 @@ class discordlink extends eqLogic {
 
 		$message .= "\n" . "\n" . $emojiMagRight . "__Récapitulatif des sessions actuelles :__ " . $emojiMag;
 		// Parcours des sessions pour vérifier le statut et le nombre de sessions
+		// Note : $connectedUserStatuses et $connectedUserIPs sont réinitialisés à chaque itération :
+		// les sessions actives font autorité sur les données BDD/logs pour l'affichage final
 		foreach ($connectedUserNames as $userIndex => $userName) {
 			$foundCount = 0;
 			$connectedUserStatuses[$userIndex] = 'hors ligne';
@@ -703,7 +705,7 @@ class discordlink extends eqLogic {
 				if ($userName == $session['login']) {
 					if ($userDelay < $offlineDelay * 60) {
 						$foundCount++;
-						$onlineCount++;
+						$onlineCount++; // Comptage d'activité : session active trouvée
 						$connectedUserStatuses[$userIndex] = 'en ligne';
 						$connectedUserIPs[$userIndex] .= "\n" . "-> " . $emojiInternet . " IP : " . $session['ip'];
 					}
