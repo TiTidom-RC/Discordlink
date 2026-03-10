@@ -1503,7 +1503,7 @@ class discordlinkCmd extends cmd {
 			foreach (discordlink::getQuickActionOptions() as $option) {
 				$quickActionOptionsHtml .= '<option value="' . $option['id'] . '">' . $option['name'] . '</option>';
 			}
-			$replace = [
+			$replace += [
 				'#defaultColor#' => $eqLogic->getDefaultColor(),
 				'#defaultTitle#' => '',
 				'#defaultUrl#' => '',
@@ -1512,7 +1512,7 @@ class discordlinkCmd extends cmd {
 				'#quickActionOptions#' => $quickActionOptionsHtml,
 			];
 		} elseif ($command === 'sendFile') {
-			$replace = [
+			$replace += [
 				'#defaultPath#' => '',
 			];
 		}
