@@ -833,7 +833,8 @@ class discordlinkCmd extends cmd {
 
 		// Vérification rapide avant d'engager le timeout HTTP
 		if (discordlink::deamon_info()['state'] !== 'ok') {
-			throw new Exception(__('Le démon Discord Link n\'est pas actif. Veuillez le démarrer avant d\'exécuter des commandes.', __FILE__));
+			log::add('discordlink', 'warning', '[' . $this->getEqLogic()->getName() . '][' . $this->getLogicalId() . '] Commande ignorée : le démon n\'est pas actif.');
+			return true;
 		}
 
 		$endpoint = $requestData['endpoint'];
@@ -852,7 +853,10 @@ class discordlinkCmd extends cmd {
 		}
 
 		$result = $request_http->exec(6, 0);
-		if (!$result) throw new Exception(__('Le démon Discord Link ne répond pas. Vérifiez qu\'il est bien actif.', __FILE__));
+		if (!$result) {
+			log::add('discordlink', 'error', '[' . $this->getEqLogic()->getName() . '][' . $this->getLogicalId() . '] Le démon ne répond pas. Vérifiez son état.');
+			return true;
+		}
 		return true;
 	}
 
