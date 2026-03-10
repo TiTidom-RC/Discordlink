@@ -97,7 +97,7 @@ class discordlink extends eqLogic {
 				log::add('discordlink', 'debug', 'Tentative ' . ($attempt + 1) . '/' . $maxRetries . ' échouée: ' . $e->getMessage());
 			}
 
-			if ($attempt < $maxRetries) {
+			if ($attempt < $maxRetries - 1) {
 				// Backoff progressif : on augmente le délai à chaque tentative
 				usleep($delayMs * 1000);
 				$delayMs += 2000; // +2s à chaque échec (2s, 4s, 6s, 8s, 10s = 30s total)
@@ -189,14 +189,13 @@ class discordlink extends eqLogic {
 		$textParts = explode(" ", $_text);
 		foreach ($textParts as $value) {
 			if (substr($value, 0, 4) === "emo_") {
-				$emoji = discordlink::getIcon(str_replace("emo_", "", $value));
-				$_returnText .= $emoji;
+				// getIcon() inclut déjà un espace séparateur, pas besoin d'en rajouter
+				$_returnText .= discordlink::getIcon(str_replace("emo_", "", $value));
 			} else {
-				$_returnText .= $value;
+				$_returnText .= $value . " ";
 			}
-			$_returnText .= " ";
 		}
-		return $_returnText;
+		return rtrim($_returnText);
 	}
 
 	private static function executeCronIfDue($eqLogic, $cronExpr, $cmdLogicId, $debugLabel, $_options) {
@@ -1219,7 +1218,7 @@ class discordlinkCmd extends cmd {
 					$message .= '|' . discordlink::getIcon("dep_progress") . $plugin->getName() . ' (' . $plugin->getId() . ')';
 					if ($color == '#00ff08') $color = '#ffae00';
 				} else {
-					$message .= '|' . discordlink::getIcon("dep_nok") . ' (' . $plugin->getId() . ')';
+					$message .= '|' . discordlink::getIcon("dep_nok") . $plugin->getName() . ' (' . $plugin->getId() . ')';
 					if ($color != '#ff0000') $color = '#ff0000';
 				}
 			}
@@ -1495,7 +1494,7 @@ class discordlinkCmd extends cmd {
 	 * @param int $maxChars Nombre max de caractères par bloc
 	 * @return array Tableau de blocs concaténés
 	 */
-	function groupMessagesByCountAndLength(array $messages, int $maxMsg, int $maxChars = 4096) {
+	private static function groupMessagesByCountAndLength(array $messages, int $maxMsg, int $maxChars = 4096) {
 		$result = [];
 		$currentBlock = [];
 		$currentLength = 0;
