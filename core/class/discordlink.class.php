@@ -1492,7 +1492,9 @@ class discordlinkCmd extends cmd {
 
 		$templateFilename =  'cmd.' . $command;
 
-		$replace = [];
+		$replace = [
+			'#uid#' => 'cmd' . $this->getId() . eqLogic::UIDDELIMITER . mt_rand() . eqLogic::UIDDELIMITER,
+		];
 
 		if ($command === 'sendEmbed') {
 			/** @var discordlink $eqLogic */
@@ -1508,12 +1510,10 @@ class discordlinkCmd extends cmd {
 				'#defaultDescription#' => '',
 				'#defaultFooter#' => '',
 				'#quickActionOptions#' => $quickActionOptionsHtml,
-				'#uid#' => 'cmd' . $this->getId() . eqLogic::UIDDELIMITER . mt_rand() . eqLogic::UIDDELIMITER,
 			];
 		} elseif ($command === 'sendFile') {
 			$replace = [
 				'#defaultPath#' => '',
-				'#uid#' => 'cmd' . $this->getId() . eqLogic::UIDDELIMITER . mt_rand() . eqLogic::UIDDELIMITER,
 			];
 		}
 
