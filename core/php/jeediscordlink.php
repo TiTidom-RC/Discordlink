@@ -82,7 +82,7 @@ switch ($name) {
 			$parameters['userid'] = $result['userId'];
 			$parameters['channel'] = $result['channelId'];
 
-			log::add('discordlink', 'debug', 'SlashCommand : Envoi au moteur d\'interaction...');
+			log::add('discordlink', 'debug', 'SlashCommand : Envoi au moteur d\'interaction.... demandée par ' . $result['username']);
 			// Le @ supprime le PHP Notice "Only variables should be passed by reference" généré par
 			// interactQuery.class.php (core Jeedom) lors de l'appel à tryToReply().
 			// Ce notice est produit par le core lui-même (expression temporaire passée par référence)
@@ -109,7 +109,7 @@ switch ($name) {
 			}
 
 			$cmdId = $result['request'];
-			log::add('discordlink', 'debug', 'SlashCommand : Exécution de la commande Jeedom ID ' . $cmdId);
+			log::add('discordlink', 'debug', 'SlashCommand : Exécution de la commande Jeedom ID ' . $cmdId . ' demandée par ' . $result['username']);
 
 			$cmd = cmd::byId($cmdId);
 			if (!is_object($cmd)) {
@@ -129,7 +129,7 @@ switch ($name) {
 			}
 
 			$scId = $result['request'];
-			log::add('discordlink', 'debug', 'SlashCommand : Exécution du scénario Jeedom ID ' . $scId);
+			log::add('discordlink', 'debug', 'SlashCommand : Exécution du scénario Jeedom ID ' . $scId . ' demandée par ' . $result['username']);
 
 			$scenario = scenario::byId($scId);
 			if (!is_object($scenario)) {
@@ -140,10 +140,10 @@ switch ($name) {
 
 
 			if (version_compare(jeedom::version(), '4.5', '<')) {
-				$scenario_return = $scenario->launch('DiscordLink', 'Lancement du scénario ' . $scenario->getHumanName() . ' (' . $scId . ') via slashcommand');
+				$scenario_return = $scenario->launch('DiscordLink', 'Lancement du scénario ' . $scenario->getHumanName() . ' (' . $scId . ') via slashcommand par ' . $result['username']);
 			} else {
 				$scenario->addTag('trigger', 'DiscordLink');
-				$scenario->addTag('trigger_message', 'Lancement du scénario ' . $scenario->getHumanName() . ' (' . $scId . ') via slashcommand');
+				$scenario->addTag('trigger_message', 'Lancement du scénario ' . $scenario->getHumanName() . ' (' . $scId . ') via slashcommand par ' . $result['username']);
 				$scenario_return = $scenario->launch();
 			}
 
