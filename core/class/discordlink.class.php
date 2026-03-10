@@ -836,7 +836,7 @@ class discordlinkCmd extends cmd {
 		$method = $requestData['method'] ?? 'POST';
 
 		$url = discordlink::getDaemonBaseURL() . $endpoint;
-		log::add('discordlink', 'debug', 'Envoi requête ' . $method . ' : ' . $url);
+		log::add('discordlink', 'debug', '[' . $this->getEqLogic()->getName() . '][' . $this->getLogicalId() . '] Envoi requête ' . $method . ' : ' . $url);
 
 		$request_http = new com_http($url);
 		$request_http->setAllowEmptyReponse(true);
@@ -847,7 +847,7 @@ class discordlinkCmd extends cmd {
 		}
 
 		$result = $request_http->exec(6, 0);
-		if (!$result) throw new Exception(__('Serveur injoignable', __FILE__));
+		if (!$result) throw new Exception(__('Le démon Discord Link ne répond pas. Vérifiez qu\'il est bien actif.', __FILE__));
 		return true;
 	}
 
