@@ -6,7 +6,6 @@
         "Impossible d\\'enregistrer le fichier quickaction.json": "No se puede guardar el archivo quickaction.json"
     },
     "plugins\/discordlink\/core\/class\/discordlink.class.php": {
-        "Serveur injoignable": "Servidor inaccesible",
         "Veuillez vérifier la configuration": "Compruebe la configuración."
     },
     "plugins\/discordlink\/core\/php\/jeediscordlink.php": {
@@ -20,7 +19,8 @@
         "URL (optionnel)": "URL (opcional)"
     },
     "plugins\/discordlink\/core\/template\/scenario\/cmd.sendEmbed.html": {
-        "Aucun": "Ninguno",
+        "Action rapide": "Acción rápida",
+        "Aucune": "Ninguna",
         "Chemin vers un ou plusieurs fichiers (séparés par ,) - Max 4": "Ruta a uno o varios archivos (separados por ,) - Máximo 4",
         "Couleur": "Color",
         "Couleur (Hexa)": "Color (Hexa)",
@@ -28,7 +28,6 @@
         "Footer": "Pie de página",
         "Lien": "Enlace",
         "Message": "Mensaje",
-        "Réponse rapide": "Respuesta rápida",
         "Sélectionner la commande": "Seleccionar el comando",
         "Titre": "Título"
     },
