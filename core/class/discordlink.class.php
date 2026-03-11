@@ -852,7 +852,7 @@ class discordlinkCmd extends cmd {
 			$request_http->setHeader(array('Content-Type: application/json'));
 		}
 
-		$result = $request_http->exec(6, 0);
+		$result = $request_http->exec(6, 1);
 		if (!$result) {
 			log::add('discordlink', 'error', '[' . $this->getEqLogic()->getName() . '][' . $this->getLogicalId() . '] Le démon ne répond pas. Vérifiez son état.');
 			return true;
