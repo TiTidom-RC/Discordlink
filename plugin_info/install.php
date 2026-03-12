@@ -16,6 +16,8 @@
  * along with Jeedom. If not, see <http://www.gnu.org/licenses/>.
  */
 
+use PSpell\Dictionary;
+
 require_once dirname(__FILE__) . '/../../../core/php/core.inc.php';
 
 function discordlink_install() {
@@ -191,6 +193,13 @@ function discordlink_update() {
                 unset($configuration[$oldKey]);
                 $needSave = true;
             }
+        }
+
+        $color = $eqLogic->getConfiguration('defaultColor');
+        if($color === '' || $color == '#000000'){ {
+            $eqLogic->setConfiguration('defaultColor', discordlink::DEFAULT_COLOR);
+            log::add('discordlink', 'info', '  - ' . $eqLogic->getHumanName() . ': Ajout de la configuration defaultColor avec la valeur par défaut');
+            $needSave = true;
         }
 
         if ($needSave) {
