@@ -193,6 +193,13 @@ function discordlink_update() {
             }
         }
 
+        $color = $eqLogic->getConfiguration('defaultColor');
+        if($color === '' || $color == '#000000'){ {
+            $eqLogic->setConfiguration('defaultColor', discordlink::DEFAULT_COLOR);
+            log::add('discordlink', 'info', '  - ' . $eqLogic->getHumanName() . ': Ajout de la configuration defaultColor avec la valeur par défaut');
+            $needSave = true;
+        }
+
         if ($needSave) {
             $eqLogic->save();
         }
