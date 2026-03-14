@@ -196,7 +196,7 @@ function discordlink_update() {
         }
 
         $color = $eqLogic->getConfiguration('defaultColor');
-        if($color === '' || $color == '#000000'){ {
+        if($color === '' || $color == '#000000') {
             $eqLogic->setConfiguration('defaultColor', discordlink::DEFAULT_COLOR);
             log::add('discordlink', 'info', '  - ' . $eqLogic->getHumanName() . ': defaultColor initialisé à la valeur par défaut (' . discordlink::DEFAULT_COLOR . ')');
             $needSave = true;
@@ -207,8 +207,6 @@ function discordlink_update() {
         }
     }
 
-
-
     // 5. Régénération des Commandes et Emojis
     // ---------------------------------------
     log::add('discordlink', 'info', 'Mise à jour des définitions des commandes et emojis...');
@@ -216,7 +214,6 @@ function discordlink_update() {
     discordlink::createCmd();
     log::add('discordlink', 'info', '  - Vérification des emojis des équipements...');
     discordlink::setEmoji();
-
 
     // 6. Détection des commandes obsolètes ou avec mauvais logicalId
     // --------------------------------------------------------------
