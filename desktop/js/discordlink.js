@@ -123,9 +123,9 @@
   };
 
   /**
-   * Event Delegation pour l'ensemble du plugin
+   * Event Delegation pour l'ensemble du plugin — registerEvent pour nettoyage auto à chaque loadPage()
    */
-  document.body.addEventListener('click', function (e) {
+  document.body.registerEvent('click', function (e) {
 
     if (e.target.closest('[data-action="createCommunityPost"]')) {
       jeedom.plugin.createCommunityPost({
@@ -259,7 +259,7 @@
     });
   }
 
-  document.body.addEventListener('change', function (e) {
+  document.body.registerEvent('change', function (e) {
     // Daemon Checkbox Visibility
     if (e.target.id === 'daemonCheck') {
       const els = document.querySelectorAll('.daemon_freq');
