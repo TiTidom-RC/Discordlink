@@ -19,6 +19,7 @@ const {
   REST,
   Routes,
   SlashCommandBuilder,
+  MessageFlags,
 } = require("discord.js");
 
 const BASE_INTENTS = [
@@ -67,6 +68,17 @@ const registerCommands = async (clientId, token) => {
             option
               .setName('request')
               .setDescription('Requête Jeedom')
+              .setRequired(true)
+          )
+      )
+      .addSubcommand(subcommand =>
+        subcommand
+          .setName('scenario')
+          .setDescription('Rechercher et lancer un scénario Jeedom par son nom')
+          .addStringOption(option =>
+            option
+              .setName('name')
+              .setDescription('Nom du scénario à rechercher')
               .setRequired(true)
           )
       ),
@@ -122,7 +134,7 @@ const activityStatus = decodeURI(process.argv[7]);
 const listeningPort = process.argv[8] || 3466;
 const jeedomExtURL = process.argv[9];
 
-// Flag pour indiquer si le client Discord est prêt (évite les erreurs getChannel avant ready)
+// Flag pour indiquer si le client Discord est prêt (évite les erreurs getChannels avant ready)
 let discordReady = false;
 
 /**
@@ -215,15 +227,15 @@ config.logger(" - argv[6] (pluginKey): " + pluginKey, "DEBUG");
 config.logger(" - argv[7] (activityStatus): " + activityStatus, "DEBUG");
 config.logger(" - argv[8] (listeningPort): " + listeningPort, "DEBUG");
 
-// Charger la configuration quickreply depuis le répertoire data du plugin
+// Charger la configuration quickaction depuis le répertoire data du plugin
 const path = require("path");
-let quickreplyConf = {};
-const quickreplyPath = path.join(__dirname, "..", "data", "quickreply.json");
+let quickactionConf = {};
+const quickactionPath = path.join(__dirname, "..", "data", "quickaction.json");
 
 try {
-  quickreplyConf = JSON.parse(fs.readFileSync(quickreplyPath, "utf8"));
+  quickactionConf = JSON.parse(fs.readFileSync(quickactionPath, "utf8"));
 } catch (e) {
-  config.logger("Erreur chargement quickreply.json: " + e.message, "WARNING");
+  config.logger("Erreur chargement quickaction.json: " + e.message, "WARNING");
 }
 
 if (!token) {
@@ -291,25 +303,37 @@ app.get("/restart", (req, res) => {
   startServer();
 });
 
+/***** Reload QuickAction config *****/
+app.get("/reloadQuickAction", (req, res) => {
+  try {
+    quickactionConf = JSON.parse(fs.readFileSync(quickactionPath, "utf8"));
+    config.logger("Configuration QuickAction rechargée (" + quickactionConf.length + " entrée(s))", "INFO");
+    res.status(200).json({ status: "ok", count: quickactionConf.length });
+  } catch (e) {
+    config.logger("Erreur rechargement quickaction.json: " + e.message, "WARNING");
+    res.status(500).json({ status: "error", message: e.message });
+  }
+});
+
 /***** Heartbeat *****/
 app.get("/heartbeat", (req, res) => {
   res.status(200).json({ status: "ok", uptime: process.uptime() });
 });
 
 /***** Get channels *****/
-app.get("/getchannel", async (req, res) => {
+app.get("/getchannels", async (req, res) => {
   try {
     res.type("json");
 
     // Vérifier si le client Discord est prêt
     if (!discordReady) {
-      config.logger("GetChannel demandé mais Discord pas encore prêt", "WARNING");
+      config.logger("GetChannels demandé mais Discord pas encore prêt", "WARNING");
       return res.status(503).json({ error: "Discord not ready yet" });
     }
 
     let toReturn = [];
 
-    config.logger("GetChannel", "DEBUG");
+    config.logger("GetChannels : récupération des channels en cours...", "DEBUG");
 
     // Discord.js v14: .cache.array() n'existe plus
     const allChannels = Array.from(client.channels.cache.values());
@@ -326,10 +350,10 @@ app.get("/getchannel", async (req, res) => {
       }
     }
 
-    config.logger("GetChannel : " + toReturn.length + " channel(s) trouvé(s)", "DEBUG");
+    config.logger("GetChannels : " + toReturn.length + " channel(s) trouvé(s)", "DEBUG");
     res.status(200).json(toReturn);
   } catch (error) {
-    config.logger("DiscordLink ERROR getchannel: " + error.message, "ERROR");
+    config.logger("DiscordLink ERROR getchannels: " + error.message, "ERROR");
     res.status(500).json({ error: error.message });
   }
 });
@@ -454,7 +478,7 @@ app.post("/sendEmbed", async (req, res) => {
       fields, // Array of objects {name, value, inline}
       footer,
       defaultColor,
-      quickreply, // Array of strings
+      quickaction, // Array of strings
       files, // Array of strings (paths)
       answerCount, // Number or String
       timeout // Number
@@ -473,13 +497,13 @@ app.post("/sendEmbed", async (req, res) => {
       });
     }
 
-    // Gestion QuickReply
+    // Gestion QuickAction
     let quickReplies = [];
-    if (quickreply && Array.isArray(quickreply)) {
-      quickReplies = quickreply
+    if (quickaction && Array.isArray(quickaction)) {
+      quickReplies = quickaction
         .filter(q => {
-          if (!quickreplyConf[q]) {
-            config.logger(`QuickReply "${q}" non trouvé dans quickreply.json`, "WARNING");
+          if (!quickactionConf.find(qrc => qrc.key === q)) {
+            config.logger(`QuickAction "${q}" non trouvé dans quickaction.json`, "WARNING");
             return false;
           }
           return true;
@@ -605,13 +629,13 @@ app.post("/sendEmbed", async (req, res) => {
 
     const m = await channel.send(sendOptions);
 
-    // Apply QuickReplies (Reactions)
+    // Apply QuickActions (Reactions)
     for (const q of quickReplies) {
-      const conf = quickreplyConf[q];
+      const conf = quickactionConf.filter(qc => qc.key === q)[0];
       if (!conf) continue;
 
       const emoji = conf.emoji; // e.g. "👍" or custom ID
-      const quickText = conf.text;
+      const quickValue = conf.value;
       let qTimeout = parseInt(conf.timeout, 10);
       if (isNaN(qTimeout) || qTimeout <= 0) qTimeout = 120;
 
@@ -637,8 +661,8 @@ app.post("/sendEmbed", async (req, res) => {
         await handleSlashCommand({
           channelId: m.channel.id,
           userId: user.id,
-          command: 'interaction',
-          request: quickText,
+          execType: conf.type,
+          request: quickValue,
           username: user.username,
           callback: (response) => m.channel.send(response),
         });
@@ -982,7 +1006,7 @@ const cleanChannel = async (channel, options = {}) => {
       // Si -1, on supprime tout jusqu'à maintenant
       // Sinon, on garde 'days' jours avant aujourd'hui minuit
       const cutoffTimestamp = days === -1 ? nowTimestamp : todayTimestamp - (days * ONE_DAY_MS);
-      
+
       // Filtre : on ne garde pour suppression que les messages plus vieux que la date butoir
       filter = (msg) => msg.createdTimestamp < cutoffTimestamp;
 
@@ -1067,23 +1091,23 @@ const cleanChannel = async (channel, options = {}) => {
 
 /**
  * Traite une commande slash Jeedom
- * Logique réutilisée pour les vraies interactions slash et les quickreplies
+ * Logique réutilisée pour les vraies interactions slash et les quickactions
  * @param {Object} params - Les paramètres
  * @param {string} params.channelId - L'ID du channel
  * @param {string} params.userId - L'ID de l'utilisateur
- * @param {string} params.command - Le nom de la commande
+ * @param {string} params.execType - Le type d'exécution (slash ou quickaction)
  * @param {string} params.request - La requête/message
  * @param {string} params.username - Le nom d'utilisateur
  * @param {Object} params.callback - Fonction pour envoyer la réponse
  */
-const handleSlashCommand = async ({ channelId, userId, command, request, username, callback }) => {
+const handleSlashCommand = async ({ channelId, userId, execType, request, username, callback }) => {
   try {
     config.logger(`SlashCommand: "${request}" from user ${userId}`, "DEBUG");
 
     const response = await httpPost("slashCommand", {
       channelId,
       userId,
-      command,
+      execType,
       request,
       username,
     });
@@ -1122,12 +1146,11 @@ const attachDiscordEvents = () => {
     const command = interaction.commandName;
     const subCommand = interaction.options.getSubcommand();
 
-    if (command == 'clean') {
-
+    if (command == "clean") {
       if (subCommand === "msg") {
         try {
           // ajout du mode éphémère pour éviter les erreurs et la suppression du msg
-          await interaction.deferReply({ ephemeral: true });
+          await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         } catch (error) {
           if (error.code === 10062) {
             config.logger("Interaction expirée ou inconnue avant traitement (Ignoré)", "DEBUG");
@@ -1145,25 +1168,18 @@ const attachDiscordEvents = () => {
           config.logger("Commande deleteLastMessages reçue pour channel " + channelID + " avec count=" + count, "INFO");
 
           const deletedCount = await cleanChannel(channel, { limit: count });
-          config.logger(
-            "Suppression des derniers messages du channel " + channelID + " terminée avec succès (" + deletedCount + " messages supprimés)",
-            "INFO",
-          );
+          config.logger("Suppression des derniers messages du channel " + channelID + " terminée avec succès (" + deletedCount + " messages supprimés)", "INFO");
           interaction.editReply("Derniers " + deletedCount + " messages supprimés avec succès !");
         } catch (error) {
-          interaction.editReply('Erreur lors du nettoyage du channel : ' + error.message);
-          config.logger(
-            "Erreur lors de la suppression des derniers messages du channel : " +
-            error.message,
-            "ERROR",
-          );
+          interaction.editReply("Erreur lors du nettoyage du channel : " + error.message);
+          config.logger("Erreur lors de la suppression des derniers messages du channel : " + error.message, "ERROR");
         }
       }
 
       if (subCommand === "keep") {
         try {
           // ajout du mode éphémère pour éviter les erreurs et la suppression du msg
-          await interaction.deferReply({ ephemeral: true });
+          await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         } catch (error) {
           if (error.code === 10062) {
             config.logger("Interaction expirée ou inconnue avant traitement (Ignoré)", "DEBUG");
@@ -1181,57 +1197,185 @@ const attachDiscordEvents = () => {
           config.logger("Commande keepLastDays reçue pour channel " + channelID + " avec days=" + days, "INFO");
 
           const deletedCount = await cleanChannel(channel, { daysToKeep: days });
-          config.logger(
-            "Suppression des derniers messages du channel " + channelID + " terminée avec succès (" + deletedCount + " messages supprimés)",
-            "INFO",
-          );
+          config.logger("Suppression des derniers messages du channel " + channelID + " terminée avec succès (" + deletedCount + " messages supprimés)", "INFO");
 
-          let response
+          let response;
           if (days == -1) {
             response = "Tous les messages supprimés avec succès !";
-          }
-          else if (deletedCount === 0) {
+          } else if (deletedCount === 0) {
             response = "Aucun message à supprimer, le channel est déjà propre !";
-          }
-          else {
+          } else {
             response = deletedCount + " messages de plus de " + days + " jours supprimés avec succès !";
           }
 
           interaction.editReply(response);
         } catch (error) {
-          interaction.editReply('Erreur lors du nettoyage du channel : ' + error.message);
-          config.logger(
-            "Erreur lors de la suppression des derniers messages du channel : " +
-            error.message,
-            "ERROR",
-          );
+          interaction.editReply("Erreur lors du nettoyage du channel : " + error.message);
+          config.logger("Erreur lors de la suppression des derniers messages du channel : " + error.message, "ERROR");
         }
       }
     }
 
-    if (subCommand === "interaction") {
-      try {
-        await interaction.deferReply();
-      } catch (error) {
-        // Ignorer l'erreur si l'interaction est déjà morte ou inconnue (délai dépassé ou race condition)
-        if (error.code === 10062) {
-          config.logger("Interaction expirée ou inconnue avant traitement (Ignoré)", "DEBUG");
+    if (command === "jeedom") {
+      if (subCommand === "interaction") {
+        try {
+          await interaction.deferReply();
+        } catch (error) {
+          // Ignorer l'erreur si l'interaction est déjà morte ou inconnue (délai dépassé ou race condition)
+          if (error.code === 10062) {
+            config.logger("Interaction expirée ou inconnue avant traitement (Ignoré)", "DEBUG");
+            return;
+          }
+          config.logger("Erreur lors du deferReply: " + error.message, "ERROR");
           return;
         }
-        config.logger("Erreur lors du deferReply: " + error.message, "ERROR");
-        return;
+
+        const request = interaction.options.getString("request");
+
+        await handleSlashCommand({
+          channelId: interaction.channelId,
+          userId: interaction.user.id,
+          execType: subCommand,
+          request: request,
+          username: interaction.user.username,
+          callback: (response) => interaction.editReply(response),
+        });
       }
 
-      const request = interaction.options.getString("request");
+      if (subCommand === "scenario") {
+        try {
+          await interaction.deferReply();
+        } catch (error) {
+          if (error.code === 10062) {
+            config.logger("Interaction expirée ou inconnue avant traitement (Ignoré)", "DEBUG");
+            return;
+          }
+          config.logger("Erreur lors du deferReply: " + error.message, "ERROR");
+          return;
+        }
 
-      await handleSlashCommand({
-        channelId: interaction.channelId,
-        userId: interaction.user.id,
-        command: subCommand,
-        request: request,
-        username: interaction.user.username,
-        callback: (response) => interaction.editReply(response),
-      });
+        const scenarioName = interaction.options.getString("name");
+
+        const rawResponse = await httpPost("scenarioSearch", {
+          channelId: interaction.channelId,
+          userId: interaction.user.id,
+          username: interaction.user.username,
+          name: scenarioName,
+        });
+
+        let searchResult;
+        try {
+          searchResult = rawResponse ? JSON.parse(rawResponse) : null;
+        } catch (e) {
+          config.logger("ScenarioSearch : erreur parsing JSON : " + e.message, "ERROR");
+          await interaction.editReply("Erreur lors de la recherche du scénario.");
+          return;
+        }
+
+        if (
+          !searchResult ||
+          !searchResult.found ||
+          !searchResult.results ||
+          searchResult.results.length === 0
+        ) {
+          const reason =
+            searchResult && searchResult.message
+              ? searchResult.message
+              : `Aucun scénario trouvé pour \`${scenarioName}\`.`;
+          await interaction.editReply(reason);
+          return;
+        }
+
+        const results = searchResult.results;
+
+        const launchScenario = async (sc, replyMsg) => {
+          const launchResponse = await httpPost("slashCommand", {
+            channelId: interaction.channelId,
+            userId: interaction.user.id,
+            execType: "scenario",
+            request: String(sc.id),
+            username: interaction.user.username,
+          });
+          await interaction.editReply(`✅ **${sc.name}** : ${launchResponse || "Scénario lancé !"}`);
+          await replyMsg.reactions.removeAll().catch((e) => config.logger("Impossible de retirer les réactions : " + e.message, "WARNING"));
+        };
+
+        if (results.length === 1) {
+          const sc = results[0];
+          const confirmMsg = await interaction.editReply(`Scénario trouvé : **${sc.name}**\nConfirmez-vous le lancement ? ✅ Oui  ❌ Non`);
+
+          try {
+            await confirmMsg.react("✅");
+            await confirmMsg.react("❌");
+          } catch (err) {
+            config.logger("Impossible d'ajouter les réactions de confirmation : " + err.message, "WARNING");
+          }
+
+          const reactionFilter = (reaction, user) =>
+            ["✅", "❌"].includes(reaction.emoji.name) &&
+            user.id === interaction.user.id;
+
+          try {
+            const collected = await confirmMsg.awaitReactions({
+              filter: reactionFilter,
+              max: 1,
+              time: 60000,
+              errors: ["time"],
+            });
+            const reaction = collected.first();
+            if (reaction.emoji.name === "✅") {
+              await launchScenario(sc, confirmMsg);
+            } else {
+              await interaction.editReply("❌ Lancement annulé.");
+              await confirmMsg.reactions.removeAll().catch((e) => config.logger("Impossible de retirer les réactions : " + e.message, "WARNING"));
+            }
+          } catch (e) {
+            await interaction.editReply("⏰ Confirmation expirée. Lancement annulé.");
+            await confirmMsg.reactions.removeAll().catch((e) => config.logger("Impossible de retirer les réactions : " + e.message, "WARNING"));
+          }
+        } else {
+          const NUMBER_EMOJIS = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
+          const listText = results
+            .map((sc, i) => `${NUMBER_EMOJIS[i]} **${sc.name}**`)
+            .join("\n");
+          const choiceMsg = await interaction.editReply(`Plusieurs scénarios correspondent à \`${scenarioName}\` :\n${listText}\n❌ Annuler`);
+
+          const emojisToAdd = [...NUMBER_EMOJIS.slice(0, results.length), "❌"];
+          for (const emoji of emojisToAdd) {
+            try {
+              await choiceMsg.react(emoji);
+            } catch (err) {
+              config.logger(`Impossible de réagir avec ${emoji} : ${err.message}`, "WARNING");
+            }
+          }
+
+          const reactionFilter = (reaction, user) =>
+            emojisToAdd.includes(reaction.emoji.name) &&
+            user.id === interaction.user.id;
+
+          try {
+            const collected = await choiceMsg.awaitReactions({
+              filter: reactionFilter,
+              max: 1,
+              time: 60000,
+              errors: ["time"],
+            });
+            const reaction = collected.first();
+            if (reaction.emoji.name === "❌") {
+              await interaction.editReply("❌ Lancement annulé.");
+              await choiceMsg.reactions.removeAll().catch((e) => config.logger("Impossible de retirer les réactions : " + e.message, "WARNING"));
+            } else {
+              const idx = NUMBER_EMOJIS.indexOf(reaction.emoji.name);
+              if (idx !== -1 && idx < results.length) {
+                await launchScenario(results[idx], choiceMsg);
+              }
+            }
+          } catch (e) {
+            await interaction.editReply("⏰ Sélection expirée. Lancement annulé.");
+            await choiceMsg.reactions.removeAll().catch((e) => config.logger("Impossible de retirer les réactions : " + e.message, "WARNING"));
+          }
+        }
+      }
     }
   });
 
@@ -1286,7 +1430,7 @@ const startServer = () => {
         config.logger("Erreur setActivity: " + e.message, "WARNING");
       }
 
-      // Pré-chargement des guilds & channels (important pour getChannel) 
+      // Pré-chargement des guilds & channels (important pour getChannels) 
       // ... Avec timeout pour éviter de bloquer le bot indéfiniment en cas de gros serveur ou de problème réseau
       try {
         const PRELOAD_TIMEOUT = 15000; // 15 secondes max

@@ -26,27 +26,27 @@ try {
     ajax::init();
 
     if (init('action') == 'saveEmoji') {
-        
+
         // Handle JSON string input 
         $rawEmoji = init('arrayEmoji');
         if (is_string($rawEmoji)) {
-             $arrayEmoji = json_decode($rawEmoji, true);
+            $arrayEmoji = json_decode($rawEmoji, true);
         } else {
-             $arrayEmoji = $rawEmoji;
+            $arrayEmoji = $rawEmoji;
         }
 
         if (!is_array($arrayEmoji)) {
-             log::add('discordlink', 'error', 'AJAX saveEmoji: Data is not an array.');
-             ajax::error('Data format error');
+            log::add('discordlink', 'error', 'AJAX saveEmoji: Data is not an array.');
+            ajax::error('Data format error');
         }
-        
+
         $emojiConfig = array();
 
         foreach ($arrayEmoji as $emoji) {
             $key = $emoji['keyEmoji'];
             $emojiConfig[$key] = $emoji['codeEmoji'];
         }
-        
+
         config::save('emoji', $emojiConfig, 'discordlink');
         ajax::success();
     }
@@ -56,7 +56,7 @@ try {
             throw new Exception('Le démon n\'est pas démarré. Veuillez le démarrer avant de rafraîchir les channels.');
         }
 
-        $channels = discordlink::getChannel();
+        $channels = discordlink::getChannels(1, 0);
         // Force IDs to string to avoid snowflake precision issues in JSON/JS
         foreach ($channels as &$channel) {
             $channel['id'] = (string)$channel['id'];
@@ -64,7 +64,7 @@ try {
         unset($channel); // Break reference
 
         $result = array('channels' => $channels);
-        
+
         $id = init('id');
         if (!empty($id) && is_numeric($id)) {
             $eqLogic = eqLogic::byId($id);
@@ -72,7 +72,7 @@ try {
                 $result['current'] = (string)$eqLogic->getConfiguration('channelId');
             }
         }
-        
+
         ajax::success($result);
     }
 
@@ -93,6 +93,35 @@ try {
 
     if (init('action') == 'resetEmoji') {
         discordlink::setEmoji(1);
+        ajax::success();
+    }
+
+    if (init('action') == 'saveQuickAction') {
+        $quickActionData = init('quickActionData');
+        if (is_string($quickActionData)) {
+            $quickActionArray = json_decode($quickActionData, true);
+        } else {
+            $quickActionArray = $quickActionData;
+        }
+
+        if (!is_array($quickActionArray)) {
+            ajax::error(__('Erreur de format des données', __FILE__));
+        }
+
+        $filePath = dirname(__FILE__) . '/../../data/quickaction.json';
+        if (!file_exists($filePath)) {
+            ajax::error(__('Fichier non existant : ' . $filePath, __FILE__));
+        } elseif (!is_writable($filePath)) {
+            ajax::error(__('Fichier non accessible en écriture : ' . $filePath, __FILE__));
+        }
+
+        $jsonData = json_encode($quickActionArray, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        if (file_put_contents($filePath, $jsonData) === false) {
+            ajax::error(__('Impossible d\'enregistrer le fichier quickaction.json', __FILE__));
+        }
+
+        discordlink::reloadQuickAction();
+
         ajax::success();
     }
 

@@ -46,8 +46,6 @@ if (!is_array($result)) {
 	die();
 }
 
-$discordEquipment = eqLogic::byLogicalId($result['channelId'], 'discordlink');
-
 switch ($name) {
 
 	case 'createJeedomMessage':
@@ -62,14 +60,16 @@ switch ($name) {
 		break;
 
 	case 'slashCommand':
-		log::add('discordlink', 'debug', 'SlashCommand reçue : cmd => ' . $result['command'] . ' request => ' . $result['request'] . ' (User: ' . $result['username'] . ', ID: ' . $result['userId'] . ')');
+		$discordEquipment = eqLogic::byLogicalId($result['channelId'], 'discordlink');
+		log::add('discordlink', 'debug', 'SlashCommand reçue : execType => ' . $result['execType'] . ' request => ' . $result['request'] . ' (User: ' . $result['username'] . ', ID: ' . $result['userId'] . ')');
 
-		if ($result['command'] == 'interaction') {
-			if (!is_object($discordEquipment)) {
-				log::add('discordlink', 'error', 'SlashCommand : Équipement introuvable pour le channel ' . $result['channelId']);
-				echo "Erreur : Équipement introuvable";
-				die();
-			}
+		if (!is_object($discordEquipment)) {
+			log::add('discordlink', 'error', 'SlashCommand : Équipement introuvable pour le channel ' . $result['channelId']);
+			echo "Erreur : Équipement introuvable";
+			die();
+		}
+
+		if ($result['execType'] == 'interaction') {
 
 			if ($discordEquipment->getConfiguration('interactionJeedom') != 1) {
 				log::add('discordlink', 'warning', 'SlashCommand : Les interactions sont désactivées pour l\'équipement ' . $discordEquipment->getHumanName());
@@ -82,8 +82,12 @@ switch ($name) {
 			$parameters['userid'] = $result['userId'];
 			$parameters['channel'] = $result['channelId'];
 
-			log::add('discordlink', 'debug', 'SlashCommand : Envoi au moteur d\'interaction...');
-			$reply = interactQuery::tryToReply(trim($result['request']), $parameters);
+			log::add('discordlink', 'debug', 'SlashCommand : Envoi au moteur d\'interaction.... demandée par ' . $result['username']);
+			// Le @ supprime le PHP Notice "Only variables should be passed by reference" généré par
+			// interactQuery.class.php (core Jeedom) lors de l'appel à tryToReply().
+			// Ce notice est produit par le core lui-même (expression temporaire passée par référence)
+			// et ne peut pas être corrigé côté plugin.
+			$reply = @interactQuery::tryToReply(trim($result['request']), $parameters);
 			log::add('discordlink', 'debug', 'SlashCommand : Réponse brute moteur : ' . json_encode($reply, JSON_UNESCAPED_UNICODE));
 
 			if (isset($reply['reply'])) {
@@ -97,20 +101,135 @@ switch ($name) {
 				log::add('discordlink', 'error', 'SlashCommand : Pas de champ "reply" dans la réponse du moteur');
 				echo "Erreur interne Jeedom (pas de réponse interaction)";
 			}
+		} elseif ($result['execType'] == 'command') {
+			if ($discordEquipment->getConfiguration('commandJeedom') != 1) {
+				log::add('discordlink', 'warning', 'SlashCommand : Les commandes sont désactivées pour l\'équipement ' . $discordEquipment->getHumanName());
+				echo "L'exécution des commandes est désactivée pour cet équipement.";
+				die();
+			}
+
+			$cmdId = $result['request'];
+			log::add('discordlink', 'debug', 'SlashCommand : Exécution de la commande Jeedom ID ' . $cmdId . ' demandée par ' . $result['username']);
+
+			$cmd = cmd::byId($cmdId);
+			if (!is_object($cmd)) {
+				log::add('discordlink', 'error', 'SlashCommand : Commande introuvable pour ID ' . $cmdId);
+				echo "Erreur : Commande introuvable";
+				die();
+			}
+
+			$cmd->execCmd();
+			echo "Commande exécutée";
+			log::add('discordlink', 'debug', 'SlashCommand : Commande exécutée avec succès');
+		} elseif ($result['execType'] == 'scenario') {
+			if ($discordEquipment->getConfiguration('scenarioJeedom') != 1) {
+				log::add('discordlink', 'warning', 'SlashCommand : Les scénarios sont désactivés pour l\'équipement ' . $discordEquipment->getHumanName());
+				echo "L'exécution des scénarios est désactivée pour cet équipement.";
+				die();
+			}
+
+			$scId = $result['request'];
+			log::add('discordlink', 'debug', 'SlashCommand : Exécution du scénario Jeedom ID ' . $scId . ' demandée par ' . $result['username']);
+
+			$scenario = scenario::byId($scId);
+			if (!is_object($scenario)) {
+				log::add('discordlink', 'error', 'SlashCommand : Scénario introuvable pour ID ' . $scId);
+				echo "Erreur : Scénario introuvable";
+				die();
+			}
+
+
+			if (version_compare(jeedom::version(), '4.5', '<')) {
+				$scenario_return = $scenario->launch('DiscordLink', 'Lancement du scénario ' . $scenario->getHumanName() . ' (' . $scId . ') via slashcommand par ' . $result['username']);
+			} else {
+				$scenario->addTag('trigger', 'DiscordLink');
+				$scenario->addTag('trigger_message', 'Lancement du scénario ' . $scenario->getHumanName() . ' (' . $scId . ') via slashcommand par ' . $result['username']);
+				$scenario_return = $scenario->launch();
+			}
+
+			if (is_bool($scenario_return)) {
+				$return = $scenario_return ? "Scénario exécuté avec succès" : "Le scénario a été lancé mais a rencontré une erreur d'exécution";
+			} else {
+				$return = $scenario_return;
+			}
+			echo $return;
+			log::add('discordlink', 'debug', 'SlashCommand - Réponse scénario : ' . $return);
 		} else {
-			log::add('discordlink', 'warning', 'SlashCommand : Commande inconnue "' . $result['command'] . '"');
+			log::add('discordlink', 'warning', 'SlashCommand : Commande inconnue "' . $result['execType'] . '"');
 			echo "Commande inconnue";
 		}
 		die();
 		break;
 
-	default:
+	case 'scenarioSearch':
+		$discordEquipment = eqLogic::byLogicalId($result['channelId'], 'discordlink');
+		log::add('discordlink', 'debug', 'ScenarioSearch reçue pour "' . $result['name'] . '" (User: ' . $result['username'] . ', ID: ' . $result['userId'] . ')');
+
 		if (!is_object($discordEquipment)) {
-			log::add('discordlink', 'debug',  'Device non trouvé: ' . $result['channelId']);
+			log::add('discordlink', 'error', 'ScenarioSearch : Équipement introuvable pour le channel ' . $result['channelId']);
+			echo json_encode(['found' => false, 'message' => 'Équipement introuvable'], JSON_UNESCAPED_UNICODE);
 			die();
-		} else {
-			log::add('discordlink', 'debug',  'Device trouvé: ' . $result['channelId']);
 		}
+
+		if ($discordEquipment->getConfiguration('scenarioJeedom') != 1) {
+			log::add('discordlink', 'warning', 'ScenarioSearch : Les scénarios sont désactivés pour l\'équipement ' . $discordEquipment->getHumanName());
+			echo json_encode(['found' => false, 'message' => 'L\'exécution des scénarios est désactivée pour cet équipement.'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$searchName = trim($result['name'] ?? '');
+		if (empty($searchName)) {
+			echo json_encode(['found' => false, 'message' => 'Nom de scénario vide'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$allScenarios = scenario::all();
+		$matches = [];
+
+		foreach ($allScenarios as $sc) {
+			if (!$sc->getIsActive()) {
+				continue;
+			}
+			$scName = $sc->getName();
+			$score  = 0;
+
+			// Correspondance exacte (insensible à la casse)
+			if (strtolower($scName) === strtolower($searchName)) {
+				$score = 100;
+			} elseif (stripos($scName, $searchName) !== false || stripos($searchName, $scName) !== false) {
+				// Sous-chaîne
+				$score = 80;
+			} else {
+				// Similarité textuelle
+				similar_text(strtolower($scName), strtolower($searchName), $percent);
+				if ($percent >= 50) {
+					$score = (float) $percent;
+				}
+			}
+
+			if ($score > 0) {
+				$matches[] = ['score' => $score, 'id' => (int) $sc->getId(), 'name' => $scName];
+			}
+		}
+
+		// Trier par score décroissant, limiter à 9 (max emojis numériques)
+		usort($matches, fn($a, $b) => $b['score'] <=> $a['score']);
+		$matches = array_slice($matches, 0, 9);
+		$results = array_map(fn($m) => ['id' => $m['id'], 'name' => $m['name']], $matches);
+
+		if (!empty($results)) {
+			log::add('discordlink', 'debug', 'ScenarioSearch : ' . count($results) . ' résultat(s) trouvé(s) pour "' . $searchName . '"');
+			echo json_encode(['found' => true, 'results' => $results], JSON_UNESCAPED_UNICODE);
+		} else {
+			log::add('discordlink', 'debug', 'ScenarioSearch : Aucun résultat pour "' . $searchName . '"');
+			echo json_encode(['found' => false], JSON_UNESCAPED_UNICODE);
+		}
+		die();
+		break;
+
+	default:
+		log::add('discordlink', 'warning', 'Route inconnue reçue : "' . $name . '" - payload : ' . json_encode($result, JSON_UNESCAPED_UNICODE));
+		die();
 }
 
 function getDeviceAndUpdate($name, $value, $jeedomCommand, $_channelId, $_userId) {

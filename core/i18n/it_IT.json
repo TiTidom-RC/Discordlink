@@ -1,42 +1,83 @@
 {
     "plugins\/discordlink\/core\/ajax\/discordlink.ajax.php": {
         "401 - Accès non autorisé": "401 - Accesso non autorizzato",
-        "Aucune méthode correspondante à : ": "Nessun metodo corrispondente a: "
+        "Aucune méthode correspondante à : ": "Nessun metodo corrispondente a: ",
+        "Erreur de format des données": "Errore nel formato dei dati",
+        "Impossible d\\'enregistrer le fichier quickaction.json": "Impossibile registrare il file quickaction.json"
     },
     "plugins\/discordlink\/core\/class\/discordlink.class.php": {
-        "' . $match . '": "' . $match . '",
-        "(.*?)": "(.*?)",
-        "Expression cron non valide pour ": "Espressione cron non valida per ",
-        "Serveur injoignable": "Server non raggiungibile",
         "Veuillez vérifier la configuration": "Verificare la configurazione"
     },
     "plugins\/discordlink\/core\/php\/jeediscordlink.php": {
         "Vous n\\'êtes pas autorisé à effectuer cette action": "Non sei autorizzato a eseguire questa azione"
     },
+    "plugins\/discordlink\/core\/template\/dashboard\/cmd.action.message.embed.html": {
+        "Couleur (Hexa)": "Colore (Hexa)",
+        "Description (message)": "Descrizione (messaggio)",
+        "Footer (optionnel)": "Footer (opzionale)",
+        "Titre": "Titolo",
+        "URL (optionnel)": "URL (facoltativo)"
+    },
     "plugins\/discordlink\/core\/template\/scenario\/cmd.sendEmbed.html": {
-        "Sélectionner la commande": "Selezionare il comando"
+        "Action rapide": "Azione rapida",
+        "Aucune": "Nessuna",
+        "Chemin vers un ou plusieurs fichiers (séparés par ,) - Max 4": "Percorso verso uno o più file (separati da ,) - Max 4",
+        "Couleur": "Colore",
+        "Couleur (Hexa)": "Colore (Hexa)",
+        "Fichier(s)": "File",
+        "Footer": "Piè di pagina",
+        "Lien": "Link",
+        "Message": "Messaggio",
+        "Sélectionner la commande": "Selezionare il comando",
+        "Titre": "Titolo"
     },
     "plugins\/discordlink\/core\/template\/scenario\/cmd.sendFile.html": {
+        "Chemin vers un ou plusieurs fichiers (séparés par ,) - Max 4": "Percorso verso uno o più file (separati da ,) - Max 4",
+        "Fichier(s)": "File",
+        "Message": "Messaggio",
         "Sélectionner la commande": "Selezionare il comando"
     },
     "plugins\/discordlink\/core\/template\/scenario\/cmd.sendMsg.html": {
+        "Message": "Messaggio",
         "Sélectionner la commande": "Selezionare il comando"
     },
     "plugins\/discordlink\/core\/template\/scenario\/cmd.sendMsgtts.html": {
+        "Message TTS": "Messaggio TTS",
         "Sélectionner la commande": "Selezionare il comando"
     },
     "plugins\/discordlink\/desktop\/js\/discordlink.js": {
+        "Actions rapides": "Azioni rapide",
         "Afficher": "Visualizza",
         "Choisir une icône": "Scegliere un'icona",
         "Emojis": "Emoji",
         "Historiser": "Historizzare",
+        "Impossible de récupérer les channels": "Impossibile recuperare i canali",
         "Inverser": "Invertire",
         "Max": "Max",
         "Min": "Min",
         "Nom de la commande": "Nome del comando",
+        "Pas de channel disponible": "Nessun canale disponibile",
         "Supprimer la commande": "Elimina ordine",
         "Tester": "Prova",
         "Unité": "Unità"
+    },
+    "plugins\/discordlink\/desktop\/js\/quickaction.discordlink.js": {
+        "Cette clé doit être en minuscules et ne contenir que des lettres, des chiffres ou des underscores.": "Questa chiave deve essere scritta in minuscolo e contenere solo lettere, numeri o trattini bassi.",
+        "Clé": "Chiave",
+        "Commande": "Controllo",
+        "ID de la commande Jeedom (ex: 1234)": "ID dell'ordine Jeedom (es.: 1234)",
+        "ID du scénario Jeedom (ex: 17)": "ID dello scenario Jeedom (es.: 17)",
+        "Interaction": "Interazione",
+        "Libellé à afficher": "Testo da visualizzare",
+        "Sauvegarde réussie": "Salvataggio riuscito",
+        "Scénario": "Scenario",
+        "Supprimer l'action": "Elimina azione",
+        "Texte de l'interaction": "Testo dell'interazione",
+        "Texte de l\\'interaction": "Testo dell'interazione",
+        "Timeout (en secondes)": "Timeout (in secondi)",
+        "Veuillez corriger les erreurs dans le formulaire.": "Si prega di correggere gli errori nel modulo.",
+        "déjà utilisée.": "già in uso.",
+        "Émoji": "Emoji"
     },
     "plugins\/discordlink\/desktop\/modal\/emoji.discordlink.php": {
         "401 - Accès non autorisé": "401 - Accesso non autorizzato",
@@ -47,19 +88,34 @@
         "Reset Emoji": "Reset Emoji",
         "Sauvegarder": "Salva"
     },
+    "plugins\/discordlink\/desktop\/modal\/quickaction.discordlink.php": {
+        "401 - Accès non autorisé": "401 - Accesso non autorizzato",
+        "Ajouter une entrée": "Aggiungi una voce",
+        "Clé": "Chiave",
+        "Libellé": "Etichetta",
+        "Sauvegarder": "Salva",
+        "Timeout": "Timeout",
+        "Type": "Tipo",
+        "Valeur": "Valore",
+        "Émoji": "Emoji"
+    },
     "plugins\/discordlink\/desktop\/php\/discordlink.php": {
         "401 - Accès non autorisé": "401 - Accesso non autorizzato",
         "Actions": "Azioni",
+        "Actions rapides": "Azioni rapide",
         "Activer": "Attivare",
         "Activer la Vérification": "Attiva verifica",
         "Ajouter": "Aggiungi",
         "Ajouter une commande": "Aggiungi un comando",
         "Annonce sur Discord les connexions des utilisateurs Jeedom": "Annuncia su Discord le connessioni degli utenti Jeedom",
         "Annoncer les connexions": "Annunciare le connessioni",
+        "Assistant cron": "Assistente cron",
         "Aucun": "Nessuno",
+        "Autorisations": "Autorizzazioni",
         "Catégorie": "Categoria",
         "Channel": "Canale",
         "Commandes": "Comandi",
+        "Commandes Jeedom": "Comandi Jeedom",
         "Configuration": "Configurazione",
         "Configuration Discord": "Configurazione Discord",
         "Configuration avancée": "Configurazione avanzata",
@@ -83,6 +139,8 @@
         "Indique le nombre de jours d'historique de messages à conserver<br\/>Valeur -1 pour tout supprimer": "Indica il numero di giorni di cronologia dei messaggi da conservare<br\/>Valore -1 per eliminare tutto",
         "Informations": "Informazioni",
         "Interactions avec Jeedom": "Interazioni con Jeedom",
+        "Les commandes Jeedom sont des commandes qui peuvent être exécutées depuis Discord.<br\/>Aucune vérification n'est effectuée sur les permissions de l'utilisateur.": "I comandi Jeedom sono comandi che possono essere eseguiti da Discord.<br\/>Non viene effettuata alcuna verifica delle autorizzazioni dell'utente.",
+        "Les scénarios Jeedom sont des scénarios qui peuvent être exécutés depuis Discord.<br\/>Aucune vérification n'est effectuée sur les permissions de l'utilisateur.": "Gli scenari Jeedom sono scenari che possono essere eseguiti da Discord.<br\/>Non viene effettuata alcuna verifica delle autorizzazioni dell'utente.",
         "Mes Channels": "I miei canali",
         "Nettoyage": "Pulizia",
         "Nettoyage automatique": "Pulizia automatica",
@@ -93,11 +151,13 @@
         "Objet parent": "Oggetto padre",
         "Options": "Opzioni",
         "Paramètres généraux": "Parametri generali",
+        "Pas de channel disponible": "Nessun canale disponibile",
         "Personnalisation": "Personalizzazione",
         "Post Community": "Post Community",
         "Rafraîchir les channels": "Aggiornare i canali",
         "Rechercher": "Cerca",
         "Sauvegarder": "Salva",
+        "Scénarios Jeedom": "Scenari Jeedom",
         "Supprimer": "Elimina",
         "Surveille l'installation des dépendances de tous les plugins Jeedom et envoie un état des lieux": "Monitora l'installazione delle dipendenze di tutti i plugin Jeedom e invia uno stato dell'installazione",
         "Surveille l'état de tous les démons Jeedom et envoie un état des lieux": "Monitora lo stato di tutti i demoni Jeedom e invia un resoconto della situazione",
@@ -112,6 +172,7 @@
         "Plugin": "Plugin",
         "Port Socket Interne": "Presa interna",
         "Token : ": "Token: ",
+        "Travailler main dans la main avec votre Jeedom": "Lavorare fianco a fianco con il tuo Jeedom",
         "Version Plugin": "Versione Plugin",
         "Version du Plugin (A indiquer sur Community)": "Versione del plugin (da indicare su Community)",
         "[ATTENTION] Ne changez ce paramètre qu'en cas de nécessité. (Défaut = 3466)": "[ATTENZIONE] Modificare questa impostazione solo se necessario. (Impostazione predefinita = 3466)"

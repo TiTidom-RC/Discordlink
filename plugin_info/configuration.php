@@ -62,7 +62,7 @@ if (!isConnect()) {
         <div class="form-group">
             <label class="col-lg-3 control-label">{{Joue à : }}</label>
             <div class="col-lg-6">
-                <input class="configKey form-control" data-l1key="joueA" placeholder="Travailler main dans la main avec votre Jeedom" />
+                <input class="configKey form-control" data-l1key="joueA" placeholder="{{Travailler main dans la main avec votre Jeedom}}" />
             </div>
         </div>
     </fieldset>
