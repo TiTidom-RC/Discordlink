@@ -71,6 +71,23 @@ class discordlink extends eqLogic {
 		return self::$_daemonBaseURL;
 	}
 
+	public static function reloadQuickAction() {
+		try {
+			log::add('discordlink', 'info', 'Rechargement de la configuration QuickAction...');
+			$requestHttp = new com_http(self::getDaemonBaseURL() . '/reloadQuickAction');
+			$requestHttp->setNoReportError(true);
+			$response = $requestHttp->exec(5);
+			$httpCode = $requestHttp->getHttpCode();
+			if ($httpCode == 200) {
+				log::add('discordlink', 'info', 'Configuration QuickAction rechargée avec succès');
+			} else {
+				log::add('discordlink', 'warning', 'Rechargement QuickAction : code HTTP inattendu ' . $httpCode);
+			}
+		} catch (Exception $e) {
+			log::add('discordlink', 'warning', 'Impossible de recharger la configuration QuickAction : ' . $e->getMessage());
+		}
+	}
+
 	public static function getChannels($maxRetries = 5, $delayMs = 2000) {
 		$attempt = 0;
 		while ($attempt < $maxRetries) {

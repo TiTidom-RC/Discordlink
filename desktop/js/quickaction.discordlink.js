@@ -41,7 +41,7 @@
                 const typeSelect = e.target.closest('select.typeSelect');
 
                 if (typeSelect.value === 'interaction') {
-                    typeSelect.closest('.quickActionItem').querySelector('.valueInput').setAttribute('placeholder', '{{Texte de l\'intervention}}');
+                    typeSelect.closest('.quickActionItem').querySelector('.valueInput').setAttribute('placeholder', '{{Texte de l\'interaction}}');
                 }
                 else if (typeSelect.value === 'command') {
                     typeSelect.closest('.quickActionItem').querySelector('.valueInput').setAttribute('placeholder', '{{ID de la commande Jeedom (ex: 1234)}}');
@@ -100,8 +100,7 @@
                 url: AJAX_URL,
                 data: {
                     action: "saveQuickAction",
-                    quickActionData: JSON.stringify(quickActionArray),
-                    daemonRestart: document.getElementById('daemonRestart').checked ? 1 : 0
+                    quickActionData: JSON.stringify(quickActionArray)
                 },
                 dataType: 'json',
                 error: function (request, status, error) {
@@ -133,18 +132,18 @@
                 </td>
                 <td>
                     <select class="form-control typeSelect">
-                        <option value="interaction" ${item.type === 'interaction' ? 'selected' : ''}>{{Intéraction}}</option>
+                        <option value="interaction" ${item.type === 'interaction' ? 'selected' : ''}>{{Interaction}}</option>
                         <option value="command" ${item.type === 'command' ? 'selected' : ''}>{{Commande}}</option>
                         <option value="scenario" ${item.type === 'scenario' ? 'selected' : ''}>{{Scénario}}</option>
                     </select>
                 </td>
                 <td>
-                    <input type="text" class="form-control valueInput" placeholder="{{Texte de l'intéraction}}" value="${item.value || ''}" required>
+                    <input type="text" class="form-control valueInput" placeholder="{{Texte de l'interaction}}" value="${item.value || ''}" required>
                 </td>
                 <td>
                     <input type="number" class="form-control timeoutInput" placeholder="{{Timeout (en secondes)}}" value="${item.timeout || 120}" min="0" required>
                 </td>
-                <td>
+                <td style="text-align: right;">
                     <i class="fas fa-minus-circle removeItem icon_red" title="{{Supprimer l'action}}"></i>
                 </td>
             </tr>

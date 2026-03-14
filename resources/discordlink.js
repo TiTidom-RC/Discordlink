@@ -303,6 +303,18 @@ app.get("/restart", (req, res) => {
   startServer();
 });
 
+/***** Reload QuickAction config *****/
+app.get("/reloadQuickAction", (req, res) => {
+  try {
+    quickactionConf = JSON.parse(fs.readFileSync(quickactionPath, "utf8"));
+    config.logger("Configuration QuickAction rechargée (" + quickactionConf.length + " entrée(s))", "INFO");
+    res.status(200).json({ status: "ok", count: quickactionConf.length });
+  } catch (e) {
+    config.logger("Erreur rechargement quickaction.json: " + e.message, "WARNING");
+    res.status(500).json({ status: "error", message: e.message });
+  }
+});
+
 /***** Heartbeat *****/
 app.get("/heartbeat", (req, res) => {
   res.status(200).json({ status: "ok", uptime: process.uptime() });

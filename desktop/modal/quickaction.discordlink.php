@@ -6,42 +6,30 @@ if (!isConnect('admin')) {
 $quickActionData = discordlink::getQuickActionFileContent();
 ?>
 
-<div class="row">
-    <div class="col-sm-11">
-        <div class="pull-right">
-            <label for="daemonRestart" style="margin-left: 5px; margin-bottom: 0;">{{Redémarrer le démon après sauvegarde}}
-                <sup><i class="fas fa-question-circle tippied" title="{{Redémarrer le démon après sauvegarde pour prise en compte des modifications}}"></i></sup>
-            </label>
-            <input type="checkbox" id="daemonRestart" checked style="margin-left: 15px;" />
-            <button type="button" class="btn btn-primary" id="saveQuickAction"><i class="fas fa-save"></i> {{Sauvegarder}}</button>
-        </div>
-    </div>
+<div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 10px;">
+    <button type="button" class="btn btn-primary" id="saveQuickAction"><i class="fas fa-save"></i> {{Sauvegarder}}</button>
 </div>
 
-<div class="row row-overflow">
-    <div class="col-sm-12">
-        <form id="quickActionForm">
-            <table class="table table-bordered table-condensed">
-                <thead>
-                    <tr>
-                        <th>{{Clé}}</th>
-                        <th>{{Libellé}}</th>
-                        <th>{{Émoji}}</th>
-                        <th>{{Type}}</th>
-                        <th>{{Valeur}}</th>
-                        <th>{{Timeout}}</th>
-                        <th>{{Actions}}</th>
-                    </tr>
-                </thead>
-                <tbody id="quickActionContainer">
-                </tbody>
-            </table>
-            <div>
-                <button type="button" class="btn btn-success" id="addItem"><i class="fas fa-plus"></i> {{Ajouter une entrée}}</button>
-            </div>
-        </form>
+<form id="quickActionForm">
+    <table class="table table-bordered table-condensed" style="width: 100%; table-layout: fixed;">
+        <thead>
+            <tr>
+                <th style="width: 13%;">{{Clé}}</th>
+                <th style="width: 18%;">{{Libellé}}</th>
+                <th style="width: 7%;">{{Émoji}}</th>
+                <th style="width: 14%;">{{Type}}</th>
+                <th style="width: 28%;">{{Valeur}}</th>
+                <th style="width: 13%;">{{Timeout}}</th>
+                <th style="width: 4%; text-align: right;"></th>
+            </tr>
+        </thead>
+        <tbody id="quickActionContainer">
+        </tbody>
+    </table>
+    <div style="margin-top: 8px;">
+        <button type="button" class="btn btn-success" id="addItem"><i class="fas fa-plus"></i> {{Ajouter une entrée}}</button>
     </div>
-</div>
+</form>
 
 <?php include_file('desktop', 'quickaction.discordlink', 'js', 'discordlink'); ?>
 

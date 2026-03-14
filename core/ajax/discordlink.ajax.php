@@ -98,7 +98,6 @@ try {
 
     if (init('action') == 'saveQuickAction') {
         $quickActionData = init('quickActionData');
-        $daemonRestart = init('daemonRestart') == '1';
         if (is_string($quickActionData)) {
             $quickActionArray = json_decode($quickActionData, true);
         } else {
@@ -121,7 +120,7 @@ try {
             ajax::error(__('Impossible d\'enregistrer le fichier quickaction.json', __FILE__));
         }
 
-        if ($daemonRestart) discordlink::deamon_start();
+        discordlink::reloadQuickAction();
 
         ajax::success();
     }
