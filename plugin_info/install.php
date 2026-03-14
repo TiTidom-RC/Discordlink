@@ -44,7 +44,7 @@ function discordlink_update() {
     // ---------------------------------------------------
     if (config::byKey('socketport', 'discordlink', '') === '') {
         config::save('socketport', discordlink::SOCKET_PORT, 'discordlink');
-        log::add('discordlink', 'info', 'Initialisation du port socket : ' . discordlink::SOCKET_PORT);
+        log::add('discordlink', 'info', '  - Initialisation du port du démon : ' . discordlink::SOCKET_PORT);
     }
 
     // Migration de la clé de configuration globale emojy → emoji
@@ -53,14 +53,14 @@ function discordlink_update() {
         // On ne migre que si la nouvelle clé n'existe pas déjà pour éviter d'écraser des modifications récentes
         if (config::byKey('emoji', 'discordlink', null) === null) {
             config::save('emoji', $oldEmojiConfig, 'discordlink');
-            log::add('discordlink', 'info', '[Migration] Configuration globale : emojy → emoji');
+            log::add('discordlink', 'info', '  - Configuration globale : emojy → emoji');
         }
         config::remove('emojy', 'discordlink');
     }
 
-    // 2. Nettoyage Système de Fichiers
-    // --------------------------------
-    log::add('discordlink', 'info', 'Nettoyage des anciens fichiers...');
+    // 2. Nettoyage Système de Fichiers et vérification du fichier quickaction.json
+    // ------------------------------------------------------------------------------
+    log::add('discordlink', 'info', 'Nettoyage des anciens fichiers et vérification du fichier quickaction.json...');
     $pathsToRemove = array(
         '/core/class/discordlinkCovid.class.php',
         '/core/class/discordMsg.class.php',
@@ -91,7 +91,9 @@ function discordlink_update() {
                 $return_var = 0;
                 exec('rm -rf ' . escapeshellarg($path) . ' 2>&1', $output, $return_var);
                 if ($return_var !== 0) {
-                    log::add('discordlink', 'warning', 'Echec suppression "' . $path . '" (Code: ' . $return_var . ') : ' . implode(' ', $output));
+                    log::add('discordlink', 'warning', '  - Echec suppression "' . $resource . '" (Code: ' . $return_var . ') : ' . implode(' ', $output));
+                } else {
+                    log::add('discordlink', 'info', '  - Ancien fichier supprimé : ' . $resource);
                 }
             } catch (Exception $e) {
                 log::add('discordlink', 'warning', 'Erreur suppression "' . $path . '" : ' . $e->getMessage());
@@ -101,7 +103,7 @@ function discordlink_update() {
 
     $quickActionPath = dirname(__FILE__) . '/../data/quickaction.json';
     if (!file_exists($quickActionPath)) {
-        log::add('discordlink', 'info', 'Création du fichier quickaction.json par défaut');
+        log::add('discordlink', 'info', '  - Création du fichier quickaction.json par défaut');
         discordlink::createQuickActionFile();
     }
 
@@ -133,7 +135,7 @@ function discordlink_update() {
                 if (array_key_exists($cmd->getName(), $cmdsToFix)) {
                     $targetLogicalId = $cmdsToFix[$cmd->getName()];
                     if ($cmd->getLogicalId() != $targetLogicalId) {
-                        log::add('discordlink', 'info', '[Migration] Correction LogicalId : ' . $cmd->getName() . ' (' . $cmd->getLogicalId() . ' -> ' . $targetLogicalId . ')');
+                        log::add('discordlink', 'info', '  - ' . $eqLogic->getHumanName() . ': LogicalId corrigé ' . $cmd->getName() . ' (' . $cmd->getLogicalId() . ' -> ' . $targetLogicalId . ')');
                         $cmd->setLogicalId($targetLogicalId);
                         $cmd->save();
                     }
@@ -147,7 +149,7 @@ function discordlink_update() {
             foreach ($eqLogic->getCmd() as $cmd) {
                 // Suppression commandes obsolètes connues
                 if (in_array($cmd->getLogicalId(), $cmdsToRemove)) {
-                    log::add('discordlink', 'info', '[Migration] Suppression commande obsolète : ' . $cmd->getName() . ' (' . $cmd->getLogicalId() . ')');
+                    log::add('discordlink', 'info', '  - ' . $eqLogic->getHumanName() . ': Commande obsolète supprimée : ' . $cmd->getName() . ' (' . $cmd->getLogicalId() . ')');
                     $cmd->remove();
                 }
             }
@@ -193,6 +195,13 @@ function discordlink_update() {
             }
         }
 
+        $color = $eqLogic->getConfiguration('defaultColor');
+        if($color === '' || $color == '#000000'){ {
+            $eqLogic->setConfiguration('defaultColor', discordlink::DEFAULT_COLOR);
+            log::add('discordlink', 'info', '  - ' . $eqLogic->getHumanName() . ': defaultColor initialisé à la valeur par défaut (' . discordlink::DEFAULT_COLOR . ')');
+            $needSave = true;
+        }
+
         if ($needSave) {
             $eqLogic->save();
         }
@@ -203,12 +212,15 @@ function discordlink_update() {
     // 5. Régénération des Commandes et Emojis
     // ---------------------------------------
     log::add('discordlink', 'info', 'Mise à jour des définitions des commandes et emojis...');
+    log::add('discordlink', 'info', '  - Vérification des commandes des équipements...');
     discordlink::createCmd();
+    log::add('discordlink', 'info', '  - Vérification des emojis des équipements...');
     discordlink::setEmoji();
 
-    // 6. Vérification Finale (Reporting)
-    // ----------------------------------
-    // Détection des commandes obsolètes ou avec mauvais logicalId
+
+    // 6. Détection des commandes obsolètes ou avec mauvais logicalId
+    // --------------------------------------------------------------
+    log::add('discordlink', 'info', 'Analyse des commandes existantes...');
     $obsoleteLogicalIds = [
         '1oldmsg',
         '2oldmsg',
@@ -249,14 +261,14 @@ function discordlink_update() {
 
             // Détecter les anciens logicalId obsolètes
             if (in_array($logicalId, $obsoleteLogicalIds)) {
-                $problematicCommands[] = "  - Commande obsolète : '$cmdName' (logicalId: $logicalId, ID: $cmdId)";
+                $problematicCommands[] = "    - Commande obsolète : '$cmdName' (logicalId: $logicalId, ID: $cmdId)";
                 $hasProblematicCommands = true;
             }
 
             // Détecter les commandes avec mauvais logicalId
             foreach ($expectedCommands as $expectedLogicalId => $expectedName) {
                 if ($cmdName === $expectedName && $logicalId !== $expectedLogicalId) {
-                    $problematicCommands[] = "  - Commande '$cmdName' a un mauvais logicalId : '$logicalId' (attendu: '$expectedLogicalId', ID: $cmdId)";
+                    $problematicCommands[] = "    - Commande '$cmdName' a un mauvais logicalId : '$logicalId' (attendu: '$expectedLogicalId', ID: $cmdId)";
                     $hasProblematicCommands = true;
                     break;
                 }
@@ -264,7 +276,7 @@ function discordlink_update() {
         }
 
         if (!empty($problematicCommands)) {
-            log::add('discordlink', 'warning', 'Équipement ' . $eqLogic->getHumanName() . ' - Commandes à corriger :');
+            log::add('discordlink', 'warning', '  - Équipement ' . $eqLogic->getHumanName() . ' - Commandes à corriger :');
             foreach ($problematicCommands as $message) {
                 log::add('discordlink', 'warning', $message);
             }
@@ -273,12 +285,12 @@ function discordlink_update() {
 
     if ($hasProblematicCommands) {
         log::add('discordlink', 'warning', '==========================================================================');
-        log::add('discordlink', 'warning', 'MISE À JOUR : Des commandes obsolètes ou incorrectes ont été détectées.');
+        log::add('discordlink', 'warning', 'ATTENTION : Des commandes obsolètes ou incorrectes ont été détectées.');
         log::add('discordlink', 'warning', 'Veuillez supprimer manuellement les commandes listées ci-dessus.');
         log::add('discordlink', 'warning', 'Les nouvelles commandes seront recréées automatiquement.');
         log::add('discordlink', 'warning', '==========================================================================');
     } else {
-        log::add('discordlink', 'info', 'Mise à jour terminée - Aucune commande problématique détectée.');
+        log::add('discordlink', 'info', '  - Aucune commande problématique détectée.');
     }
 
     if (config::byKey('disableUpdateMessage', 'discordlink', 0) == 0) {
