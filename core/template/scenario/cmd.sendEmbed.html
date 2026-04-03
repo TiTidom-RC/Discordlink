@@ -1,5 +1,5 @@
 <div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
-  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">{{Titre}}</span>
+  <span class="input-group-addon roundedLeft" style="width: 100px">{{Titre}}</span>
   <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="title" rows="1"
     style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#title#</textarea>
   <span class="input-group-btn">
@@ -9,7 +9,7 @@
 </div>
 
 <div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
-  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">{{Message}}</span>
+  <span class="input-group-addon roundedLeft" style="width: 100px">{{Message}}</span>
   <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="description"
     rows="1" style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#description#</textarea>
   <span class="input-group-btn">
@@ -19,7 +19,7 @@
 </div>
 
 <div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
-  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">{{Footer}}</span>
+  <span class="input-group-addon roundedLeft" style="width: 100px">{{Footer}}</span>
   <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="footer" rows="1"
     style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#footer#</textarea>
   <span class="input-group-btn">
@@ -29,7 +29,7 @@
 </div>
 
 <div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
-  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">{{Lien}}</span>
+  <span class="input-group-addon roundedLeft" style="width: 100px">{{Lien}}</span>
   <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="url" rows="1"
     style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#url#</textarea>
   <span class="input-group-btn">
@@ -39,7 +39,7 @@
 </div>
 
 <div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
-  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">{{Fichier(s)}}</span>
+  <span class="input-group-addon roundedLeft" style="width: 100px">{{Fichier(s)}}</span>
   <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="files" rows="1"
     style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#"
     placeholder="{{Chemin vers un ou plusieurs fichiers (séparés par ,) - Max 4}}">#files#</textarea>
@@ -143,11 +143,15 @@
     document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=color]').value = this.value
   })
 
-  if ('#title#' == '#' + 'title#') document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=title]').value = '#defaultTitle#'
-  if ('#url#' == '#' + 'url#') document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=url]').value = '#defaultUrl#'
-  if ('#description#' == '#' + 'description#') document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=description]').value = '#defaultDescription#'
-  if ('#footer#' == '#' + 'footer#') document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=footer]').value = '#defaultFooter#'
-  if ('#color#' == '#' + 'color#') {
+  var _titleEl = document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=title]')
+  if (!_titleEl.value || _titleEl.value === '#' + 'title#') _titleEl.value = '#defaultTitle#'
+  var _urlEl = document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=url]')
+  if (!_urlEl.value || _urlEl.value === '#' + 'url#') _urlEl.value = '#defaultUrl#'
+  var _descriptionEl = document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=description]')
+  if (!_descriptionEl.value || _descriptionEl.value === '#' + 'description#') _descriptionEl.value = '#defaultDescription#'
+  var _footerEl = document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=footer]')
+  if (!_footerEl.value || _footerEl.value === '#' + 'footer#') _footerEl.value = '#defaultFooter#'
+  if (!document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=color]').value) {
     document.querySelector('.colorChooser[data-uid="#uid#"]').value = '#defaultColor#'
     document.querySelector('.colorChooser[data-uid="#uid#"]').dispatchEvent(new Event('change'))
   }
@@ -160,5 +164,6 @@
   else {
     quickactionSelect.value = '#quickaction#';
   }
-  if ('#files#' == '#' + 'files#') document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=files]').value = ''
+  var _filesEl = document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=files]')
+  if (_filesEl.value === '#' + 'files#') _filesEl.value = ''
 </script>
