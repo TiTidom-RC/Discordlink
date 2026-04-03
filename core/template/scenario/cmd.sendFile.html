@@ -1,5 +1,5 @@
 <div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
-  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">{{Fichier(s)}}</span>
+  <span class="input-group-addon roundedLeft" style="width: 100px">{{Fichier(s)}}</span>
   <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="files" rows="1"
     style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#"
     placeholder="{{Chemin vers un ou plusieurs fichiers (séparés par ,) - Max 4}}">#files#</textarea>
@@ -10,7 +10,7 @@
 </div>
 
 <div class="input-group input-group-sm" style="width: 100%; padding-top: 1px">
-  <span class="input-group-addon roundedLeft" id="basic-addon1" style="width: 100px">{{Message}}</span>
+  <span class="input-group-addon roundedLeft" style="width: 100px">{{Message}}</span>
   <textarea class="message expressionAttr form-control ta_autosize" data-l1key="options" data-l2key="message" rows="1"
     style="resize:vertical;" data-cmd_id="#id#" data-uid="#uid#">#message#</textarea>
   <span class="input-group-btn">
@@ -48,5 +48,6 @@
     })
   })
 
-  if ('#files#' == '#' + 'files#') document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=files]').value = '#defaultPath#'
+  var _filesEl = document.querySelector('.expressionAttr[data-uid="#uid#"][data-l1key=options][data-l2key=files]')
+  if (!_filesEl.value || _filesEl.value === '#' + 'files#') _filesEl.value = '#defaultPath#'
 </script>
