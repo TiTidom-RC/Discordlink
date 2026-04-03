@@ -55,22 +55,27 @@ class discordlink extends eqLogic {
 	public static function mcpMetadata() {
 		return [
 			'sendEmbed' => [
-				'hint' => 'Envoie un message enrichi (embed) Discord avec mise en forme avancée : titre, description, footer, couleur, URL, fichiers joints et champs dynamiques.',
+				// Hint actionnable : aide le LLM à choisir sendEmbed vs sendMsg
+				'hint' => 'Préférer cette commande à sendMsg pour des notifications visuelles structurées : génère un bloc Discord coloré avec titre, corps, footer, URL et champs dynamiques.',
 				'options' => [
-					'title'       => ['required' => false, 'type' => 'string', 'hint' => 'Titre de l\'embed'],
-					'description' => ['required' => false, 'type' => 'string', 'alias' => 'message', 'hint' => 'Contenu principal du message (alias : message)'],
-					'footer'      => ['required' => false, 'type' => 'string', 'hint' => 'Texte de pied de page de l\'embed'],
-					'url'         => ['required' => false, 'type' => 'string', 'hint' => 'URL cliquable attachée au titre'],
-					'color'       => ['required' => false, 'type' => 'hex',    'example' => '#ff0000', 'hint' => 'Couleur de la barre latérale de l\'embed (format hexadécimal)'],
-					'files'       => ['required' => false, 'type' => 'string', 'hint' => 'Chemins de fichiers à joindre, séparés par une virgule (max 4)'],
-					'field'       => ['required' => false, 'type' => 'json',   'hint' => 'Champs supplémentaires sous forme de tableau JSON : [{"name":"Nom","value":"Valeur","inline":true}]'],
-					'quickaction' => ['required' => false, 'type' => 'string', 'hint' => 'Identifiant(s) d\'action(s) rapide(s) à proposer, séparés par une virgule'],
+					// title : inclus explicitement — identique au champ standard message (idempotent),
+					// mais nécessaire pour que tout développeur puisse le déclarer sans connaissance implicite.
+					'title'       => ['required' => false, 'type' => 'string', 'hint' => 'Titre principal du bloc embed (affiché en gras en haut du bloc Discord)'],
+					// description : nom réel du champ PHP ($_options['description']).
+					// PHP accepte aussi "message" en fallback, mais description est le champ prioritaire pour sendEmbed.
+					'description' => ['required' => false, 'type' => 'string', 'hint' => 'Corps du bloc embed — champ prioritaire pour sendEmbed (le champ standard "message" est aussi accepté en fallback)'],
+					'footer'      => ['required' => false, 'type' => 'string', 'hint' => 'Texte de pied de page du bloc embed'],
+					'url'         => ['required' => false, 'type' => 'string', 'hint' => 'URL rendue cliquable sur le titre de l\'embed'],
+					'color'       => ['required' => false, 'type' => 'string', 'example' => '#ff0000', 'hint' => 'Couleur de la barre latérale du bloc (format hexadécimal, ex : #ff0000)'],
+					'files'       => ['required' => false, 'type' => 'string', 'hint' => 'Chemins absolus de fichiers à joindre, séparés par une virgule (max 4)'],
+					'field'       => ['required' => false, 'type' => 'json',   'hint' => 'Champs supplémentaires : tableau JSON [{"name":"Label","value":"Contenu","inline":true}]'],
+					'quickaction' => ['required' => false, 'type' => 'string', 'hint' => 'Identifiant(s) d\'action(s) rapide(s) préalablement configurés dans l\'UI du plugin, séparés par une virgule'],
 				],
 			],
 			'sendFile' => [
-				'hint' => 'Envoie un ou plusieurs fichiers dans un canal Discord, avec un message optionnel.',
+				'hint' => 'Envoie un ou plusieurs fichiers dans un canal Discord, avec un message textuel optionnel.',
 				'options' => [
-					'files'   => ['required' => false, 'type' => 'string', 'hint' => 'Chemins de fichiers à envoyer, séparés par une virgule (max 4)'],
+					'files'   => ['required' => false, 'type' => 'string', 'hint' => 'Chemins absolus de fichiers à envoyer, séparés par une virgule (max 4)'],
 					'message' => ['required' => false, 'type' => 'string', 'hint' => 'Message textuel optionnel accompagnant les fichiers'],
 				],
 			],
