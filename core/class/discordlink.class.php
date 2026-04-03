@@ -52,6 +52,31 @@ class discordlink extends eqLogic {
 		return $return;
 	}
 
+	public static function mcpMetadata() {
+		return [
+			'sendEmbed' => [
+				'hint' => 'Envoie un message enrichi (embed) Discord avec mise en forme avancée : titre, description, footer, couleur, URL, fichiers joints et champs dynamiques.',
+				'options' => [
+					'title'       => ['required' => false, 'type' => 'string', 'hint' => 'Titre de l\'embed'],
+					'description' => ['required' => false, 'type' => 'string', 'alias' => 'message', 'hint' => 'Contenu principal du message (alias : message)'],
+					'footer'      => ['required' => false, 'type' => 'string', 'hint' => 'Texte de pied de page de l\'embed'],
+					'url'         => ['required' => false, 'type' => 'string', 'hint' => 'URL cliquable attachée au titre'],
+					'color'       => ['required' => false, 'type' => 'hex',    'example' => '#ff0000', 'hint' => 'Couleur de la barre latérale de l\'embed (format hexadécimal)'],
+					'files'       => ['required' => false, 'type' => 'string', 'hint' => 'Chemins de fichiers à joindre, séparés par une virgule (max 4)'],
+					'field'       => ['required' => false, 'type' => 'json',   'hint' => 'Champs supplémentaires sous forme de tableau JSON : [{"name":"Nom","value":"Valeur","inline":true}]'],
+					'quickaction' => ['required' => false, 'type' => 'string', 'hint' => 'Identifiant(s) d\'action(s) rapide(s) à proposer, séparés par une virgule'],
+				],
+			],
+			'sendFile' => [
+				'hint' => 'Envoie un ou plusieurs fichiers dans un canal Discord, avec un message optionnel.',
+				'options' => [
+					'files'   => ['required' => false, 'type' => 'string', 'hint' => 'Chemins de fichiers à envoyer, séparés par une virgule (max 4)'],
+					'message' => ['required' => false, 'type' => 'string', 'hint' => 'Message textuel optionnel accompagnant les fichiers'],
+				],
+			],
+		];
+	}
+
 	public static function testPlugin($_pluginId) {
 		$plugin = plugin::byId($_pluginId);
 		return (is_object($plugin) && $plugin->isActive());
