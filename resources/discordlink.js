@@ -400,11 +400,12 @@ app.post("/sendFile", async (req, res) => {
     const attachments = [];
     if (files && Array.isArray(files) && files.length > 0) {
 
-      // Limit to 4 files
-      const filesToSend = files.slice(0, 4);
-      if (files.length > 4) {
-        config.logger(`WARNING: Only first 4 files will be sent (requested: ${files.length})`, "WARNING");
+      // Discord limit: max 10 attachments per message — truncate silently rather than reject
+      const MAX_DISCORD_FILES = 10;
+      if (files.length > MAX_DISCORD_FILES) {
+        config.logger(`WARNING : ${files.length} fichiers fournis, seuls les ${MAX_DISCORD_FILES} premiers seront envoyés (limite Discord).`, "WARNING");
       }
+      const filesToSend = files.slice(0, MAX_DISCORD_FILES);
 
       for (const filePath of filesToSend) {
         try {
@@ -584,26 +585,33 @@ app.post("/sendEmbed", async (req, res) => {
           return new AttachmentBuilder(filePath, { name: filename });
         });
 
-        sendOptions.files = attachments;
+        // Galerie Discord : max 4 images affichées en grille (2×2) — tronque silencieusement plutôt que rejeter
+        const MAX_GALLERY_FILES = 4;
+        if (attachments.length > MAX_GALLERY_FILES) {
+          config.logger(`WARNING : ${attachments.length} fichiers fournis, seuls les ${MAX_GALLERY_FILES} premiers seront envoyés en galerie (limite Discord 2×2).`, "WARNING");
+        }
+        const galleryAttachments = attachments.slice(0, MAX_GALLERY_FILES);
+
+        sendOptions.files = galleryAttachments;
 
         // Attach the first file as the Embed Image of the main embed
-        if (attachments.length > 0) {
-          Embed.setImage(`attachment://${attachments[0].name}`);
+        if (galleryAttachments.length > 0) {
+          Embed.setImage(`attachment://${galleryAttachments[0].name}`);
         }
 
         // If multiple images, create a gallery
         // Note: Discord allows up to 10 embeds per message, but only 4 displayed as a grid if they have same URL
-        if (attachments.length > 1) {
+        if (galleryAttachments.length > 1) {
           const galleryUrl = Embed.data.url || jeedomExtURL || "https://www.jeedom.com";
 
           // Ensure the main embed has this URL so they group together
           Embed.setURL(galleryUrl);
 
-          for (let i = 1; i < attachments.length; i++) {
+          for (let i = 1; i < galleryAttachments.length; i++) {
             // Create a lightweight embed for the gallery image
             const galleryEmbed = new EmbedBuilder()
               .setURL(galleryUrl) // Must match main embed URL to group
-              .setImage(`attachment://${attachments[i].name}`);
+              .setImage(`attachment://${galleryAttachments[i].name}`);
 
             // galleryEmbed.setColor(null); // Try to not set color on secondary embeds to avoid sidebar clutter? 
             // Actually it's better if they don't have color or have same color.
@@ -614,16 +622,13 @@ app.post("/sendEmbed", async (req, res) => {
 
             sendOptions.embeds.push(galleryEmbed);
 
-            // Limit checks
+            // Limit checks — Discord displays max 4 embeds as a visual grid (2×2)
             if (sendOptions.embeds.length >= 4) {
-              if (i < attachments.length - 1) {
-                config.logger(`Limite de 4 images atteinte pour la galerie. ${attachments.length - 4} image(s) ignorée(s).`, "WARNING");
-              }
               break;
             }
           }
         }
-        config.logger(`Envoi de ${existingFiles.length} fichier(s) en galerie`, "INFO");
+        config.logger(`Envoi de ${galleryAttachments.length} fichier(s) en galerie`, "INFO");
       }
     }
 
