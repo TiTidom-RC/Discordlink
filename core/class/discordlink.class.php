@@ -386,16 +386,15 @@ class discordlink extends eqLogic {
 
 		$apiKey = jeedom::getApiKey('discordlink');
 		$cmd = sprintf(
-			'nice -n 19 node %s/discordlink.js %s %s %s %s %s %s %s %s',
+			'nice -n 19 node %s/discordlink.js %s %s %s %s %s %s %s',
 			escapeshellarg(realpath(dirname(__FILE__) . '/../../resources')),
-			escapeshellarg(network::getNetworkAccess('internal', 'proto:127.0.0.1:port:comp')),
-			escapeshellarg(config::byKey('Token', 'discordlink')),
-			escapeshellarg(log::getLogLevel('discordlink')),
-			escapeshellarg(network::getNetworkAccess('internal', 'proto:127.0.0.1:port:comp') . '/plugins/discordlink/core/api/jeeDiscordlink.php?apikey=' . $apiKey),
-			escapeshellarg($apiKey),
-			escapeshellarg(config::byKey('joueA', 'discordlink', 'Travailler main dans la main avec votre Jeedom')),
-			escapeshellarg(config::byKey('socketport', 'discordlink', self::SOCKET_PORT)),
-			escapeshellarg(network::getNetworkAccess('external'))
+			escapeshellarg(network::getNetworkAccess('internal', 'proto:127.0.0.1:port:comp')), // argv[2] jeedomURL
+			escapeshellarg(config::byKey('Token', 'discordlink')),                              // argv[3] token
+			escapeshellarg(log::getLogLevel('discordlink')),                                    // argv[4] logLevel
+			escapeshellarg($apiKey),                                                            // argv[5] pluginKey
+			escapeshellarg(config::byKey('joueA', 'discordlink', 'Travailler main dans la main avec votre Jeedom')), // argv[6] activityStatus
+			escapeshellarg(config::byKey('socketport', 'discordlink', self::SOCKET_PORT)),      // argv[7] socketport
+			escapeshellarg(network::getNetworkAccess('external'))                               // argv[8] jeedomExtURL
 		);
 
 		log::add('discordlink', 'debug', 'Commande du démon Discord Link : ' . $cmd);
@@ -791,7 +790,7 @@ class discordlink extends eqLogic {
 
 	public static function createQuickActionFile() {
 		$path = dirname(__FILE__) . '/../../data/quickaction.json';
-		file_put_contents($path, '{}');
+		file_put_contents($path, '[]');
 	}
 
 
@@ -893,13 +892,14 @@ class discordlinkCmd extends cmd {
 
 		$request_http = new com_http($url);
 		$request_http->setAllowEmptyReponse(true);
+		$request_http->setNoReportError(true);
 
 		if ($method === 'POST') {
 			$request_http->setPost(json_encode($payload));
 			$request_http->setHeader(array('Content-Type: application/json'));
 		}
 
-		$result = $request_http->exec(6, 1);
+		$result = $request_http->exec(6, 2);
 		if (!$result) {
 			log::add('discordlink', 'error', '[' . $this->getEqLogic()->getName() . '][' . $this->getLogicalId() . '] Le démon ne répond pas. Vérifiez son état.');
 			return true;
@@ -1222,7 +1222,9 @@ class discordlinkCmd extends cmd {
 
 	public static function decodeRandomText($_text) {
 		$return = $_text;
-		if (strpos($_text, '|') !== false && strpos($_text, '[') !== false && strpos($_text, ']') !== false) {
+		// Vérifie que le | est réellement à l'intérieur de crochets (syntaxe Jeedom [opt A|opt B])
+		// Évite la collision avec le Markdown Discord `[texte](url)` ou les séparateurs courants
+		if (preg_match('/\[[^\[\]]*\|[^\[\]]*\]/', $_text)) {
 			$replies = interactDef::generateTextVariant($_text);
 			$random = rand(0, count($replies) - 1);
 			$return = $replies[$random];

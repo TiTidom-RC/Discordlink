@@ -227,6 +227,20 @@ switch ($name) {
 		die();
 		break;
 
+	case 'getChannelIds':
+		$eqLogics = eqLogic::byType('discordlink');
+		$channelIds = [];
+		foreach ($eqLogics as $eql) {
+			if (!$eql->getIsEnable()) continue;
+			$channelId = $eql->getConfiguration('channelId');
+			if (!empty($channelId) && $channelId !== 'null') {
+				$channelIds[] = $channelId;
+			}
+		}
+		echo json_encode(['channelIds' => $channelIds], JSON_UNESCAPED_UNICODE);
+		die();
+		break;
+
 	default:
 		log::add('discordlink', 'warning', 'Route inconnue reçue : "' . $name . '" - payload : ' . json_encode($result, JSON_UNESCAPED_UNICODE));
 		die();

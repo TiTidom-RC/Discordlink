@@ -129,13 +129,15 @@ const registerCommands = async (clientId, token) => {
 const token = process.argv[3];
 const jeedomURL = process.argv[2];
 const logLevelLimit = parseInt(process.argv[4]) || 2000; // Par défaut : Aucun log si non défini
-const pluginKey = process.argv[6];
-const activityStatus = decodeURI(process.argv[7]);
-const listeningPort = process.argv[8] || 3466;
-const jeedomExtURL = process.argv[9];
+const pluginKey = process.argv[5];     // argv[5] pluginKey (apiKey)
+const activityStatus = decodeURI(process.argv[6]); // argv[6] joueA
+const listeningPort = process.argv[7] || 3466;      // argv[7] socketport
+const jeedomExtURL = process.argv[8];               // argv[8] jeedomExtURL
 
 // Flag pour indiquer si le client Discord est prêt (évite les erreurs getChannels avant ready)
 let discordReady = false;
+// Set des channelIds Jeedom configurés (null = pas encore chargé = laisser passer)
+let knownChannelIds = null;
 
 /**
  * Helper to get current timestamp in Jeedom format (YYYY-MM-DD HH:MM:SS)
@@ -223,9 +225,10 @@ config.logger(
   "DEBUG",
 );
 config.logger(" - argv[4] (logLevel): " + logLevelLimit, "DEBUG");
-config.logger(" - argv[6] (pluginKey): " + pluginKey, "DEBUG");
-config.logger(" - argv[7] (activityStatus): " + activityStatus, "DEBUG");
-config.logger(" - argv[8] (listeningPort): " + listeningPort, "DEBUG");
+config.logger(" - argv[5] (pluginKey): " + pluginKey, "DEBUG");
+config.logger(" - argv[6] (activityStatus): " + activityStatus, "DEBUG");
+config.logger(" - argv[7] (listeningPort): " + listeningPort, "DEBUG");
+config.logger(" - argv[8] (jeedomExtURL): " + jeedomExtURL, "DEBUG");
 
 // Charger la configuration quickaction depuis le répertoire data du plugin
 const path = require("path");
@@ -233,8 +236,13 @@ let quickactionConf = {};
 const quickactionPath = path.join(__dirname, "..", "data", "quickaction.json");
 
 try {
-  quickactionConf = JSON.parse(fs.readFileSync(quickactionPath, "utf8"));
+  const raw = JSON.parse(fs.readFileSync(quickactionPath, "utf8"));
+  quickactionConf = Array.isArray(raw) ? raw : [];
+  if (!Array.isArray(raw)) {
+    config.logger("quickaction.json n'est pas un tableau, réinitialisé à []", "WARNING");
+  }
 } catch (e) {
+  quickactionConf = [];
   config.logger("Erreur chargement quickaction.json: " + e.message, "WARNING");
 }
 
@@ -297,16 +305,19 @@ process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
 /***** Restart server *****/
 app.get("/restart", (req, res) => {
-  config.logger("Restart", "INFO");
-  res.status(200).json({});
-  config.logger("***** Relance forcée du Serveur *****", "INFO");
-  startServer();
+  config.logger("Restart requested via HTTP", "INFO");
+  res.status(200).json({ success: true });
+  // Arrêt propre — Jeedom détecte la chute (heartbeat) et relance automatiquement
+  setTimeout(() => {
+    gracefulShutdown("HTTP-RESTART");
+  }, 100);
 });
 
 /***** Reload QuickAction config *****/
 app.get("/reloadQuickAction", (req, res) => {
   try {
-    quickactionConf = JSON.parse(fs.readFileSync(quickactionPath, "utf8"));
+    const raw = JSON.parse(fs.readFileSync(quickactionPath, "utf8"));
+    quickactionConf = Array.isArray(raw) ? raw : [];
     config.logger("Configuration QuickAction rechargée (" + quickactionConf.length + " entrée(s))", "INFO");
     res.status(200).json({ status: "ok", count: quickactionConf.length });
   } catch (e) {
@@ -366,17 +377,28 @@ app.post("/sendMsg", async (req, res) => {
     config.logger("DiscordLink: sendMsg (POST)", "INFO");
 
     const { channelID, message } = req.body;
+
+    if (!discordReady) {
+      return res.status(503).json({ error: "Discord not ready yet" });
+    }
+
     const channel = client.channels.cache.get(channelID);
 
     if (!channel) {
       return res.status(404).json({ error: "Channel non trouvé", channelID });
     }
 
-    await channel.send(message);
-    res.status(200).json([{ id: req.body }]);
+    // Respond immediately — Discord send happens asynchronously
+    res.status(200).json({ success: true });
+
+    channel.send(message).catch(err => {
+      config.logger("ERROR sendMsg :: Discord send failed: " + err.message, "ERROR");
+    });
   } catch (error) {
     config.logger("ERROR sendMsg :: " + error.message, "ERROR");
-    res.status(500).json({ error: error.message });
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message });
+    }
   }
 });
 
@@ -391,6 +413,10 @@ app.post("/sendFile", async (req, res) => {
     const message = req.body.message || "";
     // files defaults to empty array so we can iterate safely
     const files = req.body.files || [];
+
+    if (!discordReady) {
+      return res.status(503).json({ error: "Discord not ready yet" });
+    }
 
     const channel = client.channels.cache.get(channelID);
     if (!channel) {
@@ -425,11 +451,17 @@ app.post("/sendFile", async (req, res) => {
       return res.status(400).json({ error: "No files or message to send" });
     }
 
-    await channel.send({ content: message, files: attachments });
+    // Respond immediately — Discord send happens asynchronously
     res.status(200).json({ filesSent: attachments.length, messageSent: !!message });
+
+    channel.send({ content: message, files: attachments }).catch(err => {
+      config.logger("ERROR sendFile :: Discord send failed: " + err.message, "ERROR");
+    });
   } catch (error) {
     config.logger("ERROR sendFile :: " + error.message, "ERROR");
-    res.status(500).json({ error: error.message });
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message });
+    }
   }
 });
 
@@ -441,6 +473,11 @@ app.post("/sendMsgTTS", async (req, res) => {
     config.logger("sendMsgTTS (POST)", "INFO");
 
     const { channelID, message } = req.body;
+
+    if (!discordReady) {
+      return res.status(503).json({ error: "Discord not ready yet" });
+    }
+
     const channel = client.channels.cache.get(channelID);
 
     if (!channel) {
@@ -451,15 +488,17 @@ app.post("/sendMsgTTS", async (req, res) => {
       });
     }
 
-    await channel.send({
-      content: message,
-      tts: true,
-    });
+    // Respond immediately — Discord send happens asynchronously
+    res.status(200).json({ success: true });
 
-    res.status(200).json({ success: true, message });
+    channel.send({ content: message, tts: true }).catch(err => {
+      config.logger("ERROR sendMsgTTS :: Discord send failed: " + err.message, "ERROR");
+    });
   } catch (error) {
     config.logger("ERROR sendMsgTTS :: " + error.message, "ERROR");
-    res.status(500).json({ error: error.message });
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message });
+    }
   }
 });
 
@@ -488,6 +527,12 @@ app.post("/sendEmbed", async (req, res) => {
     // Normaliser les valeurs vides ou "null" de manière stricte pour JSON (null/undefined/empty string)
     const isEmpty = (val) =>
       val === undefined || val === null || val === "" || val === "null";
+
+    const isAsk = !isEmpty(answerCount);
+
+    if (!discordReady) {
+      return res.status(503).json({ error: "Discord not ready yet" });
+    }
 
     const channel = client.channels.cache.get(channelID);
     if (!channel) {
@@ -531,8 +576,8 @@ app.post("/sendEmbed", async (req, res) => {
 
     if (!isEmpty(title)) Embed.setTitle(title);
 
-    // Only set URL if it looks like a URL and we are NOT in database/ASK mode (answerCount is empty)
-    if (isValidUrl(url) && isEmpty(answerCount)) {
+    // Only set URL if it looks like a URL and we are NOT in ASK mode
+    if (isValidUrl(url) && !isAsk) {
       Embed.setURL(url);
     }
 
@@ -632,6 +677,11 @@ app.post("/sendEmbed", async (req, res) => {
       }
     }
 
+    // Pour les embeds normaux (non-ASK), on répond immédiatement — l'envoi Discord se fait en arrière-plan
+    if (!isAsk) {
+      res.status(200).json({ success: true });
+    }
+
     const m = await channel.send(sendOptions);
 
     // Apply QuickActions (Reactions)
@@ -687,7 +737,7 @@ app.post("/sendEmbed", async (req, res) => {
     }
 
     // Gestion des réponses ASK (Question/Réponse)
-    if (!isEmpty(answerCount) && answerCount !== "0" && answerCount !== 0) {
+    if (isAsk && answerCount !== "0" && answerCount !== 0) {
       let timeoutVal = parseInt(timeout, 10);
       if (isNaN(timeoutVal)) timeoutVal = 60; // default 60s
 
@@ -753,7 +803,7 @@ app.post("/sendEmbed", async (req, res) => {
           m.delete().catch(() => { });
         });
 
-    } else if (!isEmpty(answerCount) && (answerCount === "0" || answerCount === 0)) {
+    } else if (isAsk && (answerCount === "0" || answerCount === 0)) {
       // ASK Mode: Text Response (0 options)
       let timeoutVal = parseInt(timeout, 10);
       if (isNaN(timeoutVal)) timeoutVal = 60;
@@ -789,14 +839,13 @@ app.post("/sendEmbed", async (req, res) => {
         .catch(() => {
           m.delete().catch(() => { });
         });
-    } else {
-      // Normal embed (no ASK)
-      res.status(200).json({ success: true });
     }
   } catch (error) {
     config.logger("DiscordLink ERROR sendEmbed: " + error.message, "ERROR");
     console.error(error);
-    res.status(500).json({ error: error.message });
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message });
+    }
   }
 });
 
@@ -1138,6 +1187,11 @@ const attachDiscordEvents = () => {
       return;
     }
 
+    // Filtrer les channels non configurés dans Jeedom (évite le flood HTTP)
+    if (knownChannelIds !== null && !knownChannelIds.has(receivedMessage.channel.id)) {
+      return;
+    }
+
     httpPost("messageReceived", {
       channelId: receivedMessage.channel.id,
       message: receivedMessage.content,
@@ -1403,6 +1457,28 @@ process.on("uncaughtException", (error) => {
   process.exit(1);
 });
 
+/**
+ * Charge la liste des channelIds Jeedom configurés depuis PHP
+ * Permet de filtrer messageCreate et d'éviter le flood HTTP vers Jeedom
+ * pour les messages provenant d'autres serveurs/channels non gérés par le plugin.
+ */
+const loadKnownChannels = async () => {
+  try {
+    const raw = await httpPost("getChannelIds", {});
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.channelIds)) {
+        knownChannelIds = new Set(parsed.channelIds);
+        config.logger("Whitelist channels chargée : " + knownChannelIds.size + " channel(s)", "INFO");
+        return;
+      }
+    }
+    config.logger("Impossible de charger la whitelist des channels (réponse invalide)", "WARNING");
+  } catch (e) {
+    config.logger("Erreur chargement whitelist channels: " + e.message, "WARNING");
+  }
+};
+
 /* Main */
 
 /**
@@ -1502,6 +1578,9 @@ const startServer = () => {
           config.logger(`Erreur preload channels: ${e.message}`, "WARNING");
         }
       }
+
+      // Charger la whitelist des channels Jeedom pour filtrer messageCreate
+      await loadKnownChannels();
     });
 
     await client.login(config.token);
