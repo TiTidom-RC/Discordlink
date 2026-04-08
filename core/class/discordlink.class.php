@@ -893,13 +893,14 @@ class discordlinkCmd extends cmd {
 
 		$request_http = new com_http($url);
 		$request_http->setAllowEmptyReponse(true);
+		$request_http->setNoReportError(true);
 
 		if ($method === 'POST') {
 			$request_http->setPost(json_encode($payload));
 			$request_http->setHeader(array('Content-Type: application/json'));
 		}
 
-		$result = $request_http->exec(6, 1);
+		$result = $request_http->exec(6, 2);
 		if (!$result) {
 			log::add('discordlink', 'error', '[' . $this->getEqLogic()->getName() . '][' . $this->getLogicalId() . '] Le démon ne répond pas. Vérifiez son état.');
 			return true;
