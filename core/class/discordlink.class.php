@@ -343,26 +343,33 @@ class discordlink extends eqLogic {
 
 	public static function deamon_info() {
 		$return = array(
-			'log' => 'discordlink_node',
-			'state' => 'nok',
+			'log'        => 'discordlink_node',
+			'state'      => 'nok', // basé sur pgrep : process vivant ou non
+			'responsive' => false, // basé sur heartbeat HTTP : réactif ou non
 			'launchable' => 'nok'
 		);
 
-		// Vérifier si le serveur HTTP répond sur le port configuré
+		// Vérification 1 : le process Node.js tourne-t-il ? (pgrep, instantané)
+		$processPattern = escapeshellarg('node .*discordlink.j[s]');
+		$pid = trim(shell_exec('pgrep -f ' . $processPattern . ' 2>/dev/null'));
+		if (!empty($pid)) {
+			$return['state'] = 'ok';
+		}
+
+		// Vérification 2 : le serveur HTTP répond-il ? (heartbeat, timeout 2s)
 		try {
 			$requestHttp = new com_http(self::getDaemonBaseURL() . '/heartbeat');
 			$requestHttp->setNoReportError(true);
-			$response = $requestHttp->exec(2, 1); // Timeout rapide: 2s
+			$response = $requestHttp->exec(2, 1);
 			if ($response !== false) {
-				$return['state'] = 'ok';
+				$return['responsive'] = true;
 				$json = json_decode($response, true);
 				if (!is_array($json) || !isset($json['status']) || $json['status'] != 'ok') {
 					log::add('discordlink', 'warning', 'Heartbeat réponse inattendue : ' . $response);
 				}
 			}
 		} catch (Exception $e) {
-			// Le serveur ne répond pas, daemon non actif
-			$return['state'] = 'nok';
+			// HTTP muet — responsive reste false
 		}
 
 		$token = config::byKey('Token', 'discordlink');
@@ -414,7 +421,8 @@ class discordlink extends eqLogic {
 		log::add('discordlink', 'debug', 'Démon lancé avec PID : ' . $pid);
 
 		for ($i = 0; $i < 30; $i++) {
-			if (static::deamon_info()['state'] == 'ok') {
+			$info = static::deamon_info();
+			if ($info['state'] == 'ok' && $info['responsive'] === true) {
 				message::removeAll('discordlink', 'unableStartDeamon');
 				log::add('discordlink', 'info', 'Démon Discord Link lancé');
 				static::updateObject();
@@ -877,9 +885,19 @@ class discordlinkCmd extends cmd {
 			return true;
 		}
 
-		// Vérification rapide avant d'engager le timeout HTTP
-		if (discordlink::deamon_info()['state'] !== 'ok') {
-			log::add('discordlink', 'warning', '[' . $this->getEqLogic()->getName() . '][' . $this->getLogicalId() . '] Commande ignorée : le démon n\'est pas actif.');
+		// Vérification avant d'engager le timeout HTTP
+		$daemonInfo = discordlink::deamon_info();
+		$eqName = $this->getEqLogic()->getName();
+		$logId  = $this->getLogicalId();
+
+		if ($daemonInfo['state'] !== 'ok') {
+			log::add('discordlink', 'warning', '[' . $eqName . '][' . $logId . '] Commande ignorée : le démon n\'est pas actif.');
+			return true;
+		}
+
+		if ($daemonInfo['responsive'] === false) {
+			// Process vivant mais HTTP muet — inutile d'attendre 12s de timeout, on fail fast
+			log::add('discordlink', 'warning', '[' . $eqName . '][' . $logId . '] Le démon est actif mais ne répond pas — le système est peut-être sous charge. Commande ignorée.');
 			return true;
 		}
 
@@ -888,7 +906,7 @@ class discordlinkCmd extends cmd {
 		$method = $requestData['method'] ?? 'POST';
 
 		$url = discordlink::getDaemonBaseURL() . $endpoint;
-		log::add('discordlink', 'debug', '[' . $this->getEqLogic()->getName() . '][' . $this->getLogicalId() . '] Envoi requête ' . $method . ' : ' . $url);
+		log::add('discordlink', 'debug', '[' . $eqName . '][' . $logId . '] Envoi requête ' . $method . ' : ' . $url);
 
 		$request_http = new com_http($url);
 		$request_http->setAllowEmptyReponse(true);
@@ -901,7 +919,8 @@ class discordlinkCmd extends cmd {
 
 		$result = $request_http->exec(6, 2);
 		if (!$result) {
-			log::add('discordlink', 'error', '[' . $this->getEqLogic()->getName() . '][' . $this->getLogicalId() . '] Le démon ne répond pas. Vérifiez son état.');
+			// Heartbeat était OK au moment du pre-check mais la commande a échoué — état instable
+			log::add('discordlink', 'error', '[' . $eqName . '][' . $logId . '] Le démon a répondu au heartbeat mais pas à la commande — état instable. Vérifiez les logs du démon.');
 			return true;
 		}
 		return true;
