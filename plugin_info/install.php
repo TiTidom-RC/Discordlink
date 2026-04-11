@@ -85,21 +85,27 @@ function discordlink_update() {
             $pluginDir . '/data/quickreply.json',
             $pluginDir . '/core/php/.htaccess',
         );
+        $cleanupRemoved = 0;
+        $cleanupErrors = 0;
         foreach ($pathsToRemove as $path) {
-            log::add('discordlink', 'debug', '[CLEANUP] Vérification du chemin : ' . $path);
             if (file_exists($path)) {
                 $output = array();
                 $returnVar = 0;
                 exec('rm -rf ' . escapeshellarg($path) . ' 2>&1', $output, $returnVar);
                 if ($returnVar !== 0) {
+                    $cleanupErrors++;
                     log::add('discordlink', 'warning', '[CLEANUP_KO] Echec suppression "' . $path . '" (Code: ' . $returnVar . ') : ' . implode(' ', $output));
                 } else {
+                    $cleanupRemoved++;
                     log::add('discordlink', 'info', '[CLEANUP_OK] Chemin supprimé : ' . $path);
                 }
-            } else {
-                log::add('discordlink', 'debug', '[CLEANUP_NA] Chemin non trouvé, aucune action : ' . $path);
             }
         }
+        $cleanupSummary = count($pathsToRemove) . ' chemin(s) vérifié(s), ' . $cleanupRemoved . ' supprimé(s)';
+        if ($cleanupErrors > 0) {
+            $cleanupSummary .= ', ' . $cleanupErrors . ' erreur(s)';
+        }
+        log::add('discordlink', 'debug', '[CLEANUP] ' . $cleanupSummary);
     } catch (Exception $e) {
         log::add('discordlink', 'warning', '[CLEANUP_KO] Erreur lors du nettoyage : ' . $e->getMessage());
     }
