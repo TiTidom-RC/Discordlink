@@ -61,47 +61,56 @@ function discordlink_update() {
     // 2. Nettoyage Système de Fichiers et vérification du fichier quickaction.json
     // ------------------------------------------------------------------------------
     log::add('discordlink', 'info', 'Nettoyage des anciens fichiers et vérification du fichier quickaction.json...');
-    $pathsToRemove = array(
-        '/core/class/discordlinkCovid.class.php',
-        '/core/class/discordMsg.class.php',
-        '/core/php/discordlink.inc.php',
-        '/core/template/mobile/cmd.action.other.templeteTemplate.html',
-        '/core/template/scenario/cmd.covidSend.html',
-        '/desktop/js/configuration.js',
-        '/desktop/js/discordlinkuser.js',
-        '/desktop/php/discordlinkuser.php',
-        '/plugin_info/_icon.png',
-        '/resources/post_install.sh',
-        '/resources/pre_install.sh',
-        '/resources/install.sh',
-        '/resources/install_nodejs.sh',
-        '/resources/yarn.lock',
-        '/resources/dependance.lib',
-        '/resources/i18n',
-        '/resources/quickreply.json',
-        '/data/quickreply.json',
-    );
-
-    foreach ($pathsToRemove as $resource) {
-        $path = dirname(__FILE__) . '/..' . $resource;
-        if (file_exists($path)) {
-            // Utilisation de exec pour récupérer le code de retour (0 = OK)
-            try {
+    $pluginDir = dirname(__DIR__);
+    try {
+        $pathsToRemove = array(
+            // Accepte fichiers ET répertoires (rm -rf) — ajouter ici les chemins à supprimer à chaque mise à jour
+            $pluginDir . '/core/class/discordlinkCovid.class.php',
+            $pluginDir . '/core/class/discordMsg.class.php',
+            $pluginDir . '/core/php/discordlink.inc.php',
+            $pluginDir . '/core/template/mobile/cmd.action.other.templeteTemplate.html',
+            $pluginDir . '/core/template/scenario/cmd.covidSend.html',
+            $pluginDir . '/desktop/js/configuration.js',
+            $pluginDir . '/desktop/js/discordlinkuser.js',
+            $pluginDir . '/desktop/php/discordlinkuser.php',
+            $pluginDir . '/plugin_info/_icon.png',
+            $pluginDir . '/resources/post_install.sh',
+            $pluginDir . '/resources/pre_install.sh',
+            $pluginDir . '/resources/install.sh',
+            $pluginDir . '/resources/install_nodejs.sh',
+            $pluginDir . '/resources/yarn.lock',
+            $pluginDir . '/resources/dependance.lib',
+            $pluginDir . '/resources/i18n',
+            $pluginDir . '/resources/quickreply.json',
+            $pluginDir . '/data/quickreply.json',
+            $pluginDir . '/core/php/.htaccess',
+        );
+        $cleanupRemoved = 0;
+        $cleanupErrors = 0;
+        foreach ($pathsToRemove as $path) {
+            if (file_exists($path)) {
                 $output = array();
-                $return_var = 0;
-                exec('rm -rf ' . escapeshellarg($path) . ' 2>&1', $output, $return_var);
-                if ($return_var !== 0) {
-                    log::add('discordlink', 'warning', '  - Echec suppression "' . $resource . '" (Code: ' . $return_var . ') : ' . implode(' ', $output));
+                $returnVar = 0;
+                exec('rm -rf ' . escapeshellarg($path) . ' 2>&1', $output, $returnVar);
+                if ($returnVar !== 0) {
+                    $cleanupErrors++;
+                    log::add('discordlink', 'warning', '[CLEANUP_KO] Echec suppression "' . $path . '" (Code: ' . $returnVar . ') : ' . implode(' ', $output));
                 } else {
-                    log::add('discordlink', 'info', '  - Ancien fichier supprimé : ' . $resource);
+                    $cleanupRemoved++;
+                    log::add('discordlink', 'info', '[CLEANUP_OK] Chemin supprimé : ' . $path);
                 }
-            } catch (Exception $e) {
-                log::add('discordlink', 'warning', 'Erreur suppression "' . $path . '" : ' . $e->getMessage());
             }
         }
+        $cleanupSummary = count($pathsToRemove) . ' chemin(s) vérifié(s), ' . $cleanupRemoved . ' supprimé(s)';
+        if ($cleanupErrors > 0) {
+            $cleanupSummary .= ', ' . $cleanupErrors . ' erreur(s)';
+        }
+        log::add('discordlink', 'debug', '[CLEANUP] ' . $cleanupSummary);
+    } catch (Exception $e) {
+        log::add('discordlink', 'warning', '[CLEANUP_KO] Erreur lors du nettoyage : ' . $e->getMessage());
     }
 
-    $quickActionPath = dirname(__FILE__) . '/../data/quickaction.json';
+    $quickActionPath = $pluginDir . '/data/quickaction.json';
     if (!file_exists($quickActionPath)) {
         log::add('discordlink', 'info', '  - Création du fichier quickaction.json par défaut');
         discordlink::createQuickActionFile();
