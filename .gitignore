@@ -1,6 +1,5 @@
-# Node.js - Ignore node_modules content except README
-resources/node_modules/*
-!resources/node_modules/README.md
+# Node.js
+resources/node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
