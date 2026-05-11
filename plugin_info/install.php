@@ -30,6 +30,12 @@ function discordlink_install() {
     discordlink::setEmoji();
     discordlink::updateObject();
     discordlink::createQuickActionFile();
+
+    $packageJsonPath = dirname(__DIR__) . '/resources/package.json';
+    if (file_exists($packageJsonPath)) {
+        config::save('packageJsonHash', md5_file($packageJsonPath), 'discordlink');
+        log::add('discordlink', 'info', '[INSTALL] Hash package.json stocké pour suivi des dépendances npm');
+    }
 }
 
 function discordlink_update() {
@@ -63,6 +69,35 @@ function discordlink_update() {
     log::add('discordlink', 'info', 'Nettoyage des anciens fichiers et vérification du fichier quickaction.json...');
     $pluginDir = dirname(__DIR__);
     try {
+        // Nettoyage conditionnel de node_modules : uniquement si package.json a changé depuis la dernière installation
+        $packageJsonPath = $pluginDir . '/resources/package.json';
+        if (file_exists($packageJsonPath)) {
+            $nodeModulesPath = $pluginDir . '/resources/node_modules';
+            $currentHash = md5_file($packageJsonPath);
+            if ($currentHash === false) {
+                log::add('discordlink', 'warning', '[CLEANUP_KO] Impossible de lire package.json (droits ?) — vérification du hash ignorée');
+            } elseif (file_exists($nodeModulesPath)) {
+                $storedHash = config::byKey('packageJsonHash', 'discordlink', '');
+                if ($currentHash !== $storedHash) {
+                    $output = array();
+                    $returnVar = 0;
+                    exec('rm -rf ' . escapeshellarg($nodeModulesPath) . ' 2>&1', $output, $returnVar);
+                    if ($returnVar === 0) {
+                        config::save('packageJsonHash', $currentHash, 'discordlink');
+                        log::add('discordlink', 'info', '[CLEANUP_OK] node_modules supprimé (package.json modifié) — npm install propre au prochain passage');
+                    } else {
+                        log::add('discordlink', 'warning', '[CLEANUP_KO] Echec suppression node_modules : ' . implode(' ', $output));
+                    }
+                } else {
+                    log::add('discordlink', 'debug', '[CLEANUP] Dépendances npm à jour');
+                }
+            } else {
+                // node_modules absent — npm va installer depuis zéro, on aligne le hash maintenant
+                config::save('packageJsonHash', $currentHash, 'discordlink');
+                log::add('discordlink', 'debug', '[CLEANUP] node_modules absent — hash mis à jour, npm installera les dépendances');
+            }
+        }
+
         $pathsToRemove = array(
             // Accepte fichiers ET répertoires (rm -rf) — ajouter ici les chemins à supprimer à chaque mise à jour
             $pluginDir . '/core/class/discordlinkCovid.class.php',
