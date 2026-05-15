@@ -961,8 +961,9 @@ class discordlinkCmd extends cmd {
 	 * Pipeline :
 	 * 1. Remplacement des tags Jeedom (#[...]#)
 	 * 2. Décodage du texte aléatoire ({...})
-	 * 3. Conversion des emojis personnalisés (emo_...) — uniquement si $_supportMarkdown est vrai
-	 * 4. Remplacement des sauts de ligne (| -> \n)
+	 * 3. Nettoyage HTML — html_entity_decode + <br> → espace + strip_tags + normalisation espaces (si option activée)
+	 * 4. Conversion des emojis personnalisés (emo_...) — uniquement si $_supportMarkdown est vrai
+	 * 5. Remplacement des sauts de ligne (| -> \n)
 	 *
 	 * @param string $_text Le texte à traiter
 	 * @param bool $_supportMarkdown Si le champ cible supporte le Markdown/les emojis personnalisés (défaut : false)
@@ -977,12 +978,23 @@ class discordlinkCmd extends cmd {
 		// 2. Décodage du texte aléatoire
 		$text = self::decodeRandomText($text);
 
-		// 3. Conversion des emojis (uniquement si markdown supporté)
+		// 3. Nettoyage HTML (si option activée dans la configuration du plugin)
+		if (config::byKey('stripHtml', 'discordlink', '0') == '1') {
+			log::add('discordlink', 'debug', '[stripHTML] Avant nettoyage HTML : ' . preg_replace('/\R/', '\\n', $text));
+			$text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8'); // décoder en premier pour que strip_tags voit les vrais tags
+			$text = preg_replace('/<br\s*\/?>/i', ' ', $text); // <br> → espace pour éviter de coller les mots
+			$text = strip_tags($text);
+			$text = preg_replace('/\s{2,}/', ' ', $text);
+			$text = trim($text);
+			log::add('discordlink', 'debug', '[stripHTML] Après nettoyage HTML : ' . preg_replace('/\R/', '\\n', $text));
+		}
+
+		// 4. Conversion des emojis (uniquement si markdown supporté)
 		if ($_supportMarkdown) {
 			$text = discordlink::emojiConvert($text);
 		}
 
-		// 4. Remplacement des sauts de ligne
+		// 5. Remplacement des sauts de ligne
 		$text = str_replace('|', "\n", $text);
 
 		return $text;
@@ -1480,7 +1492,7 @@ class discordlinkCmd extends cmd {
 		foreach ($messageList as $message) {
 			$msgBloc = "[" . $message->getDate() . "] (" . $message->getPlugin() . ") :\n";
 			$msgBloc .= " " . $message->getMessage() . "\n\n";
-			$msgArray[] = html_entity_decode($msgBloc, ENT_QUOTES | ENT_HTML5);
+			$msgArray[] = html_entity_decode($msgBloc, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 		}
 
 		if (count($msgArray) == 0) {
