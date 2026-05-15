@@ -53,6 +53,14 @@ if (!isConnect()) {
 
         <legend><i class="fas fa-cogs"></i> {{Discord}}</legend>
         <div class="form-group">
+            <label class="col-lg-3 control-label">{{Nettoyer le HTML dans les messages}}
+                <sup><i class="fas fa-question-circle tooltips" title="{{Supprime automatiquement les balises HTML (ex : icônes Jeedom) des messages envoyés sur Discord}}"></i></sup>
+            </label>
+            <div class="col-lg-1">
+                <input type="checkbox" class="configKey" data-l1key="stripHtml" />
+            </div>
+        </div>
+        <div class="form-group">
             <label class="col-lg-3 control-label">{{Token : }}</label>
             <div class="col-lg-6">
                 <input class="configKey form-control" data-l1key="Token" />

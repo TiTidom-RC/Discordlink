@@ -23,6 +23,7 @@ function discordlink_install() {
     $version = $info['pluginVersion'];
     config::save('pluginVersion', $version, 'discordlink');
     config::save('socketport', discordlink::SOCKET_PORT, 'discordlink');
+    config::save('stripHtml', '1', 'discordlink');
 
     message::add('discordlink', 'Merci d\'avoir installé le plugin DiscordLink version ' . $version);
 
@@ -51,6 +52,11 @@ function discordlink_update() {
     if (config::byKey('socketport', 'discordlink', '') === '') {
         config::save('socketport', discordlink::SOCKET_PORT, 'discordlink');
         log::add('discordlink', 'info', '  - Initialisation du port du démon : ' . discordlink::SOCKET_PORT);
+    }
+
+    if (config::byKey('stripHtml', 'discordlink', '') === '') {
+        config::save('stripHtml', '1', 'discordlink');
+        log::add('discordlink', 'info', '  - Initialisation : nettoyage HTML des messages activé par défaut');
     }
 
     // Migration de la clé de configuration globale emojy → emoji
