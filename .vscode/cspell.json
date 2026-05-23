@@ -28,9 +28,11 @@
     "nohup",
     "nullsafe",
     "pgrep",
+    "phpstan",
     "pkill",
     "quickaction",
     "Reponse",
+    "shivammathur",
     "tippied",
     "userid"
   ],
