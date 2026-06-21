@@ -4,6 +4,8 @@ on:
   pull_request:
     branches:
       - beta
+    paths:
+      - '**/*.js'
 
 jobs:
   js-lint:
