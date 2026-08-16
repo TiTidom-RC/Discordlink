@@ -31,9 +31,11 @@
     "phpstan",
     "pkill",
     "quickaction",
+    "quickactions",
     "Reponse",
     "shivammathur",
     "tippied",
+    "UIDDELIMITER",
     "userid"
   ],
   "ignoreWords": [],
