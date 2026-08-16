@@ -24,7 +24,7 @@ class discordlink extends eqLogic {
 
 	const DEFAULT_COLOR = '#ff0000';
 	const SOCKET_PORT = 3466;
-	private static $_daemonBaseURL = null;
+	private static ?string $_daemonBaseURL = null;
 
 	public static function getInfo() {
 		$file = __DIR__ . '/../../plugin_info/info.json';
@@ -82,7 +82,7 @@ class discordlink extends eqLogic {
 		];
 	}
 
-	public static function testPlugin($_pluginId) {
+	public static function testPlugin(string $_pluginId): bool {
 		$plugin = plugin::byId($_pluginId);
 		return (is_object($plugin) && $plugin->isActive());
 	}
@@ -167,7 +167,7 @@ class discordlink extends eqLogic {
 		config::save('channels', $channels, 'discordlink');
 	}
 
-	private static function removeEmoji($text) {
+	private static function removeEmoji(string $text): string {
 		// Remplacement manuel des symboles spéciaux courants qui ont une équivalence texte
 		$replacements = array(
 			'©' => 'c',
@@ -231,7 +231,7 @@ class discordlink extends eqLogic {
 		config::save('emoji', $emojiArray, 'discordlink');
 	}
 
-	public static function emojiConvert($_text): string {
+	public static function emojiConvert(string $_text): string {
 		$_returnText = '';
 		$textParts = explode(" ", $_text);
 		foreach ($textParts as $value) {
@@ -245,7 +245,7 @@ class discordlink extends eqLogic {
 		return rtrim($_returnText);
 	}
 
-	private static function executeCronIfDue($eqLogic, $cronExpr, $cmdLogicId, $debugLabel, $_options) {
+	private static function executeCronIfDue(discordlink $eqLogic, string $cronExpr, string $cmdLogicId, string $debugLabel, array $_options): void {
 		if (empty($cronExpr)) {
 			log::add('discordlink', 'warning', $debugLabel . ' pour ' . $eqLogic->getName() . ' : activé mais aucun cron configuré');
 			return;
@@ -504,13 +504,13 @@ class discordlink extends eqLogic {
 		}
 	}
 
-	public static function getIcon($_icon) {
+	public static function getIcon(string $_icon): string {
 		$emojiArray = config::byKey('emoji', 'discordlink', array());
 		$icon = isset($emojiArray[$_icon]) && !empty($emojiArray[$_icon]) ? $emojiArray[$_icon] : static::addEmoji($_icon);
 		return $icon . ' ';
 	}
 
-	public static function addEmoji($_icon, $_emoji = null) {
+	public static function addEmoji(string $_icon, ?string $_emoji = null): string {
 		$emojiArray = config::byKey('emoji', 'discordlink', array());
 		$emojiArray[$_icon] = $_emoji ?? ':interrobang:';
 		config::save('emoji', $emojiArray, 'discordlink');
@@ -1251,7 +1251,7 @@ class discordlinkCmd extends cmd {
 		);
 	}
 
-	public static function decodeRandomText($_text) {
+	public static function decodeRandomText(string $_text): string {
 		$return = $_text;
 		// Vérifie que le | est réellement à l'intérieur de crochets (syntaxe Jeedom [opt A|opt B])
 		// Évite la collision avec le Markdown Discord `[texte](url)` ou les séparateurs courants
