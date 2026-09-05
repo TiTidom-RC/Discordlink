@@ -24,7 +24,7 @@ class discordlink extends eqLogic {
 
 	const DEFAULT_COLOR = '#ff0000';
 	const SOCKET_PORT = 3466;
-	private static $_daemonBaseURL = null;
+	private static ?string $_daemonBaseURL = null;
 
 	public static function getInfo() {
 		$file = __DIR__ . '/../../plugin_info/info.json';
@@ -82,7 +82,7 @@ class discordlink extends eqLogic {
 		];
 	}
 
-	public static function testPlugin($_pluginId) {
+	public static function testPlugin(string $_pluginId): bool {
 		$plugin = plugin::byId($_pluginId);
 		return (is_object($plugin) && $plugin->isActive());
 	}
@@ -167,7 +167,7 @@ class discordlink extends eqLogic {
 		config::save('channels', $channels, 'discordlink');
 	}
 
-	private static function removeEmoji($text) {
+	private static function removeEmoji(string $text): string {
 		// Remplacement manuel des symboles spéciaux courants qui ont une équivalence texte
 		$replacements = array(
 			'©' => 'c',
@@ -231,7 +231,7 @@ class discordlink extends eqLogic {
 		config::save('emoji', $emojiArray, 'discordlink');
 	}
 
-	public static function emojiConvert($_text): string {
+	public static function emojiConvert(string $_text): string {
 		$_returnText = '';
 		$textParts = explode(" ", $_text);
 		foreach ($textParts as $value) {
@@ -245,7 +245,7 @@ class discordlink extends eqLogic {
 		return rtrim($_returnText);
 	}
 
-	private static function executeCronIfDue($eqLogic, $cronExpr, $cmdLogicId, $debugLabel, $_options) {
+	private static function executeCronIfDue(discordlink $eqLogic, string $cronExpr, string $cmdLogicId, string $debugLabel, array $_options): void {
 		if (empty($cronExpr)) {
 			log::add('discordlink', 'warning', $debugLabel . ' pour ' . $eqLogic->getName() . ' : activé mais aucun cron configuré');
 			return;
@@ -504,13 +504,13 @@ class discordlink extends eqLogic {
 		}
 	}
 
-	public static function getIcon($_icon) {
+	public static function getIcon(string $_icon): string {
 		$emojiArray = config::byKey('emoji', 'discordlink', array());
 		$icon = isset($emojiArray[$_icon]) && !empty($emojiArray[$_icon]) ? $emojiArray[$_icon] : static::addEmoji($_icon);
 		return $icon . ' ';
 	}
 
-	public static function addEmoji($_icon, $_emoji = null) {
+	public static function addEmoji(string $_icon, ?string $_emoji = null): string {
 		$emojiArray = config::byKey('emoji', 'discordlink', array());
 		$emojiArray[$_icon] = $_emoji ?? ':interrobang:';
 		config::save('emoji', $emojiArray, 'discordlink');
@@ -961,8 +961,9 @@ class discordlinkCmd extends cmd {
 	 * Pipeline :
 	 * 1. Remplacement des tags Jeedom (#[...]#)
 	 * 2. Décodage du texte aléatoire ({...})
-	 * 3. Conversion des emojis personnalisés (emo_...) — uniquement si $_supportMarkdown est vrai
-	 * 4. Remplacement des sauts de ligne (| -> \n)
+	 * 3. Nettoyage HTML — html_entity_decode + <br> → espace + strip_tags + normalisation espaces (si option activée)
+	 * 4. Conversion des emojis personnalisés (emo_...) — uniquement si $_supportMarkdown est vrai
+	 * 5. Remplacement des sauts de ligne (| -> \n)
 	 *
 	 * @param string $_text Le texte à traiter
 	 * @param bool $_supportMarkdown Si le champ cible supporte le Markdown/les emojis personnalisés (défaut : false)
@@ -977,12 +978,23 @@ class discordlinkCmd extends cmd {
 		// 2. Décodage du texte aléatoire
 		$text = self::decodeRandomText($text);
 
-		// 3. Conversion des emojis (uniquement si markdown supporté)
+		// 3. Nettoyage HTML (si option activée dans la configuration du plugin)
+		if (config::byKey('stripHtml', 'discordlink', '0') == '1') {
+			log::add('discordlink', 'debug', '[stripHTML] Avant nettoyage HTML : ' . preg_replace('/\R/', '\\n', $text));
+			$text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8'); // décoder en premier pour que strip_tags voit les vrais tags
+			$text = preg_replace('/<br\s*\/?>/i', ' ', $text); // <br> → espace pour éviter de coller les mots
+			$text = strip_tags($text);
+			$text = preg_replace('/\s{2,}/', ' ', $text);
+			$text = trim($text);
+			log::add('discordlink', 'debug', '[stripHTML] Après nettoyage HTML : ' . preg_replace('/\R/', '\\n', $text));
+		}
+
+		// 4. Conversion des emojis (uniquement si markdown supporté)
 		if ($_supportMarkdown) {
 			$text = discordlink::emojiConvert($text);
 		}
 
-		// 4. Remplacement des sauts de ligne
+		// 5. Remplacement des sauts de ligne
 		$text = str_replace('|', "\n", $text);
 
 		return $text;
@@ -1239,7 +1251,7 @@ class discordlinkCmd extends cmd {
 		);
 	}
 
-	public static function decodeRandomText($_text) {
+	public static function decodeRandomText(string $_text): string {
 		$return = $_text;
 		// Vérifie que le | est réellement à l'intérieur de crochets (syntaxe Jeedom [opt A|opt B])
 		// Évite la collision avec le Markdown Discord `[texte](url)` ou les séparateurs courants
@@ -1480,7 +1492,7 @@ class discordlinkCmd extends cmd {
 		foreach ($messageList as $message) {
 			$msgBloc = "[" . $message->getDate() . "] (" . $message->getPlugin() . ") :\n";
 			$msgBloc .= " " . $message->getMessage() . "\n\n";
-			$msgArray[] = html_entity_decode($msgBloc, ENT_QUOTES | ENT_HTML5);
+			$msgArray[] = html_entity_decode($msgBloc, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 		}
 
 		if (count($msgArray) == 0) {
