@@ -2,8 +2,7 @@
 
 /**
  * Discord Link Bot pour Jeedom
- * Version Discord.js v14
- * Migration effectuée : Janvier 2026
+ * Version Discord.js v14.x.x
  */
 
 const express = require("express");
