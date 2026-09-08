@@ -452,6 +452,7 @@ class discordlink extends eqLogic {
 		// Attente dynamique de l'arrêt du processus (max 3s)
 		// On précise "node" et on utilise l'astuce [s] pour que pgrep ne matche pas sa propre commande
 		$processPattern = escapeshellarg('node .*discordlink.j[s]');
+		$pidCount = 0;
 		for ($i = 0; $i < 30; $i++) {
 			$pidCount = (int)trim(shell_exec('pgrep -f ' . $processPattern . ' 2>/dev/null | wc -l'));
 			if ($pidCount == 0) {
@@ -961,7 +962,7 @@ class discordlinkCmd extends cmd {
 	 * Pipeline :
 	 * 1. Remplacement des tags Jeedom (#[...]#)
 	 * 2. Décodage du texte aléatoire ({...})
-	 * 3. Nettoyage HTML — html_entity_decode + <br> → espace + strip_tags + normalisation espaces (si option activée)
+	 * 3. Nettoyage HTML — html_entity_decode + <br> → espace + strip_tags + normalisation espaces, hors blocs de code Markdown (si option activée)
 	 * 4. Conversion des emojis personnalisés (emo_...) — uniquement si $_supportMarkdown est vrai
 	 * 5. Remplacement des sauts de ligne (| -> \n)
 	 *
@@ -981,11 +982,7 @@ class discordlinkCmd extends cmd {
 		// 3. Nettoyage HTML (si option activée dans la configuration du plugin)
 		if (config::byKey('stripHtml', 'discordlink', '0') == '1') {
 			log::add('discordlink', 'debug', '[stripHTML] Avant nettoyage HTML : ' . preg_replace('/\R/', '\\n', $text));
-			$text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8'); // décoder en premier pour que strip_tags voit les vrais tags
-			$text = preg_replace('/<br\s*\/?>/i', ' ', $text); // <br> → espace pour éviter de coller les mots
-			$text = strip_tags($text);
-			$text = preg_replace('/\s{2,}/', ' ', $text);
-			$text = trim($text);
+			$text = self::sanitizeHtmlText($text);
 			log::add('discordlink', 'debug', '[stripHTML] Après nettoyage HTML : ' . preg_replace('/\R/', '\\n', $text));
 		}
 
@@ -998,6 +995,31 @@ class discordlinkCmd extends cmd {
 		$text = str_replace('|', "\n", $text);
 
 		return $text;
+	}
+
+	/**
+	 * Nettoie le HTML résiduel d'un texte (balises, entités, espaces multiples) en
+	 * préservant intégralement tout segment de code Markdown Discord (bloc ``` ``` ```
+	 * ou inline ` ` `), où l'espacement est toujours significatif pour l'utilisateur
+	 * (ex : alignement de colonnes).
+	 *
+	 * @param string $_text
+	 * @return string
+	 */
+	private static function sanitizeHtmlText(string $_text): string {
+		$segments = preg_split('/(```[\s\S]*?```|`[^`\n]*?`)/', $_text, -1, PREG_SPLIT_DELIM_CAPTURE);
+		if ($segments === false) return trim($_text);
+
+		foreach ($segments as $i => $segment) {
+			if ($i % 2 === 1) continue; // segment de code Markdown : laissé intact
+
+			$segment = html_entity_decode($segment, ENT_QUOTES | ENT_HTML5, 'UTF-8'); // décoder en premier pour que strip_tags voit les vrais tags
+			$segment = preg_replace('/<br\s*\/?>/i', ' ', $segment); // <br> → espace pour éviter de coller les mots
+			$segment = strip_tags($segment);
+			$segments[$i] = preg_replace('/\s{2,}/', ' ', $segment);
+		}
+
+		return trim(implode('', $segments));
 	}
 
 	private function buildMessageRequest($_options = array(), $default = "Une erreur est survenue") {
