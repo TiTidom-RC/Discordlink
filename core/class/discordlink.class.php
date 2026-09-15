@@ -1001,22 +1001,30 @@ class discordlinkCmd extends cmd {
 	 * Nettoie le HTML résiduel d'un texte (balises, entités, espaces multiples) en
 	 * préservant intégralement tout segment de code Markdown Discord (bloc ``` ``` ```
 	 * ou inline ` ` `), où l'espacement est toujours significatif pour l'utilisateur
-	 * (ex : alignement de colonnes).
+	 * (ex : alignement de colonnes), ainsi que la syntaxe native Discord (mentions,
+	 * rôles, salons, emojis animés, horodatages) qui utilise aussi des chevrons.
 	 *
 	 * @param string $_text
 	 * @return string
 	 */
 	private static function sanitizeHtmlText(string $_text): string {
+		$_text = preg_replace('/\r\n|\r/', "\n", $_text); // normalise les fins de ligne avant tout traitement
+
 		$segments = preg_split('/(```[\s\S]*?```|`[^`\n]*?`)/', $_text, -1, PREG_SPLIT_DELIM_CAPTURE);
 		if ($segments === false) return trim($_text);
+
+		// Un espace doit suivre le nom du tag pour entrer dans le bloc "attributs" : exclut structurellement
+		// la syntaxe Discord (<a:nom:id>, <@id>, <t:ts:R>...), qui n'a jamais d'espace après la lettre initiale,
+		// tout en gérant les guillemets (un > entre guillemets ne ferme pas le tag).
+		$htmlTagPattern = '/<\/?[a-zA-Z][a-zA-Z0-9-]*(?:\s(?:[^<>"\']|"[^"]*"|\'[^\']*\')*)?\/?>/';
 
 		foreach ($segments as $i => $segment) {
 			if ($i % 2 === 1) continue; // segment de code Markdown : laissé intact
 
-			$segment = html_entity_decode($segment, ENT_QUOTES | ENT_HTML5, 'UTF-8'); // décoder en premier pour que strip_tags voit les vrais tags
-			$segment = preg_replace('/<br\s*\/?>/i', ' ', $segment); // <br> → espace pour éviter de coller les mots
-			$segment = strip_tags($segment);
-			$segments[$i] = preg_replace('/\s{2,}/', ' ', $segment);
+			$segment = preg_replace('/<br\s*\/?>/i', ' ', $segment); // <br> réel → espace pour éviter de coller les mots
+			$segment = preg_replace($htmlTagPattern, '', $segment); // retire les vrais tags, jamais les entités qui les épellent
+			$segment = html_entity_decode($segment, ENT_QUOTES | ENT_HTML5, 'UTF-8'); // décoder après le strip
+			$segments[$i] = preg_replace('/[^\S\n]{2,}/', ' ', $segment); // espaces multiples restants, jamais les \n
 		}
 
 		return trim(implode('', $segments));
