@@ -41,6 +41,3 @@ build/
 # Environment
 .env
 .env.local
-
-# Github
-.github/copilot-instructions.md
